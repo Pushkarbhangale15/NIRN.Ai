@@ -16,9 +16,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-import os
+from fastapi.responses import JSONResponse
 
 import llm
 import retrieval
@@ -53,16 +51,8 @@ app.add_middleware(
 
 app.include_router(router)
 
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-@app.get("/", tags=["frontend"])
+@app.get("/", tags=["health"])
 def root():
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
     return {
         "service": settings.APP_NAME,
         "version": settings.VERSION,
