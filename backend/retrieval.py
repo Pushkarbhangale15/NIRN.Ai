@@ -1,81 +1,59 @@
 """
 retrieval.py — semantic search over the GR corpus.
 
-PRASAD OWNS THIS FILE. It is a STUB: it returns believable fake results
-so that everyone else's work runs today.
-
-Two jobs live here, deliberately merged into one file so that one person
-owns one file:
-    1. embedding  — turning text into vectors
-    2. searching  — asking Qdrant for the nearest vectors
-
-An "embedding" is a list of numbers representing the meaning of a piece
-of text. Two texts about the same thing produce similar number lists,
-which is what makes search-by-meaning work — a query about "late
-admission" finds a passage saying "delayed enrolment procedure" even
-though no word matches.
-
-THE CONTRACT — do not change these signatures, everything else depends
-on them:
-
-    embed(text)                  -> List[float]
-    embed_batch(texts)           -> List[List[float]]
-    search(query, top_k)         -> List[CorpusHit]
-    is_connected()               -> bool
+Integrated with Prasad's FAISS implementation.
 """
 
-from typing import List
+from typing import List, Optional
+import os
+import faiss
+import pickle
+import numpy as np
 
 from config import settings
 from schemas import CorpusHit
 
-# Loaded once at module level on Day 2, never inside a function —
-# reloading a sentence-transformer per request costs seconds.
 _model = None
+_index = None
+_chunks = None
 
+def _load_model():
+    global _model
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+    return _model
+
+def _load_faiss():
+    global _index, _chunks
+    
+    # We load them once lazily when first needed.
+    if _index is None:
+        index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "index.faiss")
+        if os.path.exists(index_path):
+            _index = faiss.read_index(index_path)
+    
+    if _chunks is None:
+        chunks_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "chunks.pkl")
+        if os.path.exists(chunks_path):
+            with open(chunks_path, "rb") as f:
+                _chunks = pickle.load(f)
 
 # ---------------------------------------------------------------------
 # Embedding
 # ---------------------------------------------------------------------
 
 def embed(text: str) -> List[float]:
-    """
-    Turn one piece of text into a vector.
-
-    TODO (Prasad, Day 2):
-        global _model
-        if _model is None:
-            from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
-        return _model.encode(text).tolist()
-
-    Suggested model (already in config): paraphrase-multilingual-MiniLM-L12-v2
-    — 384 dimensions, handles Marathi and English, runs on CPU.
-
-    Whatever model you pick, settings.EMBEDDING_DIMENSION must match its
-    output size or every insert into Qdrant is rejected with a size error.
-    """
-    return [0.0] * settings.EMBEDDING_DIMENSION
-
+    model = _load_model()
+    # ensure it's returned as a list of floats
+    return model.encode([text], convert_to_numpy=True)[0].tolist()
 
 def embed_batch(texts: List[str]) -> List[List[float]]:
-    """
-    Batch version. Far faster than looping over embed() — the model can
-    process many texts in one pass. Use this when ingesting the corpus.
-    """
-    return [embed(text) for text in texts]
+    model = _load_model()
+    embeddings = model.encode(texts, convert_to_numpy=True)
+    return [e.tolist() for e in embeddings]
 
-
-def chunk_text(text: str,
-               max_chars: int = None,
-               overlap: int = None) -> List[str]:
-    """
-    Split a long GR into overlapping pieces before embedding.
-
-    Overlap matters: if a clause happens to land exactly on a chunk
-    boundary, the overlap ensures it still appears whole inside one of
-    the chunks. Without it, retrieval silently misses clauses.
-    """
+def chunk_text(text: str, max_chars: int = None, overlap: int = None) -> List[str]:
     max_chars = max_chars or settings.CHUNK_CHARS
     overlap = overlap or settings.CHUNK_OVERLAP
 
@@ -89,95 +67,68 @@ def chunk_text(text: str,
         start += max_chars - overlap
     return chunks
 
-
 # ---------------------------------------------------------------------
 # Search
 # ---------------------------------------------------------------------
 
-_FAKE_CORPUS = [
-    {
-        "gr_id": "gr-2019-0252",
-        "title": "Revision of lateral entry intake in technical institutions",
-        "department": "Higher and Technical Education Department",
-        "issued_on": "2019-07-02",
-        "snippet": (
-            "Lateral entry seats shall be fixed at ten percent of the sanctioned "
-            "intake of the corresponding first-year course."
-        ),
-    },
-    {
-        "gr_id": "gr-2021-0088",
-        "title": "Tuition Fee Waiver Scheme eligibility criteria",
-        "department": "Higher and Technical Education Department",
-        "issued_on": "2021-03-15",
-        "snippet": (
-            "Eligibility under the Tuition Fee Waiver Scheme shall be restricted "
-            "to candidates whose annual family income does not exceed the "
-            "prescribed limit."
-        ),
-    },
-    {
-        "gr_id": "gr-2022-0431",
-        "title": "Scholarship disbursement procedure for backward class students",
-        "department": "Social Justice and Special Assistance Department",
-        "issued_on": "2022-09-08",
-        "snippet": (
-            "Scholarship amounts shall be credited directly to the beneficiary's "
-            "account following verification by the head of the institution."
-        ),
-    },
-    {
-        "gr_id": "gr-2023-0117",
-        "title": "Reservation of seats in professional courses",
-        "department": "General Administration Department",
-        "issued_on": "2023-01-24",
-        "snippet": (
-            "The category-wise reservation percentages notified herein shall "
-            "apply to all professional courses conducted in the State."
-        ),
-    },
-]
-
-
 def search(query: str, top_k: int = None) -> List[CorpusHit]:
-    """
-    Find GR passages semantically similar to `query`.
-
-    Note the fake corpus deliberately spans three different departments.
-    Cross-departmental conflict is the whole point of Objective 1, so the
-    stub data should exercise it rather than hide it.
-
-    TODO (Prasad, Day 2):
-        vector = embed(query)
-        points = client.search(
-            collection_name=settings.QDRANT_COLLECTION,
-            query_vector=vector,
-            limit=top_k,
-        )
-        return [CorpusHit(**point.payload, score=point.score) for point in points]
-    """
     top_k = top_k or settings.TOP_K
-    return [
-        CorpusHit(
-            **record,
-            score=round(0.92 - index * 0.07, 3),
-            source_url=f"https://gr.maharashtra.gov.in/{record['gr_id']}",
+    
+    model = _load_model()
+    _load_faiss()
+
+    if _index is None or _chunks is None:
+        return []
+
+    query_embedding = model.encode([query], convert_to_numpy=True)
+    faiss.normalize_L2(query_embedding)
+    
+    distances, indices = _index.search(query_embedding, k=top_k)
+    
+    results = []
+    for i, idx in enumerate(indices[0]):
+        # Distance might be Euclidean distance or Inner Product depending on FAISS index.
+        # Since it's normalized L2, score can be derived from distance.
+        score = float(distances[0][i])
+        
+        chunk = _chunks[idx]
+        
+        # schemas.CorpusHit requires title. We mock it if absent.
+        title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+        
+        hit = CorpusHit(
+            gr_id=chunk.get("gr_id", "Unknown"),
+            title=title,
+            department=chunk.get("department", "Unknown"),
+            issued_on=chunk.get("issued_on"),
+            snippet=chunk.get("text", "")[:1000],  # Give a snippet of max 1000 chars
+            score=min(max(score, 0.0), 1.0), # Ensure it fits in [0, 1] per schema
+            source_url=f"https://gr.maharashtra.gov.in/{chunk.get('gr_id', '')}"
         )
-        for index, record in enumerate(_FAKE_CORPUS[:top_k])
-    ]
+        results.append(hit)
+        
+    return results
 
-
-def lookup_by_gr_number(gr_number: str) -> CorpusHit | None:
-    """
-    Exact lookup by GR number, used by references.py to check whether a
-    cited GR exists and is still in force.
-
-    This is NOT semantic search — it is an exact match on a metadata
-    field, so on Day 2 use a Qdrant payload filter, not a vector query.
-    """
+def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
+    # In FAISS we would need to iterate through chunks or have a separate metadata dict.
+    _load_faiss()
+    if _chunks is None:
+        return None
+        
+    for chunk in _chunks:
+        if chunk.get("gr_id") == gr_number:
+            title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+            return CorpusHit(
+                gr_id=chunk.get("gr_id", "Unknown"),
+                title=title,
+                department=chunk.get("department", "Unknown"),
+                issued_on=chunk.get("issued_on"),
+                snippet=chunk.get("text", "")[:1000],
+                score=1.0,
+                source_url=f"https://gr.maharashtra.gov.in/{chunk.get('gr_id', '')}"
+            )
     return None
 
-
 def is_connected() -> bool:
-    """Whether Qdrant is reachable. Surfaced on /health."""
-    return False  # replace with a real ping on Day 2
+    _load_faiss()
+    return _index is not None and _chunks is not None
