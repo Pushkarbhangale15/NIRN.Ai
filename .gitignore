@@ -3,3 +3,25 @@ __pycache__/
 *.pyc
 .env
 file structure.md
+
+
+cat << 'EOF' >> .gitignore
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# Raw dataset
+mahGRs-main/
+
+# Generated artifacts
+embeddings/*.npy
+vector_db/*.faiss
+vector_db/*.pkl
+EOF
