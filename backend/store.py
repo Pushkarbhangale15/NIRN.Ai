@@ -44,3 +44,16 @@ def list_drafts() -> List[Draft]:
 def delete_draft(draft_id: str) -> bool:
     """Returns True if something was deleted, False if the id was unknown."""
     return _drafts.pop(draft_id, None) is not None
+
+
+_sessions: Dict[str, List[dict]] = {}
+
+def get_session(session_id: str) -> List[dict]:
+    if session_id not in _sessions:
+        _sessions[session_id] = []
+    return _sessions[session_id]
+
+def add_message(session_id: str, message: dict):
+    if session_id not in _sessions:
+        _sessions[session_id] = []
+    _sessions[session_id].append(message)

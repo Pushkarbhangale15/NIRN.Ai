@@ -21,7 +21,7 @@ def _load_model():
     global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        _model = SentenceTransformer("intfloat/multilingual-e5-base")
     return _model
 
 def _load_faiss():
@@ -46,11 +46,12 @@ def _load_faiss():
 def embed(text: str) -> List[float]:
     model = _load_model()
     # ensure it's returned as a list of floats
-    return model.encode([text], convert_to_numpy=True)[0].tolist()
+    return model.encode(["query: " + text], convert_to_numpy=True)[0].tolist()
 
 def embed_batch(texts: List[str]) -> List[List[float]]:
     model = _load_model()
-    embeddings = model.encode(texts, convert_to_numpy=True)
+    prefixed_texts = ["query: " + t for t in texts]
+    embeddings = model.encode(prefixed_texts, convert_to_numpy=True)
     return [e.tolist() for e in embeddings]
 
 def chunk_text(text: str, max_chars: int = None, overlap: int = None) -> List[str]:
@@ -80,7 +81,7 @@ def search(query: str, top_k: int = None) -> List[CorpusHit]:
     if _index is None or _chunks is None:
         return []
 
-    query_embedding = model.encode([query], convert_to_numpy=True)
+    query_embedding = model.encode(["query: " + query], convert_to_numpy=True)
     faiss.normalize_L2(query_embedding)
     
     distances, indices = _index.search(query_embedding, k=top_k)

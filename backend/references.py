@@ -106,23 +106,25 @@ def resolve_against_corpus(hits: List[ReferenceHit]) -> List[ReferenceHit]:
     """
     Check each citation against the GR corpus: does it exist, and is it
     still in force?
-
-    A draft citing a GR that was superseded three years ago is exactly
-    the kind of error this project exists to catch, so this function
-    matters more than its size suggests.
-
-    TODO (Day 2, once retrieval.py is real):
-        look up hit.gr_number in the corpus, then set found_in_corpus,
-        status, corpus_gr_id and corpus_title from the real record.
-
-    Until then it alternates states so the frontend has both to render.
     """
-    for index, hit in enumerate(hits):
-        if index % 2 == 0:
-            hit.found_in_corpus = True
-            hit.status = GRStatus.IN_FORCE
-            hit.corpus_gr_id = f"gr-{hit.year or 2019}-{index:04d}"
-            hit.corpus_title = "Placeholder title from corpus lookup"
+    import retrieval
+    
+    for hit in hits:
+        # Search the corpus for the GR number or raw text
+        query = hit.gr_number or hit.raw_text
+        search_results = retrieval.search(query, top_k=1)
+        if search_results:
+            top_hit = search_results[0]
+            # Since reference text is very specific, if similarity is high (e.g. >= 0.70)
+            # we consider it resolved successfully.
+            if top_hit.score >= 0.70:
+                hit.found_in_corpus = True
+                hit.status = GRStatus.IN_FORCE
+                hit.corpus_gr_id = top_hit.gr_id
+                hit.corpus_title = top_hit.title
+            else:
+                hit.found_in_corpus = False
+                hit.status = GRStatus.UNKNOWN
         else:
             hit.found_in_corpus = False
             hit.status = GRStatus.UNKNOWN

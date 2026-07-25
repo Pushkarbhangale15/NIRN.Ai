@@ -161,6 +161,51 @@ class CorpusSearchResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------
+# Copilot / Chat
+# ---------------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "model"
+    content: str
+
+class ChatRequest(BaseModel):
+    query: str
+    session_id: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    answer: str
+    session_id: str
+    references: List[CorpusHit] = []
+    follow_up_suggestions: List[str] = []
+
+class DraftGenerateRequest(BaseModel):
+    prompt: str
+
+class DraftGenerateResponse(BaseModel):
+    draft_id: str
+    title: str
+    department: str
+    body_text: str
+    references: List[CorpusHit] = []
+
+class ComparisonRequest(BaseModel):
+    gr_id_1: str
+    gr_id_2: str
+
+class ComparisonResponse(BaseModel):
+    gr_id_1: str
+    gr_id_2: str
+    comparison_report: str
+
+class ClauseExplanationRequest(BaseModel):
+    clause_text: str
+    language: Language = Language.ENGLISH
+
+class ClauseExplanationResponse(BaseModel):
+    explanation: str
+
+
+# ---------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------
 

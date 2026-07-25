@@ -4,14 +4,14 @@ from sentence_transformers import SentenceTransformer
 
 # Load model
 model = SentenceTransformer(
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    "intfloat/multilingual-e5-base"
 )
 
 # Load chunks
 with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
-texts = [chunk["text"] for chunk in chunks]
+texts = ["passage: " + chunk["text"] for chunk in chunks]
 
 print(f"Generating embeddings for {len(texts)} chunks...")
 
