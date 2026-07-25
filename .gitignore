@@ -25,3 +25,8 @@ embeddings/*.npy
 vector_db/*.faiss
 vector_db/*.pkl
 EOF
+.DS_Store
+**/.DS_Store
+
+frontend/node_modules/
+frontend/dist/
