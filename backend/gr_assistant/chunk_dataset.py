@@ -2,14 +2,19 @@ from pathlib import Path
 import json
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-DATASET_ROOT = Path("/Users/avomine/VSCode/nirnai/mahGRs-main/GRs")
+import random
+
+DATASET_ROOT = Path("mahGRs-main")
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,
     chunk_overlap=100,
 )
 
-all_files = list(DATASET_ROOT.rglob("*.txt"))[:100]
+all_files = list(DATASET_ROOT.rglob("*.txt"))
+random.seed(42)
+random.shuffle(all_files)
+all_files = all_files[:5000]
 
 chunks_data = []
 

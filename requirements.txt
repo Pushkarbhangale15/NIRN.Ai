@@ -1,4 +1,4 @@
-﻿aiohappyeyeballs==2.7.1
+aiohappyeyeballs==2.7.1
 aiohttp==3.14.3
 aiosignal==1.4.0
 annotated-doc==0.0.4
@@ -60,7 +60,6 @@ pydantic-settings==2.14.2
 pydantic_core==2.46.4
 Pygments==2.20.0
 python-dotenv==1.2.2
-pywin32==312
 PyYAML==6.0.3
 qdrant-client==1.18.0
 regex==2026.7.19
@@ -93,4 +92,4 @@ websockets==15.0.1
 xxhash==3.8.1
 yarl==1.24.5
 zstandard==0.25.0
-faiss-cpu==1.9.0
+faiss-cpu
