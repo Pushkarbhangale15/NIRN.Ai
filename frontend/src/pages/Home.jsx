@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import CountUp from "react-countup";
 
 const IconSearch = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 24 24" {...props}>
@@ -101,7 +102,17 @@ export default function Home() {
 
             <div className="hero-stat">
               <div className="stat-icon"><IconResolutions /></div>
-              <div className="stat-number">98,950+</div>
+              <div className="stat-number">
+  <CountUp
+  start={95000}
+    end={98950}
+    duration={2.5}
+    separator=","
+    suffix="+"
+    enableScrollSpy
+    scrollSpyOnce
+  />
+</div>
               <div className="stat-label">Government Resolutions</div>
               <div className="stat-sub">Across departments. At your fingertips.</div>
             </div>
