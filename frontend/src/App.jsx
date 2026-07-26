@@ -3,6 +3,7 @@ import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Analyze from "./pages/Analyze.jsx";
 import Search from "./pages/Search.jsx";
+import Copilot from "./pages/Copilot.jsx";
 
 function Navbar() {
   return (
@@ -26,10 +27,13 @@ function Navbar() {
           <NavLink to="/analyze" className={({ isActive }) => (isActive ? "active" : "")}>
             Analyze
           </NavLink>
+          <NavLink to="/copilot" className={({ isActive }) => (isActive ? "active" : "")}>
+            Copilot
+          </NavLink>
         </div>
 
-        <NavLink to="/analyze" className="nav-cta">
-          Upload GR <span>→</span>
+        <NavLink to="/copilot" className="nav-cta">
+          AI Copilot <span>→</span>
         </NavLink>
       </nav>
     </div>
@@ -44,6 +48,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/analyze" element={<Analyze />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/copilot" element={<Copilot />} />
       </Routes>
     </>
   );

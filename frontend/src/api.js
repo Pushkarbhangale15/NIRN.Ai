@@ -41,4 +41,29 @@ export const api = {
 
   searchCorpus: (q, topK = 8) =>
     request(`/api/corpus/search?q=${encodeURIComponent(q)}&top_k=${topK}`),
+
+  // ── Copilot ──────────────────────────────────────────────────
+  copilotChat: (query, sessionId = null) =>
+    request("/api/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({ query, session_id: sessionId }),
+    }),
+
+  copilotDraft: (prompt) =>
+    request("/api/copilot/draft", {
+      method: "POST",
+      body: JSON.stringify({ prompt }),
+    }),
+
+  copilotCompare: (grId1, grId2) =>
+    request("/api/copilot/compare", {
+      method: "POST",
+      body: JSON.stringify({ gr_id_1: grId1, gr_id_2: grId2 }),
+    }),
+
+  copilotExplain: (clauseText, language = "en") =>
+    request("/api/copilot/explain-clause", {
+      method: "POST",
+      body: JSON.stringify({ clause_text: clauseText, language }),
+    }),
 };
