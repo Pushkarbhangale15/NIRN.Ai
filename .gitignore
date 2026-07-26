@@ -30,3 +30,4 @@ EOF
 
 frontend/node_modules/
 frontend/dist/
+.env.example
