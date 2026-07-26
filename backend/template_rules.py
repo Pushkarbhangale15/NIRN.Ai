@@ -29,16 +29,20 @@ from schemas import Severity, TemplateIssue
 # Each returns a TemplateIssue if the rule is violated, or None if OK.
 
 def _check_mop001_header_govt(text: str) -> Optional[TemplateIssue]:
-    """MOP §2.1 — The GR must open with 'Government of Maharashtra'."""
-    first_lines = text.strip()[:300]
-    if not re.search(r"government\s+of\s+maharashtra", first_lines, re.IGNORECASE):
+    """MOP §2.1 — The GR must open with 'Government of Maharashtra' / 'महाराष्ट्र शासन'."""
+    first_lines = text.strip()[:400]
+    has_govt = bool(
+        re.search(r"government\s+of\s+maharashtra", first_lines, re.IGNORECASE)
+        or re.search(r"महाराष्ट्र\s+शासन", first_lines, re.UNICODE)
+    )
+    if not has_govt:
         return TemplateIssue(
             rule_id="MOP-001",
             severity=Severity.ERROR,
-            message="Header must begin with 'Government of Maharashtra'.",
+            message="Header must begin with 'Government of Maharashtra' or 'महाराष्ट्र शासन'.",
             section="Header",
             suggestion=(
-                "Add 'GOVERNMENT OF MAHARASHTRA' as the very first line of the document."
+                "Add 'GOVERNMENT OF MAHARASHTRA' or 'महाराष्ट्र शासन' as the very first line of the document."
             ),
         )
     return None

@@ -72,16 +72,30 @@ const CHAT_STARTERS = [
 ];
 
 function ChatTab() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nirn_chat_messages") || "[]"); }
+    catch { return []; }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(() => {
+    return localStorage.getItem("nirn_chat_session_id") || null;
+  });
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
 
   useEffect(() => {
+    try { localStorage.setItem("nirn_chat_messages", JSON.stringify(messages)); } catch {}
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (sessionId) {
+      try { localStorage.setItem("nirn_chat_session_id", sessionId); } catch {}
+    } else {
+      localStorage.removeItem("nirn_chat_session_id");
+    }
+  }, [sessionId]);
 
   const send = async (text) => {
     const q = (text ?? input).trim();
@@ -108,6 +122,10 @@ function ChatTab() {
     setMessages([]);
     setSessionId(null);
     setError("");
+    try {
+      localStorage.removeItem("nirn_chat_messages");
+      localStorage.removeItem("nirn_chat_session_id");
+    } catch {}
   };
 
   return (
