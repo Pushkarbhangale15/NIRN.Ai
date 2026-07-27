@@ -114,9 +114,9 @@ export default function Home() {
               </div>
               <div className="stat-label">Government Resolutions</div>
               <div className="stat-sub">Across departments. At your fingertips.</div>
-              <div className="stat-number">{t('home_stat_num')}</div>
+              {/* <div className="stat-number">{t('home_stat_num')}</div>
               <div className="stat-label">{t('home_stat_label')}</div>
-              <div className="stat-sub">{t('home_stat_sub')}</div>
+              <div className="stat-sub">{t('home_stat_sub')}</div> */}
             </div>
           </div>
 

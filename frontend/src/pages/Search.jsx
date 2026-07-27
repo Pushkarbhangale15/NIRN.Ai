@@ -19,7 +19,7 @@ export default function Search() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.searchCorpus(text , k);
+      const res = await api.searchCorpus(text, k);
       setHits(res.hits);
       setTookMs(res.took_ms);
       setParams({ q: text });
@@ -61,98 +61,47 @@ export default function Search() {
         <button className="go" type="submit" aria-label="Search">→</button>
       </form>
 
-      <div
-  style={{
-    marginTop: 18,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 12,
-  }}
->
-  <div>
-    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-      Results to retrieve
-    </div>
-    <div style={{ fontSize: "0.9rem", color: "#666" }}>
-      Default: 8 &nbsp;•&nbsp; Range: 1–50
-    </div>
-  </div>
+      <div className="retrieve-row">
+        <div>
+          <div className="retrieve-label">Results to retrieve</div>
+          <div className="retrieve-hint">Default 8 · Range 1–50</div>
+        </div>
 
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      border: "1px solid #ddd",
-      borderRadius: "10px",
-      overflow: "hidden",
-    }}
-  >
-    <button
-      type="button"
-      onClick={() => setK((prev) => Math.max(1, prev - 1))}
-      style={{
-        width: 42,
-        height: 42,
-        border: "none",
-        background: "#f5f5f5",
-        cursor: "pointer",
-        fontSize: "18px",
-      }}
-    >
-      −
-    </button>
+        <div className="stepper">
+          <button
+            type="button"
+            className="stepper-btn stepper-minus"
+            onClick={() => setK((prev) => Math.max(1, (prev || 8) - 1))}
+            aria-label="Decrease"
+          >
+            −
+          </button>
 
-    <input
-      type="number"
-      min="1"
-      max="50"
-      value={k}
-      onChange={(e) => {
-  const value = e.target.value;
+          <input
+            type="number"
+            min="1"
+            max="50"
+            className="stepper-input"
+            value={k}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "") { setK(""); return; }
+              const num = Number(value);
+              if (num >= 1 && num <= 50) setK(num);
+            }}
+            onBlur={() => { if (k === "") setK(8); }}
+          />
 
-  if (value === "") {
-    setK("");
-    return;
-  }
-
-  const num = Number(value);
-
-  if (num >= 1 && num <= 50) {
-    setK(num);
-  }
-}}
-onBlur={() => {
-  if (k === "") {
-    setK(8);
-  }
-}}
-      style={{
-        width: 60,
-        textAlign: "center",
-        border: "none",
-        outline: "none",
-        fontSize: "16px",
-      }}
-    />
-
-    <button
-      type="button"
-      onClick={() => setK((prev) => Math.min(50, prev + 1))}
-      style={{
-        width: 42,
-        height: 42,
-        border: "none",
-        background: "#f5f5f5",
-        cursor: "pointer",
-        fontSize: "18px",
-      }}
-    >
-      +
-    </button>
-  </div>
-</div>
+          <button
+            type="button"
+            className="stepper-btn stepper-plus"
+            onClick={() => setK((prev) => Math.min(50, (prev || 8) + 1))}
+            aria-label="Increase"
+          >
+            +
+          </button>
+        </div>
+      </div>
 
       <div style={{ marginTop: 30 }}>
         {error && <div className="error-box">{error}</div>}
@@ -191,7 +140,7 @@ onBlur={() => {
                 <div className="ri-sub" style={{ marginTop: 10 }}>{h.snippet}</div>
                 {h.source_url && (
                   <a className="f-link" style={{ marginTop: 10, display: "inline-flex" }}
-                     href={h.source_url} target="_blank" rel="noreferrer">
+                    href={h.source_url} target="_blank" rel="noreferrer">
                     {t('search_view_source')}
                   </a>
                 )}
