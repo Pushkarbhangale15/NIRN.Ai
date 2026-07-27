@@ -5,20 +5,25 @@ Every value that might vary between local development and the production
 demo environment lives here.  Other modules import `settings` and read
 from it; nothing should hard-code a port, key, or threshold directly.
 
-Reads from environment variables / a .env file so the API key is never
-committed to the repo.  Add a .env file in the project root:
+Switch LLM provider in your .env:
 
-    LLM_API_KEY=AIza...your-key...
-    DEBUG=true
+    # Offline (Ollama — 100% free, no internet after model download)
+    LLM_PROVIDER=ollama
+    OLLAMA_MODEL=gemma3:4b
 
-Then activate the venv and run:
-
-    cd backend
-    uvicorn app:app --reload
+    # Online (Google AI Studio — free quota)
+    LLM_PROVIDER=gemini
+    LLM_API_KEY=AIza...
 """
 
 import os
 from typing import List
+
+from dotenv import load_dotenv
+
+# Resolve .env from the project root (one level above backend/)
+_env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+load_dotenv(dotenv_path=_env_path, override=True)
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -42,10 +47,24 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
-    # ---- LLM ---------------------------------------------------------------
-    # Gemini model to use for generation.
-    LLM_API_KEY: str = Field(default="your-api-key-here", alias="LLM_API_KEY")
-    LLM_MODEL: str = "gemini-2.0-flash"
+    # ---- LLM provider selection --------------------------------------------
+    # "gemini" (default) uses Google AI Studio.
+    # "ollama" runs a model locally via Ollama — no API key needed.
+    LLM_PROVIDER: str = Field(default=os.getenv("LLM_PROVIDER", "gemini"), alias="LLM_PROVIDER")
+
+    # ---- Gemini (Google AI Studio) -----------------------------------------
+    LLM_API_KEY: str = Field(default=os.getenv("LLM_API_KEY", "your-api-key-here"), alias="LLM_API_KEY")
+    LLM_MODEL: str = Field(default=os.getenv("LLM_MODEL", "gemini-2.0-flash"), alias="LLM_MODEL")
+
+    # ---- Ollama (local, offline) -------------------------------------------
+    # Install Ollama: https://ollama.com  then run: ollama pull gemma3:4b
+    OLLAMA_MODEL: str = Field(default=os.getenv("OLLAMA_MODEL", "gemma3:4b"), alias="OLLAMA_MODEL")
+    OLLAMA_BASE_URL: str = Field(default=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"), alias="OLLAMA_BASE_URL")
+
+    # ---- Rate limiting -----------------------------------------------------
+    # Max requests per minute. Ollama is local so set it high (e.g. 60).
+    # Gemini free-tier: 15 RPM. Set lower (e.g. 10) to leave headroom.
+    LLM_RPM: int = Field(default=int(os.getenv("LLM_RPM", "10")), alias="LLM_RPM")
 
     # ---- Retrieval ---------------------------------------------------------
     # How many corpus chunks to return per user search query.

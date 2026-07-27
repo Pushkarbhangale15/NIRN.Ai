@@ -1,14 +1,9 @@
-venv/
-__pycache__/
-*.pyc
+# Secrets — never commit these
 .env
-file structure.md
-
-
-cat << 'EOF' >> .gitignore
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 # Python
 __pycache__/
@@ -20,16 +15,23 @@ venv/
 # Raw dataset
 mahGRs-main/
 
-# Generated artifacts
+# Generated artifacts — these are large binary files, rebuild locally
 embeddings/*.npy
+data/*.npy
 vector_db/*.faiss
 vector_db/*.pkl
-EOF
-.DS_Store
-**/.DS_Store
 
+# Frontend
 frontend/node_modules/
 frontend/dist/
 .env.example
 
 data/embeddings.npy
+frontend/.vite/
+
+# Misc
+file structure.md
+response.json
+*.db
+backend/data/*.db
+

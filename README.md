@@ -87,12 +87,41 @@ uvicorn backend.app:app --reload
 
 ---
 
+## 🦙 Local LLM Setup (Ollama + Gemma 3:4b)
+
+NIRN.Ai supports running **100% offline** using local open-source LLMs via Ollama!
+
+### Quick Setup Steps:
+
+1. **Install Ollama**:
+   - **macOS**: `brew install ollama` or download from [ollama.com](https://ollama.com)
+   - **Windows / Linux**: Download installer from [ollama.com](https://ollama.com)
+2. **Pull Gemma 3 (4B) model**:
+   ```bash
+   ollama pull gemma3:4b
+   ```
+3. **Configure `.env` in project root**:
+   ```env
+   LLM_PROVIDER=ollama
+   OLLAMA_MODEL=gemma3:4b
+   OLLAMA_BASE_URL=http://localhost:11434
+   ```
+4. **Start backend**:
+   ```bash
+   uvicorn backend.app:app --reload
+   ```
+
+*For detailed instructions and troubleshooting, see the [Ollama Setup Guide](file:///Users/avomine/VSCode/NIRN.Ai/OLLAMA_SETUP.md).*
+
+---
+
 ## 📖 Documentation
 
 Detailed documentation is available in the **docs** folder.
 
 | Document | Description |
 |----------|-------------|
+| `OLLAMA_SETUP.md` | Full Ollama & `gemma3:4b` local model setup guide |
 | `docs/setup.md` | Complete project setup |
 | `docs/api.md` | Backend API documentation |
 | `docs/architecture.md` | System architecture |

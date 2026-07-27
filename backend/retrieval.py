@@ -72,9 +72,9 @@ def chunk_text(text: str, max_chars: int = None, overlap: int = None) -> List[st
 # Search
 # ---------------------------------------------------------------------
 
-def search(query: str, top_k: int = None) -> List[CorpusHit]:
+def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[CorpusHit]:
     top_k = top_k or settings.TOP_K
-    
+
     model = _load_model()
     _load_faiss()
 
@@ -83,31 +83,30 @@ def search(query: str, top_k: int = None) -> List[CorpusHit]:
 
     query_embedding = model.encode(["query: " + query], convert_to_numpy=True)
     faiss.normalize_L2(query_embedding)
-    
+
     distances, indices = _index.search(query_embedding, k=top_k)
-    
+
     results = []
     for i, idx in enumerate(indices[0]):
-        # Distance might be Euclidean distance or Inner Product depending on FAISS index.
-        # Since it's normalized L2, score can be derived from distance.
         score = float(distances[0][i])
-        
+        norm_score = min(max(score, 0.0), 1.0)
+        if norm_score < min_score:
+            continue
+
         chunk = _chunks[idx]
-        
-        # schemas.CorpusHit requires title. We mock it if absent.
         title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
-        
+
         hit = CorpusHit(
             gr_id=chunk.get("gr_id", "Unknown"),
             title=title,
             department=chunk.get("department", "Unknown"),
             issued_on=chunk.get("issued_on"),
-            snippet=chunk.get("text", "")[:1000],  # Give a snippet of max 1000 chars
-            score=min(max(score, 0.0), 1.0), # Ensure it fits in [0, 1] per schema
+            snippet=chunk.get("text", "")[:800],
+            score=norm_score,
             source_url=f"https://gr.maharashtra.gov.in/{chunk.get('gr_id', '')}"
         )
         results.append(hit)
-        
+
     return results
 
 def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:

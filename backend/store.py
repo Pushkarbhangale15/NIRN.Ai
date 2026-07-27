@@ -1,59 +1,133 @@
 """
-store.py — a dictionary pretending to be a database.
+store.py — persistent SQLite store for drafts and chat sessions.
 
-Day 1 does not need Postgres. Drafts live in memory so the API works
-end to end immediately. Everything resets when the server restarts,
-which is fine for a five-day hackathon and one less thing to break
-during the demo.
-
-To add persistence later, replace these four functions with database
-calls. Nothing else in the codebase changes, because nothing else
-touches the dictionary directly.
+Replaces the temporary in-memory dictionary with a lightweight SQLite database
+stored at backend/data/nirn_store.db. Surges survival across backend restarts.
 """
 
+import json
+import os
+import sqlite3
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from schemas import Draft, DraftCreate
 
-_drafts: Dict[str, Draft] = {}
+_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "nirn_store.db")
+
+
+def _get_conn():
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _init_db():
+    with _get_conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS drafts (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                department TEXT NOT NULL,
+                body_text TEXT NOT NULL,
+                language TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_session_id ON chat_sessions(session_id)")
+        conn.commit()
+
+
+_init_db()
 
 
 def create_draft(payload: DraftCreate) -> Draft:
-    """Store a new draft and return it with an id and timestamp."""
-    draft = Draft(
-        id=uuid.uuid4().hex[:12],
-        created_at=datetime.now(timezone.utc),
-        **payload.model_dump(),
+    """Store a new draft in SQLite and return it with an id and timestamp."""
+    draft_id = uuid.uuid4().hex[:12]
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    with _get_conn() as conn:
+        conn.execute(
+            "INSERT INTO drafts (id, title, department, body_text, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (draft_id, payload.title, payload.department, payload.body_text, payload.language.value, now_iso)
+        )
+        conn.commit()
+
+    return Draft(
+        id=draft_id,
+        created_at=datetime.fromisoformat(now_iso),
+        **payload.model_dump()
     )
-    _drafts[draft.id] = draft
-    return draft
 
 
 def get_draft(draft_id: str) -> Optional[Draft]:
-    """Return the draft, or None if it does not exist."""
-    return _drafts.get(draft_id)
+    """Return the draft from SQLite, or None if it does not exist."""
+    with _get_conn() as conn:
+        row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if not row:
+            return None
+        return Draft(
+            id=row["id"],
+            title=row["title"],
+            department=row["department"],
+            body_text=row["body_text"],
+            language=row["language"],
+            created_at=datetime.fromisoformat(row["created_at"])
+        )
 
 
 def list_drafts() -> List[Draft]:
     """All drafts, newest first."""
-    return sorted(_drafts.values(), key=lambda d: d.created_at, reverse=True)
+    with _get_conn() as conn:
+        rows = conn.execute("SELECT * FROM drafts ORDER BY created_at DESC").fetchall()
+        return [
+            Draft(
+                id=r["id"],
+                title=r["title"],
+                department=r["department"],
+                body_text=r["body_text"],
+                language=r["language"],
+                created_at=datetime.fromisoformat(r["created_at"])
+            )
+            for r in rows
+        ]
 
 
 def delete_draft(draft_id: str) -> bool:
     """Returns True if something was deleted, False if the id was unknown."""
-    return _drafts.pop(draft_id, None) is not None
+    with _get_conn() as conn:
+        cur = conn.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
+        conn.commit()
+        return cur.rowcount > 0
 
-
-_sessions: Dict[str, List[dict]] = {}
 
 def get_session(session_id: str) -> List[dict]:
-    if session_id not in _sessions:
-        _sessions[session_id] = []
-    return _sessions[session_id]
+    """Get all messages for a chat session from SQLite."""
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT role, content FROM chat_sessions WHERE session_id = ? ORDER BY id ASC",
+            (session_id,)
+        ).fetchall()
+        return [{"role": r["role"], "content": r["content"]} for r in rows]
+
 
 def add_message(session_id: str, message: dict):
-    if session_id not in _sessions:
-        _sessions[session_id] = []
-    _sessions[session_id].append(message)
+    """Add a message turn to a chat session in SQLite."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with _get_conn() as conn:
+        conn.execute(
+            "INSERT INTO chat_sessions (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+            (session_id, message.get("role", "user"), message.get("content", ""), now_iso)
+        )
+        conn.commit()

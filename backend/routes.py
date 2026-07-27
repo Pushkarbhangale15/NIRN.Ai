@@ -214,71 +214,64 @@ from schemas import Language
 def copilot_chat(payload: ChatRequest) -> ChatResponse:
     session_id = payload.session_id or uuid.uuid4().hex[:12]
     history = store.get_session(session_id)
-    
-    # 1. Query understanding & rewriting (if history exists)
-    rewritten_query = payload.query
+
+    # 1. Build search query from last user turn if history exists
     if history:
-        history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history[-6:]])
-        rewrite_prompt = (
-            "You are a query-rewriting assistant. Given a conversation history and a follow-up query, "
-            "rewrite the query into a standalone search query that contains all necessary context from "
-            "the history. If the query is already standalone, return it unchanged. Output ONLY the rewritten query text."
+        last_user = next(
+            (m["content"] for m in reversed(history) if m["role"] == "user"), ""
         )
-        user_msg = f"CONVERSATION HISTORY:\n{history_str}\n\nFOLLOW-UP QUERY: {payload.query}"
-        rewritten_query = llm.call_model(rewrite_prompt, user_msg)
-    
-    # 2. Retrieval grounding
-    hits = retrieval.search(rewritten_query, top_k=4)
-    context_str = "\n\n".join([f"Source GR {hit.gr_id} (Dept: {hit.department}):\n{hit.snippet}" for hit in hits])
-    
-    # 3. LLM Response generation
+        search_query = f"{last_user} {payload.query}".strip()[-200:]
+    else:
+        search_query = payload.query
+
+    # 2. Retrieval grounding — filter out noise below similarity score 0.81
+    hits = retrieval.search(search_query, top_k=3, min_score=0.81)
+    if hits:
+        context_str = "\n\n".join(
+            f"Source GR {hit.gr_id} ({hit.department}):\n{hit.snippet[:300]}"
+            for hit in hits
+        )
+    else:
+        context_str = "No specific GR chunks found for this general query."
+
+    # 3. Compact system & conversation context
     system_prompt = (
-        "You are NIRN.AI Copilot, an expert administrative assistant for the Government of Maharashtra. "
-        "Your task is to answer the user's query by reference to the provided Government Resolutions (GRs). "
-        "Follow these rules strictly:\n"
-        "1. GROUNDING: Answer ONLY using facts written in the provided context. If the context does not contain the answer, "
-        "admit that you do not know. Never fabricate or hallucinate details.\n"
-        "2. CITATIONS: Cite the specific GR ID (e.g. 202204201749090510) when stating facts retrieved from it.\n"
-        "3. REGISTER: Maintain a professional, administrative, helpful tone. Support bilingual Marathi/English answers."
+        "You are NIRN.AI Copilot, expert administrative assistant for Government of Maharashtra. "
+        "Answer professional administrative questions using GR context when available. "
+        "Maintain a helpful, bilingual (Marathi/English) administrative tone."
     )
-    
-    history_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history[-6:]])
-    user_msg = f"CONTEXT GR CHUNKS:\n{context_str}\n\nCONVERSATION HISTORY:\n{history_context}\n\nUSER QUERY: {payload.query}"
-    
-    answer = llm.call_model(system_prompt, user_msg)
-    
-    # 4. Generate follow-up suggestions
-    suggestions_prompt = (
-        "Based on the user query and the answer, generate 3 short, relevant follow-up questions "
-        "that a government officer might ask next. Return them as a JSON list of strings, e.g. "
-        '["What are the eligibility criteria?", "What is the budget?", "Which department is responsible?"]'
+    history_context = "\n".join(
+        f"{m['role']}: {m['content'][:120]}" for m in history[-2:]
     )
-    suggestions_msg = f"QUERY: {payload.query}\nANSWER: {answer}"
-    suggestions_raw = llm.call_model(suggestions_prompt, suggestions_msg)
-    suggestions = llm.parse_json_reply(suggestions_raw) or []
-    if not isinstance(suggestions, list):
-        suggestions = ["What are the implications?", "Show me related resolutions.", "Summarize the rules."]
-    
+    user_msg = (
+        f"GR CONTEXT:\n{context_str}\n\n"
+        f"RECENT CHAT:\n{history_context}\n\n"
+        f"QUERY: {payload.query}"
+    )
+
+    # 4. Single combined call: answer + suggestions in one round-trip
+    answer, suggestions = llm.call_chat(system_prompt, user_msg)
+
     # 5. Save history
     store.add_message(session_id, {"role": "user", "content": payload.query})
     store.add_message(session_id, {"role": "model", "content": answer})
-    
+
     return ChatResponse(
         answer=answer,
         session_id=session_id,
         references=hits,
-        follow_up_suggestions=suggestions
+        follow_up_suggestions=suggestions,
     )
 
 
 @router.post("/api/copilot/draft", response_model=DraftGenerateResponse, tags=["copilot"])
 def copilot_draft(payload: DraftGenerateRequest) -> DraftGenerateResponse:
-    # 1. Retrieve similar GRs for styling/reference
+    # 1. Retrieve similar GRs for styling/reference — trim snippets to save tokens
     hits = retrieval.search(payload.prompt, top_k=3)
     examples_str = ""
     for idx, hit in enumerate(hits):
-        examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet}\n\n"
-        
+        examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
+
     # 2. LLM drafting call
     system_prompt = (
         "You are an expert drafting officer for the Government of Maharashtra. "
@@ -317,12 +310,12 @@ def copilot_draft(payload: DraftGenerateRequest) -> DraftGenerateResponse:
 
 @router.post("/api/copilot/compare", response_model=ComparisonResponse, tags=["copilot"])
 def copilot_compare(payload: ComparisonRequest) -> ComparisonResponse:
-    # 1. Look up GR chunks
-    hits1 = retrieval.search(payload.gr_id_1, top_k=5)
-    hits2 = retrieval.search(payload.gr_id_2, top_k=5)
-    
-    text1 = "\n\n".join([h.snippet for h in hits1])
-    text2 = "\n\n".join([h.snippet for h in hits2])
+    # 1. Look up GR chunks — trim snippets to reduce token usage
+    hits1 = retrieval.search(payload.gr_id_1, top_k=3)
+    hits2 = retrieval.search(payload.gr_id_2, top_k=3)
+
+    text1 = "\n\n".join(h.snippet[:350] for h in hits1)
+    text2 = "\n\n".join(h.snippet[:350] for h in hits2)
     
     # 2. LLM Comparison
     system_prompt = (
