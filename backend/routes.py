@@ -18,13 +18,16 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Query, status
 
 import llm
+import prompts
 import references
 import retrieval
 import store
 import template_rules
+import template_rules_marathi
 from lookup import get_adapter
 from config import settings
 from schemas import (
+    Language,
     AnalysisReport,
     AnalysisSummary,
     ConflictHit,
@@ -96,7 +99,10 @@ def delete_draft(draft_id: str) -> None:
              response_model=List[TemplateIssue], tags=["analysis"])
 def run_template_check(draft_id: str) -> List[TemplateIssue]:
     """Objective 4: Manual of Office Procedure enforcement. Instant, no AI."""
-    return template_rules.check_template(_load(draft_id).body_text)
+    draft = _load(draft_id)
+    if draft.language == Language.MARATHI:
+        return template_rules_marathi.check_template_marathi(draft.body_text)
+    return template_rules.check_template(draft.body_text)
 
 
 @router.post("/api/analysis/{draft_id}/references",
@@ -148,7 +154,11 @@ def run_full_analysis(draft_id: str) -> AnalysisReport:
     """
     draft = _load(draft_id)
 
-    template_issues = template_rules.check_template(draft.body_text)
+    if draft.language == Language.MARATHI:
+        template_issues = template_rules_marathi.check_template_marathi(draft.body_text)
+    else:
+        template_issues = template_rules.check_template(draft.body_text)
+
     reference_hits = references.resolve_against_corpus(
         references.extract_references(draft.body_text)
     )
