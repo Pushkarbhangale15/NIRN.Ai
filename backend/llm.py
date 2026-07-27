@@ -372,16 +372,28 @@ def detect_conflicts(
     candidates_per_clause = settings.CANDIDATES_PER_CLAUSE
 
     system_prompt = (
-        "You are a legal analyst for the Government of Maharashtra. "
-        "Compare the DRAFT CLAUSE against each of the numbered CANDIDATES. "
+        "You are a policy analyst for the Government of Maharashtra.\n"
+        "Compare the DRAFT CLAUSE against each of the numbered CANDIDATES.\n"
         "For each candidate, classify the relationship as exactly one of:\n"
         "- conflict   : the two clauses cannot both be complied with\n"
         "- overlap    : same subject matter, but no contradiction\n"
-        "- supersedes : the draft clause clearly replaces the existing one\n"
+        "- supersedes : the draft clause replaces the existing one\n"
         "- unrelated  : different subject matter\n\n"
+        "If there is a conflict/contradiction/mismatch, you MUST classify it into exactly one of these 42 conflict types:\n"
+        "Authority Conflict, Department Responsibility Conflict, Funding Conflict, Budget Allocation Conflict, "
+        "Budget Head Conflict, Fund Utilization Conflict, Fund Diversion Conflict, Administrative Approval Conflict, "
+        "Technical Approval Conflict, Operational Conflict, Implementation Agency Conflict, Implementation Procedure Conflict, "
+        "Tendering Procedure Conflict, Procurement Conflict, Policy Conflict, Legal Conflict, Legal Reference Conflict, "
+        "Regulatory Conflict, Timeline Conflict, Monitoring & Reporting Conflict, Committee Structure Conflict, "
+        "Governance Conflict, Jurisdiction Conflict, Responsibility Assignment Conflict, Financial Compliance Conflict, "
+        "Expenditure Rule Conflict, Payment Authority Conflict, Quality Assurance Conflict, Inspection Procedure Conflict, "
+        "Land Acquisition Conflict, Encroachment Procedure Conflict, Environmental Policy Conflict, Infrastructure Scope Conflict, "
+        "Digital Compliance Conflict, Documentation Conflict, Terminology Conflict, Reference Conflict, Eligibility Criteria Conflict, "
+        "Priority Conflict, Resource Allocation Conflict, Approval Hierarchy Conflict, Compliance Conflict.\n\n"
+        "Also assign a severity: 'Low', 'Medium', 'High', or 'Critical'.\n\n"
         "Return ONLY a JSON array of objects, no markdown fences, no preamble:\n"
-        '[{"candidate_idx": 0, "relation": "...", "confidence": 0.0-1.0, '
-        '"justification": "one sentence quoting specific words"}]'
+        '[{"candidate_idx": 0, "relation": "...", "conflict_type": "...", "severity": "...", "confidence": 0.0-1.0, '
+        '"justification": "detailed explanation of the contradiction and what text is clashing"}]'
     )
 
     for clause_idx, clause in enumerate(draft_clauses[: settings.MAX_CLAUSES_ANALYSED]):
@@ -413,7 +425,7 @@ def detect_conflicts(
                         continue
                     results.append(
                         ConflictHit(
-                            draft_clause=clause[:280],
+                            draft_clause=clause[:350],
                             existing_gr_id=hit.gr_id,
                             existing_gr_title=hit.title,
                             existing_department=hit.department,
@@ -422,6 +434,8 @@ def detect_conflicts(
                             confidence=float(item.get("confidence", 0.5)),
                             justification=item.get("justification", "Analyzed by AI."),
                             source_url=hit.source_url,
+                            conflict_type=item.get("conflict_type", "Policy Conflict"),
+                            severity=item.get("severity", "High"),
                         )
                     )
             except Exception as exc:

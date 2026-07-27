@@ -353,16 +353,19 @@ def copilot_draft(payload: DraftGenerateRequest) -> DraftGenerateResponse:
 
     # 2. LLM drafting call
     system_prompt = prompts.COPILOT_DRAFT
+    dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
+    dept_display = dept.replace("_", " ")
+
     user_msg = (
         f"Input:\n"
         f"- User Prompt: {payload.prompt}\n"
+        f"- Issuing Department: {dept_display}\n"
         f"- Language: {payload.language}\n"
         f"- Retrieved Context:\n{examples_str}"
     )
     body_text = llm.call_model(system_prompt, user_msg)
     
     title = f"Draft GR: {payload.prompt[:50]}"
-    dept = hits[0].department if hits else "General Administration Department"
     
     # 3. Save as a draft so the user can run standard template / conflict checks
     lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH

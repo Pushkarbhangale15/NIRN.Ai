@@ -106,6 +106,8 @@ class ConflictHit(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     justification: str
     source_url: Optional[str] = None
+    conflict_type: Optional[str] = "Policy Conflict"
+    severity: Optional[str] = "High"
 
 
 class TermMapping(BaseModel):
@@ -191,6 +193,7 @@ class ChatResponse(BaseModel):
 class DraftGenerateRequest(BaseModel):
     prompt: str
     language: str = "english"
+    department: Optional[str] = None
 
 class DraftGenerateResponse(BaseModel):
     draft_id: str

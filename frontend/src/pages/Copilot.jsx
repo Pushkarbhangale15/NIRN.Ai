@@ -228,6 +228,7 @@ function DraftTab() {
   const { t, siteLanguage } = useLanguage();
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(siteLanguage === 'mr' ? 'Marathi' : 'English');
+  const [department, setDepartment] = useState("Higher_and_Technical_Education_Department");
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
@@ -246,7 +247,7 @@ function DraftTab() {
 
     try {
       // Step 1: LLM Draft Generation
-      const res = await api.copilotDraft(prompt, language.toLowerCase());
+      const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
       setDraftResult(res);
       setCurrentStage(2);
 
@@ -274,11 +275,26 @@ function DraftTab() {
 
   const handleReset = () => {
     setPrompt("");
+    setDepartment("Higher_and_Technical_Education_Department");
     setDraftResult(null);
     setAnalysisReport(null);
     setCurrentStage(0);
     setError("");
   };
+
+  // Filter conflicts into cross-departmental vs own-department
+  const allConflicts = analysisReport?.conflicts || [];
+  const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
+  
+  const ownDeptConflicts = allConflicts.filter(c => {
+    const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
+    return normDraft && normExist && normDraft === normExist;
+  });
+  
+  const crossDeptConflicts = allConflicts.filter(c => {
+    const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
+    return normDraft && normExist && normDraft !== normExist;
+  });
 
   return (
     <div style={{ width: '100%' }}>
@@ -291,6 +307,8 @@ function DraftTab() {
         setPrompt={setPrompt}
         language={language}
         setLanguage={setLanguage}
+        department={department}
+        setDepartment={setDepartment}
         onGenerate={handleGenerate}
         loading={loading}
         onReset={handleReset}
@@ -343,7 +361,8 @@ function DraftTab() {
           }}>
             {[
               { id: "compliance", label: "📌 MOP Rules" },
-              { id: "conflicts", label: "⚠️ Conflicts" },
+              { id: "cross_conflicts", label: "⚠️ Cross-Dept Conflicts" },
+              { id: "own_conflicts", label: "🏢 Own Dept Conflicts" },
               { id: "references", label: "🔗 References" },
               { id: "terminology", label: "🔤 Terminology" },
               { id: "suggestions", label: "💡 Suggestions" }
@@ -382,11 +401,20 @@ function DraftTab() {
                 hasGenerated={Boolean(draftResult)}
               />
             )}
-            {activeReviewTab === "conflicts" && (
+            {activeReviewTab === "cross_conflicts" && (
               <ConflictCard
-                report={analysisReport}
+                conflicts={crossDeptConflicts}
                 loading={analysisLoading}
                 hasGenerated={Boolean(draftResult)}
+                isOwnDept={false}
+              />
+            )}
+            {activeReviewTab === "own_conflicts" && (
+              <ConflictCard
+                conflicts={ownDeptConflicts}
+                loading={analysisLoading}
+                hasGenerated={Boolean(draftResult)}
+                isOwnDept={true}
               />
             )}
             {activeReviewTab === "references" && (

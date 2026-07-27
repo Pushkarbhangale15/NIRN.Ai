@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function ConflictCard({ report, loading, hasGenerated }) {
+export default function ConflictCard({ conflicts = [], loading, hasGenerated, isOwnDept }) {
   const [isOpen, setIsOpen] = useState(true);
 
   if (!hasGenerated) {
@@ -15,7 +15,7 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            ⚠️ Card 2 — Conflict Detection
+            {isOwnDept ? '🏢 Card 2 — Own Dept Conflicts' : '⚠️ Card 2 — Cross-Dept Conflicts'}
           </span>
           <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
             Pending Draft
@@ -24,8 +24,6 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
       </div>
     );
   }
-
-  const conflicts = report?.conflicts || [];
 
   return (
     <div style={{
@@ -41,7 +39,7 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
         onClick={() => setIsOpen(!isOpen)}
         style={{
           padding: '16px 20px',
-          background: conflicts.length > 0 ? '#fff1f0' : '#f0fdf4',
+          background: conflicts.length > 0 ? (isOwnDept ? '#fef3c7' : '#fff1f0') : '#f0fdf4',
           borderBottom: isOpen ? '2px solid var(--ink)' : 'none',
           display: 'flex',
           justifyContent: 'space-between',
@@ -51,13 +49,13 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--ink)' }}>
-            ⚠️ Card 2 — Conflict Detection
+            {isOwnDept ? '🏢 Own Department Conflicts' : '⚠️ Cross-Departmental Conflicts'}
           </span>
           <span style={{
             fontSize: '11px',
             fontWeight: 'bold',
-            background: conflicts.length > 0 ? 'var(--red)' : 'var(--blue)',
-            color: '#fff',
+            background: conflicts.length > 0 ? (isOwnDept ? 'var(--yellow)' : 'var(--red)') : 'var(--blue)',
+            color: conflicts.length > 0 && isOwnDept ? 'var(--ink)' : '#fff',
             padding: '2px 8px',
             borderRadius: '12px',
             border: '1px solid var(--ink)'
@@ -90,15 +88,18 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
               <div>
                 <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>No Conflicts Detected</div>
                 <div style={{ fontSize: '13.5px', lineHeight: '1.4', color: '#14532d' }}>
-                  This draft is fully aligned with all existing Maharashtra Government Department policies and resolutions. No overlap or financial clashes were found.
+                  {isOwnDept
+                    ? 'This draft is fully aligned with all previous resolutions issued by your department.'
+                    : 'This draft is fully aligned with all existing Maharashtra Government policies across other departments.'
+                  } No policy overlaps or clashing instructions were found.
                 </div>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {conflicts.map((item, idx) => {
-                const isHigh = item.risk_level === 'High' || item.confidence >= 0.8;
-                const isMed = item.risk_level === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
+                const isHigh = item.severity === 'Critical' || item.severity === 'High' || item.confidence >= 0.8;
+                const isMed = item.severity === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
                 const badgeColor = isHigh ? 'var(--red)' : isMed ? 'var(--yellow)' : 'var(--blue)';
                 const textColor = isHigh ? '#fff' : 'var(--ink)';
 
@@ -106,34 +107,70 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
                   <div key={idx} style={{
                     border: '2px solid var(--ink)',
                     borderRadius: '8px',
-                    padding: '14px',
+                    padding: '16px',
                     background: '#fff',
                     boxShadow: '0 2px 0 var(--ink)'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    {/* Header: Conflict Category Type and GR ID */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                       <span style={{
                         fontSize: '13px',
                         fontWeight: 'bold',
+                        background: 'var(--ink)',
+                        color: '#fff',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--ink)'
+                      }}>
+                        {item.conflict_type || 'Policy Conflict'}
+                      </span>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: 'bold',
                         background: badgeColor,
                         color: textColor,
-                        padding: '3px 8px',
+                        padding: '2px 8px',
                         borderRadius: '4px',
                         border: '1px solid var(--ink)',
                         textTransform: 'uppercase'
                       }}>
-                        {item.risk_level || (isHigh ? 'High Risk Conflict' : 'Medium Risk')}
-                      </span>
-                      <span style={{ fontSize: '14px', color: '#666', fontWeight: '600' }}>
-                        Existing GR: <span className="mono">{item.gr_id || item.conflicting_gr_id}</span>
+                        {item.severity || (isHigh ? 'High Risk' : 'Medium Risk')}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>
-                      Department: {item.department || item.conflicting_department || 'Finance Department'} ({item.year || '2024'})
+                    {/* Department and Conflicting GR Metadata */}
+                    <div style={{ fontSize: '14.5px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
+                      🏢 {item.existing_department?.replace(/_/g, ' ')} ({item.existing_gr_id})
                     </div>
 
-                    <div style={{ fontSize: '15.5px', color: '#374151', marginBottom: '10px', lineHeight: '1.5' }}>
-                      <strong>Reason:</strong> {item.reason || item.explanation || 'Potential policy clash detected with existing resolution.'}
+                    {/* Conflicting Text Comparison */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      background: '#f9fafb',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      marginBottom: '10px'
+                    }}>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Draft Clause Text:</span>
+                        <div style={{ background: '#fffbe6', padding: '6px 8px', borderLeft: '3px solid var(--yellow)', marginTop: '4px', borderRadius: '3px', fontStyle: 'italic' }}>
+                          "{item.draft_clause}"
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Conflicting Reference Text (GR #{item.existing_gr_id}):</span>
+                        <div style={{ background: '#fff1f0', padding: '6px 8px', borderLeft: '3px solid var(--red)', marginTop: '4px', borderRadius: '3px', fontStyle: 'italic' }}>
+                          "{item.existing_clause}"
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contradiction Justification & Recommendation */}
+                    <div style={{ fontSize: '14.5px', color: '#374151', marginBottom: '8px', lineHeight: '1.4' }}>
+                      <strong>Reason:</strong> {item.justification}
                     </div>
 
                     <div style={{
@@ -145,7 +182,7 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
                       color: '#92400e',
                       lineHeight: '1.4'
                     }}>
-                      <strong>💡 Recommendation:</strong> {item.recommendation || 'Revise subsidy amount or explicitly cite superseding department authority.'}
+                      <strong>💡 Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
                     </div>
                   </div>
                 );
