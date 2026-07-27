@@ -6,6 +6,7 @@ Integrated with Prasad's FAISS implementation.
 
 from typing import List, Optional
 import os
+import re
 import faiss
 import pickle
 import numpy as np
@@ -13,6 +14,18 @@ import threading
 
 from config import settings
 from schemas import CorpusHit
+
+
+# ---------------------------------------------------------------------------
+# Language detection helper
+# ---------------------------------------------------------------------------
+
+_DEVANAGARI_RE = re.compile(r'[\u0900-\u097F]')
+
+def is_marathi_text(text: str) -> bool:
+    """Return True if the text contains enough Devanagari characters to be Marathi."""
+    deva_count = len(_DEVANAGARI_RE.findall(text))
+    return deva_count >= 5
 
 _model = None
 _index = None
@@ -84,8 +97,29 @@ def chunk_text(text: str, max_chars: int = None, overlap: int = None) -> List[st
 # Search
 # ---------------------------------------------------------------------
 
-def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[CorpusHit]:
+def search(
+    query: str,
+    top_k: int = None,
+    min_score: float = 0.0,
+    draft_language: Optional[str] = None,
+) -> List[CorpusHit]:
+    """
+    Semantic search over the GR corpus.
+
+    Parameters
+    ----------
+    query          : The search query (clause text).
+    top_k          : Number of results to return.
+    min_score      : Minimum similarity score threshold.
+    draft_language : Optional language hint ('mr' or 'en'). When 'mr', or when
+                     the query itself contains Devanagari, Marathi corpus chunks
+                     receive a score boost so they surface above same-scoring
+                     English results. This ensures Marathi drafts find Marathi
+                     GR conflicts instead of being crowded out by English chunks.
+    """
     top_k = top_k or settings.TOP_K
+    # Fetch more candidates from FAISS so reranking has enough to work with
+    fetch_k = min(top_k * 3, 50)
 
     model = _load_model()
     _load_faiss()
@@ -97,19 +131,39 @@ def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[Corpus
         query_embedding = model.encode(["query: " + query], convert_to_numpy=True)
     faiss.normalize_L2(query_embedding)
 
-    distances, indices = _index.search(query_embedding, k=top_k)
+    distances, indices = _index.search(query_embedding, k=fetch_k)
+
+    # Determine if the query (or the draft) is Marathi
+    query_is_marathi = (
+        draft_language == "mr"
+        or (draft_language is None and is_marathi_text(query))
+    )
+
+    # Score boost applied to same-language results for Marathi queries.
+    # Small enough not to override genuinely higher-scoring English matches,
+    # but enough to break ties in favour of the matching language.
+    LANG_BOOST = 0.05
 
     results = []
     for i, idx in enumerate(indices[0]):
+        if idx < 0:
+            continue
         score = float(distances[0][i])
         norm_score = min(max(score, 0.0), 1.0)
         if norm_score < min_score:
             continue
 
         chunk = _chunks[idx]
-        title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+        chunk_lang = chunk.get("language", "en")
 
-        lang_path = "English" if chunk.get("language") == "en" else "Marathi"
+        # Apply language-matching boost
+        if query_is_marathi and chunk_lang == "mr":
+            norm_score = min(norm_score + LANG_BOOST, 1.0)
+        elif not query_is_marathi and chunk_lang == "en":
+            norm_score = min(norm_score + LANG_BOOST, 1.0)
+
+        title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+        lang_path = "English" if chunk_lang == "en" else "Marathi"
         hit = CorpusHit(
             gr_id=chunk.get("gr_id", "Unknown"),
             title=title,
@@ -117,11 +171,16 @@ def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[Corpus
             issued_on=chunk.get("issued_on"),
             snippet=chunk.get("text", "")[:800],
             score=norm_score,
-            source_url=f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang_path}/{chunk.get('gr_id', '')}.pdf"
+            source_url=(
+                f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/"
+                f"{lang_path}/{chunk.get('gr_id', '')}.pdf"
+            ),
         )
         results.append(hit)
 
-    return results
+    # Re-sort by boosted score descending, then trim to top_k
+    results.sort(key=lambda h: h.score, reverse=True)
+    return results[:top_k]
 
 def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
     # In FAISS we would need to iterate through chunks or have a separate metadata dict.

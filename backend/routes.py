@@ -138,15 +138,22 @@ def run_conflict_detection(draft_id: str) -> List[ConflictHit]:
     the whole report on it.
     """
     draft = _load(draft_id)
+    # Determine language string for retrieval boosting and LLM prompting
+    draft_lang = "mr" if draft.language == Language.MARATHI else "en"
+
     clauses = llm.split_into_clauses(draft.body_text)
 
     candidates = []
     for clause in clauses[:settings.MAX_CLAUSES_ANALYSED]:
         candidates.extend(
-            retrieval.search(clause, top_k=settings.CANDIDATES_PER_CLAUSE)
+            retrieval.search(
+                clause,
+                top_k=settings.CANDIDATES_PER_CLAUSE,
+                draft_language=draft_lang,
+            )
         )
 
-    conflicts = llm.detect_conflicts(clauses, candidates)
+    conflicts = llm.detect_conflicts(clauses, candidates, draft_language=draft_lang)
     return [c for c in conflicts
             if c.confidence >= settings.CONFLICT_CONFIDENCE_FLOOR]
 

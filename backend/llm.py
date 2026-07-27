@@ -43,11 +43,17 @@ def split_into_clauses(text: str) -> List[str]:
     """
     Break a draft into its operative clauses.
 
-    Deliberately rule-based. A language model here would be slower,
-    cost money per call, and give a different answer each time — none
-    of which you want in a step that runs before every analysis.
+    Supports both Arabic numerals (1., 2.) and Devanagari numerals (०१., १., २.)
+    so that Marathi GRs drafted with the official numbering are correctly split
+    into individual clauses for conflict detection.
     """
-    parts = re.split(r"\n\s*(?=\d+[.)]\s)", text)
+    # Match:
+    #   \d+[.)]           — Arabic: 1. 2. 1) 2)
+    #   [\u0966-\u096F]+[.)] — Devanagari: १. ०१. ०२.
+    parts = re.split(
+        r"\n\s*(?=(?:\d+|[\u0966-\u096F]+)[.)]\s)",
+        text,
+    )
     clauses = [part.strip() for part in parts if len(part.strip()) > 40]
     return clauses or [text.strip()]
 
@@ -443,16 +449,41 @@ def check_deterministic_conflict(draft_clause: str, existing_clause: str) -> Opt
 def detect_conflicts(
     draft_clauses: List[str],
     candidates: List[CorpusHit],
+    draft_language: str = "en",
 ) -> List[ConflictHit]:
     """
-    For each draft clause, check deterministic rule engine first. If no conflict is found,
-    send a batched LLM call covering all remaining candidates.
+    For each draft clause, check deterministic rule engine first. If no conflict
+    is found, send a batched LLM call covering all remaining candidates.
+
+    Parameters
+    ----------
+    draft_clauses   : Operative clauses extracted from the draft GR.
+    candidates      : Corpus chunks retrieved as potential conflict candidates.
+    draft_language  : 'mr' for Marathi drafts, 'en' for English drafts.
+                      When 'mr', the LLM prompt instructs the model to compare
+                      Marathi text and reason about Maharashtra administrative
+                      context in that language.
     """
     if not draft_clauses or not candidates:
         return []
 
     results = []
     candidates_per_clause = settings.CANDIDATES_PER_CLAUSE
+
+    # Language-specific instruction added to the system prompt so the LLM
+    # knows to handle Marathi text and Marathi administrative terminology.
+    if draft_language == "mr":
+        lang_instruction = (
+            "\n\nIMPORTANT: The draft clause is written in Marathi (मराठी). "
+            "The candidate clauses may be in Marathi or English. "
+            "Compare them semantically, understanding Marathi administrative "
+            "terminology (e.g. शासन निर्णय, अनुदान, विभाग, पात्रता, "
+            "प्रशासकीय मान्यता, वित्तीय मंजुरी). "
+            "Identify conflicts even when one clause is in Marathi and the "
+            "other is in English if their meanings clash administratively."
+        )
+    else:
+        lang_instruction = ""
 
     system_prompt = (
         "You are a policy analyst for the Government of Maharashtra.\n"
@@ -477,6 +508,7 @@ def detect_conflicts(
         "Return ONLY a JSON array of objects, no markdown fences, no preamble:\n"
         '[{"candidate_idx": 0, "relation": "...", "conflict_type": "...", "severity": "...", "confidence": 0.0-1.0, '
         '"justification": "detailed explanation of the contradiction and what text is clashing"}]'
+        + lang_instruction
     )
 
     for clause_idx, clause in enumerate(draft_clauses[: settings.MAX_CLAUSES_ANALYSED]):
