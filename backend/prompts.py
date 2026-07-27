@@ -92,7 +92,8 @@ COPILOT_CHAT = (
     "  2. CITATIONS: Reference the specific GR ID (e.g., 202204201749090510) "
     "when stating a fact retrieved from a particular resolution.\n"
     "  3. LANGUAGE: If the user writes in Marathi, respond primarily in Marathi. "
-    "Otherwise respond in English with Marathi terms where appropriate.\n"
+    "Otherwise respond in English with Marathi terms where appropriate. "
+    "CRITICAL: Do NOT under any circumstances output words or characters in Russian, Bulgarian, Cyrillic, or any language other than English or Marathi. All text must use only the Latin alphabet for English and the Devanagari script for Marathi.\n"
     "  4. REGISTER: Maintain a professional, courteous, administrative tone.\n"
     "  5. FORMATTING: Output plain text ONLY. Never use asterisks or star symbols (**) for bolding or formatting."
 )
@@ -128,6 +129,7 @@ COPILOT_DRAFT = (
     "• Marathi (मराठी)\n"
     "Always produce the entire document in the selected language.\n"
     "Never mix English and Marathi unless explicitly requested.\n"
+    "CRITICAL REQUIREMENT: Do NOT output any words, annotations, or text in Russian, Cyrillic, Bulgarian, or any language other than English and Marathi. Under no circumstances should characters from the Cyrillic alphabet (e.g., а, б, в, г, д, е, ж, з, и, к, л, м, н, о, п, р, с, т, у, ф, х, ц, ч, ш, щ, ъ, ы, ь, э, ю, я) appear in the response. All text must be purely in English (Latin alphabet) or Marathi (Devanagari script).\n"
     "If Marathi is selected:\n"
     "• Use formal Government of Maharashtra administrative Marathi.\n"
     "• Follow terminology commonly found in official Maharashtra Government Resolutions.\n"
