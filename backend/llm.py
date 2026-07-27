@@ -356,14 +356,97 @@ def parse_json_reply(raw: str) -> Optional[dict | list]:
 _SNIPPET_MAX = 400   # chars sent per candidate to the API (saves tokens)
 
 
+def check_authority_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    authorities = [
+        "PCCF", "Principal Chief Conservator", "District Collector", "Collector", "Commissioner", "Secretary", "Minister", "Director",
+        "जिल्हाधिकारी", "कलेक्टर", "आयुक्त", "सचिव", "मंत्री"
+    ]
+    draft_auths = [a for a in authorities if a.lower() in draft.lower()]
+    exist_auths = [a for a in authorities if a.lower() in existing.lower()]
+    if draft_auths and exist_auths:
+        # Check if they are different (mismatch)
+        if not set(draft_auths).intersection(set(exist_auths)):
+            return (
+                "Authority Conflict",
+                "High",
+                f"Controlling authority has been changed from {exist_auths[0]} to {draft_auths[0]}."
+            )
+    return None
+
+def check_funding_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    csr_terms = ["csr", "निधी"]
+    if any(c in draft.lower() for c in csr_terms) and any(c in existing.lower() for c in csr_terms):
+        draft_prohibits = any(w in draft.lower() for w in ["shall not", "prohibit", "not allowed", "not be utilized", "no permission", "परवानगी नाही", "वापरू नये"])
+        exist_permits = any(w in existing.lower() for w in ["permit", "allowed", "may be utilized", "utilized", "permission", "परवानगी आहे", "वापरता येईल", "मान्यता"])
+        draft_permits = any(w in draft.lower() for w in ["permit", "allowed", "may be utilized", "utilized", "permission", "परवानगी आहे", "वापरता येईल", "मान्यता"])
+        exist_prohibits = any(w in existing.lower() for w in ["shall not", "prohibit", "not allowed", "not be utilized", "no permission", "परवानगी नाही", "वापरू नये"])
+        
+        if (draft_prohibits and exist_permits) or (draft_permits and exist_prohibits):
+            reason = "Draft prohibits CSR funding whereas the existing GR explicitly permits CSR funding." if draft_prohibits else "Draft permits CSR funding whereas the existing GR prohibits CSR funding."
+            return ("Funding Conflict", "Critical", reason)
+    return None
+
+def check_timeline_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    timeline_terms = ["31 march", "financial year", "deadline", "timeline", "months", "days", "दिवस", "महिना", "मुदत"]
+    if any(t in draft.lower() for t in timeline_terms) and any(t in existing.lower() for t in timeline_terms):
+        if "continue next financial year" in draft.lower() and "before" in existing.lower():
+            return (
+                "Timeline Conflict",
+                "Medium",
+                "Draft allows expenditure to continue into the next financial year, whereas the existing GR mandates completion/expenditure before a strict deadline."
+            )
+    return None
+
+def check_monitoring_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    intervals = ["monthly", "quarterly", "weekly", "annual", "six-monthly", "fortnightly", "मासिक", "तिमाही", "वार्षिक"]
+    draft_intervals = [i for i in intervals if i in draft.lower()]
+    exist_intervals = [i for i in intervals if i in existing.lower()]
+    if draft_intervals and exist_intervals:
+        if not set(draft_intervals).intersection(set(exist_intervals)):
+            return (
+                "Monitoring & Reporting Conflict",
+                "Medium",
+                f"Reporting frequency has been changed from {exist_intervals[0]} to {draft_intervals[0]}."
+            )
+    return None
+
+def check_dept_responsibility_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    depts = [
+        "Revenue Department", "Rural Development Department", "Public Health Department",
+        "Water Supply", "School Education", "Higher and Technical", "Industries",
+        "Home Department", "Finance Department", "महसूल विभाग", "ग्रामविकास विभाग", "आरोग्य विभाग"
+    ]
+    draft_depts = [d for d in depts if d.lower() in draft.lower()]
+    exist_depts = [d for d in depts if d.lower() in existing.lower()]
+    if draft_depts and exist_depts:
+        if not set(draft_depts).intersection(set(exist_depts)):
+            return (
+                "Department Responsibility Conflict",
+                "High",
+                f"Implementing/Nodal department has been changed from {exist_depts[0]} to {draft_depts[0]}."
+            )
+    return None
+
+def check_deterministic_conflict(draft_clause: str, existing_clause: str) -> Optional[tuple[str, str, str]]:
+    res = check_authority_conflict(draft_clause, existing_clause)
+    if res: return res
+    res = check_funding_conflict(draft_clause, existing_clause)
+    if res: return res
+    res = check_timeline_conflict(draft_clause, existing_clause)
+    if res: return res
+    res = check_monitoring_conflict(draft_clause, existing_clause)
+    if res: return res
+    res = check_dept_responsibility_conflict(draft_clause, existing_clause)
+    if res: return res
+    return None
+
 def detect_conflicts(
     draft_clauses: List[str],
     candidates: List[CorpusHit],
 ) -> List[ConflictHit]:
     """
-    For each draft clause, send ONE batched call covering all its candidates.
-    Batched per draft clause to reduce calls from O(N×M) to O(N).
-    Snippets are capped at _SNIPPET_MAX chars to reduce token usage.
+    For each draft clause, check deterministic rule engine first. If no conflict is found,
+    send a batched LLM call covering all remaining candidates.
     """
     if not draft_clauses or not candidates:
         return []
@@ -375,10 +458,10 @@ def detect_conflicts(
         "You are a policy analyst for the Government of Maharashtra.\n"
         "Compare the DRAFT CLAUSE against each of the numbered CANDIDATES.\n"
         "For each candidate, classify the relationship as exactly one of:\n"
-        "- conflict   : the two clauses cannot both be complied with\n"
-        "- overlap    : same subject matter, but no contradiction\n"
-        "- supersedes : the draft clause replaces the existing one\n"
-        "- unrelated  : different subject matter\n\n"
+        "- contradictory : the two clauses cannot both be complied with\n"
+        "- compatible    : same subject matter, but no contradiction\n"
+        "- superseding   : the draft clause replaces the existing one\n"
+        "- independent   : different subject matter\n\n"
         "If there is a conflict/contradiction/mismatch, you MUST classify it into exactly one of these 42 conflict types:\n"
         "Authority Conflict, Department Responsibility Conflict, Funding Conflict, Budget Allocation Conflict, "
         "Budget Head Conflict, Fund Utilization Conflict, Fund Diversion Conflict, Administrative Approval Conflict, "
@@ -402,11 +485,39 @@ def detect_conflicts(
         if not clause_candidates:
             continue
 
-        user_msg = f"DRAFT CLAUSE:\n{clause[:500]}\n\nEXISTING CLAUSES TO COMPARE:\n"
+        # Step 1: Run Rule Engine
+        llm_pending = []
         for idx, hit in enumerate(clause_candidates):
+            det_res = check_deterministic_conflict(clause, hit.snippet)
+            if det_res:
+                category, severity, reason = det_res
+                results.append(
+                    ConflictHit(
+                        draft_clause=clause[:350],
+                        existing_gr_id=hit.gr_id,
+                        existing_gr_title=hit.title,
+                        existing_department=hit.department,
+                        existing_clause=hit.snippet,
+                        relation=Relation.CONFLICT,
+                        confidence=1.0,
+                        justification=reason,
+                        source_url=hit.source_url,
+                        conflict_type=category,
+                        severity=severity,
+                    )
+                )
+            else:
+                llm_pending.append((idx, hit))
+
+        if not llm_pending:
+            continue
+
+        # Step 2: Build LLM message for remaining candidates
+        user_msg = f"DRAFT CLAUSE:\n{clause[:500]}\n\nEXISTING CLAUSES TO COMPARE:\n"
+        for llm_idx, (orig_idx, hit) in enumerate(llm_pending):
             snippet = hit.snippet[:_SNIPPET_MAX]
             user_msg += (
-                f"--- CANDIDATE {idx} (ID: {hit.gr_id}, Dept: {hit.department}) ---\n"
+                f"--- CANDIDATE {llm_idx} (ID: {hit.gr_id}, Dept: {hit.department}) ---\n"
                 f"{snippet}\n\n"
             )
 
@@ -418,10 +529,16 @@ def detect_conflicts(
         for item in parsed:
             try:
                 c_idx = int(item.get("candidate_idx", -1))
-                if 0 <= c_idx < len(clause_candidates):
-                    hit = clause_candidates[c_idx]
-                    relation_str = item.get("relation", "unrelated")
-                    if relation_str == "unrelated":
+                if 0 <= c_idx < len(llm_pending):
+                    orig_idx, hit = llm_pending[c_idx]
+                    relation_str = item.get("relation", "independent")
+                    if relation_str == "contradictory":
+                        relation_enum = Relation.CONFLICT
+                    elif relation_str == "superseding":
+                        relation_enum = Relation.SUPERSEDES
+                    elif relation_str == "compatible":
+                        relation_enum = Relation.OVERLAP
+                    else:
                         continue
                     results.append(
                         ConflictHit(
@@ -430,7 +547,7 @@ def detect_conflicts(
                             existing_gr_title=hit.title,
                             existing_department=hit.department,
                             existing_clause=hit.snippet,
-                            relation=Relation(relation_str),
+                            relation=relation_enum,
                             confidence=float(item.get("confidence", 0.5)),
                             justification=item.get("justification", "Analyzed by AI."),
                             source_url=hit.source_url,
