@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { api } from "../api.js";
+import { useLanguage } from "../LanguageContext.jsx";
 
 /* ─── Tab config ──────────────────────────────────────────────── */
 const TABS = [
@@ -72,6 +73,7 @@ const CHAT_STARTERS = [
 ];
 
 function ChatTab() {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState(() => {
     try { return JSON.parse(localStorage.getItem("nirn_chat_messages") || "[]"); }
     catch { return []; }
@@ -135,7 +137,7 @@ function ChatTab() {
         {messages.length === 0 && (
           <div className="copilot-empty">
             <div className="copilot-empty-icon">🤖</div>
-            <div className="copilot-empty-title">NIRN.AI Copilot</div>
+            <div className="copilot-empty-title">NIRN.Ai Copilot</div>
             <p className="copilot-empty-sub">
               Ask any question about Maharashtra Government Resolutions.<br />
               I ground every answer in the actual GR corpus.
@@ -188,7 +190,7 @@ function ChatTab() {
       <div className="copilot-inputbar">
         {messages.length > 0 && (
           <button className="btn btn-ghost copilot-clear" onClick={clearChat} style={{ fontSize: 12, padding: "8px 14px" }}>
-            Clear chat
+            {t('copilot_clear_chat')}
           </button>
         )}
         <form className="copilot-input-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
@@ -196,7 +198,7 @@ function ChatTab() {
             id="copilot-chat-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything about Government Resolutions..."
+            placeholder={t('copilot_chat_placeholder')}
             disabled={loading}
             autoComplete="off"
           />
@@ -219,10 +221,18 @@ const DRAFT_STARTERS = [
 ];
 
 function DraftTab() {
+  const { t, siteLanguage } = useLanguage();
   const [prompt, setPrompt] = useState("");
+  const [language, setLanguageState] = useState(localStorage.getItem('draftLanguage') || (siteLanguage === 'mr' ? 'marathi' : 'english'));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+
+  const handleLanguageChange = (e) => {
+    const newLang = e.target.value;
+    setLanguageState(newLang);
+    localStorage.setItem('draftLanguage', newLang);
+  };
 
   const generate = async (e) => {
     e?.preventDefault();
@@ -231,7 +241,7 @@ function DraftTab() {
     setError("");
     setResult(null);
     try {
-      const res = await api.copilotDraft(prompt);
+      const res = await api.copilotDraft(prompt, language);
       setResult(res);
     } catch (err) {
       setError(err.message);
@@ -240,26 +250,82 @@ function DraftTab() {
     }
   };
 
+  const downloadTxt = () => {
+    if (!result) return;
+    const element = document.createElement("a");
+    const file = new Blob([result.body_text], {type: 'text/plain;charset=utf-8'});
+    element.href = URL.createObjectURL(file);
+    element.download = "draft_gr.txt";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const downloadPdf = () => {
+    if (!result) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow pop-ups to download PDF.");
+      return;
+    }
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${result.title || "Draft GR"}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              font-size: 14pt; 
+              line-height: 1.5; 
+              padding: 40px; 
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            pre { 
+              white-space: pre-wrap; 
+              font-family: inherit; 
+            }
+          </style>
+        </head>
+        <body>
+          <h2>${result.title || "Government Resolution Draft"}</h2>
+          <pre>${result.body_text}</pre>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const isMarathi = language === "marathi";
+
   return (
     <div className="copilot-tool-layout">
       {/* Left: prompt form */}
       <div className="panel">
-        <div className="panel-head">
-          <span className="panel-title">Your Brief</span>
+        <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="panel-title">{t('copilot_brief_title')}</span>
+          <select value={language} onChange={handleLanguageChange} style={{ padding: '4px', borderRadius: '4px' }}>
+            <option value="english">English</option>
+            <option value="marathi">मराठी</option>
+          </select>
         </div>
         <div className="panel-body">
           <div className="field">
-            <label htmlFor="draft-prompt">Describe the GR you need</label>
+            <label htmlFor="draft-prompt">{t('copilot_describe_label')}</label>
             <textarea
               id="draft-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Establish AI research labs in government engineering colleges with a budget of ₹5 crore..."
+              placeholder={t('copilot_describe_placeholder')}
               style={{ minHeight: 160 }}
             />
           </div>
           <div className="copilot-starters" style={{ marginBottom: 20 }}>
-            <span className="try-label" style={{ fontSize: 12 }}>Try:</span>
+            <span className="try-label" style={{ fontSize: 12 }}>{t('copilot_try_label')}</span>
             {DRAFT_STARTERS.map((s) => (
               <button key={s} className="chip" style={{ fontSize: 12 }} onClick={() => setPrompt(s)}>
                 {s.slice(0, 48)}… <span className="arr">↗</span>
@@ -268,11 +334,11 @@ function DraftTab() {
           </div>
           <div className="btn-row">
             <button className="btn btn-red" onClick={generate} disabled={loading || !prompt.trim()}>
-              {loading ? <span className="spinner" /> : "Generate GR →"}
+              {loading ? <span className="spinner" /> : t('copilot_generate_btn')}
             </button>
             {result && (
               <button className="btn btn-ghost" onClick={() => { setResult(null); setPrompt(""); }}>
-                Start over
+                {t('copilot_start_over')}
               </button>
             )}
           </div>
@@ -285,24 +351,29 @@ function DraftTab() {
         {!result && !loading && (
           <div className="empty-state">
             <div className="big">📝</div>
-            <p>Your generated GR will appear here.<br />Fill in the brief and click Generate.</p>
+            <p>{t('copilot_empty_title')}<br />{t('copilot_empty_desc')}</p>
           </div>
         )}
         {loading && (
           <div className="empty-state">
             <div className="big"><span className="spinner" /></div>
-            <p>Drafting your Government Resolution…<br />Referencing similar GRs from the corpus.</p>
+            <p>{t('copilot_loading_desc1')}<br />{t('copilot_loading_desc2')}</p>
           </div>
         )}
         {result && (
           <div className="panel">
             <div className="panel-head">
               <span className="panel-title">{result.title || "Generated GR"}</span>
-              <CopyBtn text={result.body_text} />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button className="btn btn-ghost" onClick={downloadTxt} style={{ padding: '4px 8px', fontSize: '12px' }}>{t('copilot_download')}</button>
+                <button className="btn btn-ghost" onClick={downloadPdf} style={{ padding: '4px 8px', fontSize: '12px' }}>{t('copilot_download_pdf')}</button>
+                <CopyBtn text={result.body_text} />
+              </div>
             </div>
             <div className="panel-body">
-              <div className="ri-sub" style={{ marginBottom: 12 }}>
-                Department: <strong>{result.department}</strong>
+              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666' }}>
+                <span>{t('copilot_dept')} <strong>{result.department}</strong></span>
+                <span>{isMarathi ? t('copilot_out_lang_mr') : t('copilot_out_lang_en')}</span>
               </div>
               <pre className="copilot-draft-text">{result.body_text}</pre>
               <RefPills refs={result.references} />
@@ -315,7 +386,7 @@ function DraftTab() {
                     sessionStorage.setItem("copilot_draft", JSON.stringify(result));
                   }}
                 >
-                  Analyze this draft →
+                  {t('copilot_analyze_draft')}
                 </a>
               </div>
             </div>

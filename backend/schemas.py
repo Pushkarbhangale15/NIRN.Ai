@@ -180,6 +180,7 @@ class ChatResponse(BaseModel):
 
 class DraftGenerateRequest(BaseModel):
     prompt: str
+    language: str = "english"
 
 class DraftGenerateResponse(BaseModel):
     draft_id: str

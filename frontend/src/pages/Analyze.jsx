@@ -26,6 +26,8 @@ const STATUS_TEXT = {
   blocked: "Blocked — resolve issues before issuing",
 };
 
+import { useLanguage } from "../LanguageContext.jsx";
+
 export default function Analyze() {
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("Higher and Technical Education Department");
@@ -35,6 +37,7 @@ export default function Analyze() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [report, setReport] = useState(null);
+  const { t } = useLanguage();
 
   const loadSample = () => {
     setTitle("Revision of lateral entry intake");
@@ -63,28 +66,26 @@ export default function Analyze() {
   return (
     <main className="container">
       <header className="page-head">
-        <div className="eyebrow">Upload &amp; Analyze</div>
-        <h1 className="page-title">Draft Analysis</h1>
+        <div className="eyebrow">{t('analyze_eyebrow')}</div>
+        <h1 className="page-title">{t('analyze_title')}</h1>
         <p className="page-sub">
-          Paste a draft Government Resolution. NIRN.AI checks it against the
-          Manual of Office Procedure, resolves every citation, and flags
-          conflicts with existing GRs across departments.
+          {t('analyze_sub')}
         </p>
       </header>
 
       <div className="analyze-grid">
         {/* ---------------- Left: the draft form ---------------- */}
-        <form className="panel" onSubmit={runAnalysis}>
+        <form className="panel" onSubmit={runAnalysis} style={{ position: "sticky", top: "100px", height: "fit-content" }}>
           <div className="panel-head">
-            <span className="panel-title">Draft GR</span>
+            <span className="panel-title">{t('analyze_draft_title')}</span>
             <button type="button" className="btn btn-ghost" onClick={loadSample}
                     style={{ padding: "8px 14px", fontSize: 12 }}>
-              Load sample
+              {t('analyze_load_sample')}
             </button>
           </div>
           <div className="panel-body">
             <div className="field">
-              <label htmlFor="title">Title</label>
+              <label htmlFor="title">{t('analyze_label_title')}</label>
               <input id="title" value={title}
                      onChange={(e) => setTitle(e.target.value)}
                      placeholder="e.g. Revision of lateral entry intake" required />
@@ -92,12 +93,12 @@ export default function Analyze() {
 
             <div className="field-row">
               <div className="field">
-                <label htmlFor="dept">Department</label>
+                <label htmlFor="dept">{t('analyze_label_dept')}</label>
                 <input id="dept" value={department}
                        onChange={(e) => setDepartment(e.target.value)} required />
               </div>
               <div className="field">
-                <label htmlFor="lang">Language</label>
+                <label htmlFor="lang">{t('analyze_label_lang')}</label>
                 <select id="lang" value={language}
                         onChange={(e) => setLanguage(e.target.value)}>
                   <option value="en">English</option>
@@ -107,7 +108,7 @@ export default function Analyze() {
             </div>
 
             <div className="field">
-              <label htmlFor="body">Draft text</label>
+              <label htmlFor="body">{t('analyze_label_body')}</label>
               <textarea id="body" value={bodyText}
                         onChange={(e) => setBodyText(e.target.value)}
                         placeholder="Paste the full draft GR here..." required />
@@ -115,7 +116,7 @@ export default function Analyze() {
 
             <div className="btn-row">
               <button className="btn btn-red" type="submit" disabled={loading}>
-                {loading ? <span className="spinner" /> : "Analyze draft →"}
+                {loading ? <span className="spinner" /> : t('analyze_btn')}
               </button>
             </div>
           </div>
@@ -128,54 +129,61 @@ export default function Analyze() {
           {!report && !loading && !error && (
             <div className="empty-state">
               <div className="big">📋</div>
-              <p>The analysis report appears here.<br />
-                 Load the sample draft to see it in action.</p>
+              <p>{t('analyze_empty')}</p>
             </div>
           )}
 
           {loading && (
             <div className="empty-state">
               <div className="big"><span className="spinner" /></div>
-              <p>Running all four checks…</p>
+              <p>{t('analyze_running')}</p>
             </div>
           )}
 
-          {report && <Report report={report} />}
+          {report && <Report report={report} t={t} />}
         </section>
       </div>
     </main>
   );
 }
 
-function Report({ report }) {
+function Report({ report, t }) {
   const s = report.summary;
+  
+  const getStatusText = (status) => {
+    if (status === 'clean') return t('analyze_status_clean');
+    if (status === 'needs_review') return t('analyze_status_review');
+    if (status === 'blocked') return t('analyze_status_blocked');
+    return status;
+  };
+
   return (
     <>
       <div className={`status-banner status-${s.overall_status}`}>
         <span className="status-dot" />
-        {STATUS_TEXT[s.overall_status] ?? s.overall_status}
+        {getStatusText(s.overall_status)}
       </div>
 
       <div className="summary-cards">
-        <SummaryCard num={s.template_error_count + s.template_warning_count} label="Template issues" />
-        <SummaryCard num={s.reference_count} label="References found" />
-        <SummaryCard num={s.unresolved_reference_count} label="Unresolved refs" />
-        <SummaryCard num={s.conflict_count} label="Conflicts" />
+        <SummaryCard num={s.template_error_count + s.template_warning_count} label={t('analyze_card_template')} />
+        <SummaryCard num={s.reference_count} label={t('analyze_card_ref')} />
+        <SummaryCard num={s.unresolved_reference_count} label={t('analyze_card_unresolved')} />
+        <SummaryCard num={s.conflict_count} label={t('analyze_card_conflict')} />
       </div>
 
-      <ResultSection title="Template compliance" items={report.template_issues}
-                     emptyText="All Manual of Office Procedure rules passed."
+      <ResultSection title={t('analyze_sec_template')} items={report.template_issues}
+                     emptyText={t('analyze_sec_template_empty')}
                      render={(issue) => (
         <div className="result-item" key={issue.rule_id}>
           <span className={`badge badge-${issue.severity}`}>{issue.severity}</span>
           <span className="mono">{issue.rule_id}</span>
           <div className="ri-msg">{issue.message}</div>
-          {issue.suggestion && <div className="ri-sub">Fix: {issue.suggestion}</div>}
+          {issue.suggestion && <div className="ri-sub">{t('analyze_fix')} {issue.suggestion}</div>}
         </div>
       )} />
 
-      <ResultSection title="References" items={report.references}
-                     emptyText="No GR citations found in the draft."
+      <ResultSection title={t('analyze_sec_ref')} items={report.references}
+                     emptyText={t('analyze_sec_ref_empty')}
                      render={(ref, i) => (
         <div className="result-item" key={i}>
           <span className={`badge badge-${ref.found_in_corpus ? ref.status : "unknown"}`}>
@@ -186,8 +194,8 @@ function Report({ report }) {
         </div>
       )} />
 
-      <ResultSection title="Cross-departmental conflicts" items={report.conflicts}
-                     emptyText="No conflicts detected with existing GRs."
+      <ResultSection title={t('analyze_sec_conflict')} items={report.conflicts}
+                     emptyText={t('analyze_sec_conflict_empty')}
                      render={(c, i) => (
         <div className="result-item" key={i}>
           <span className={`badge badge-${c.relation}`}>{c.relation}</span>
@@ -213,15 +221,15 @@ function Report({ report }) {
         </div>
       )} />
 
-      <ResultSection title="Bilingual terminology" items={report.terms}
-                     emptyText="No terminology mappings produced."
-                     render={(t, i) => (
+      <ResultSection title={t('analyze_sec_terms')} items={report.terms}
+                     emptyText={t('analyze_sec_terms_empty')}
+                     render={(tInfo, i) => (
         <div className="result-item" key={i}>
-          <span className={`badge ${t.consistent_with_corpus ? "badge-ok" : "badge-warning"}`}>
-            {t.consistent_with_corpus ? "consistent" : "check"}
+          <span className={`badge ${tInfo.consistent_with_corpus ? "badge-ok" : "badge-warning"}`}>
+            {tInfo.consistent_with_corpus ? "consistent" : "check"}
           </span>
-          <strong>{t.source_term}</strong> → {t.target_term}
-          {t.note && <div className="ri-sub">{t.note}</div>}
+          <strong>{tInfo.source_term}</strong> → {tInfo.target_term}
+          {tInfo.note && <div className="ri-sub">{tInfo.note}</div>}
         </div>
       )} />
     </>

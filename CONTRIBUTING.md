@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Welcome to NIRN.AI!
+Welcome to NIRN.Ai!
 
 Please follow these rules while contributing.
 
