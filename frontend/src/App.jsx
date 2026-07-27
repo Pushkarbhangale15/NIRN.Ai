@@ -63,9 +63,6 @@ function Navbar() {
           >
             {siteLanguage === 'en' ? 'मराठी' : 'English'}
           </button>
-          <NavLink to="/copilot" className="nav-cta">
-            {t('nav_ai_copilot')}
-          </NavLink>
         </div>
       </nav>
     </div>
