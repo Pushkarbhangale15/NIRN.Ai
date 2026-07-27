@@ -133,7 +133,6 @@ export default function Draft() {
               <DraftViewer
                 draft={draftResult}
                 loading={loading}
-                onRegenerate={handleGenerate}
               />
             </div>
 
