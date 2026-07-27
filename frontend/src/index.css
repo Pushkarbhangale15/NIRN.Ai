@@ -1730,6 +1730,7 @@ mark.highlight-mark {
 }
 
 @media (max-width: 1200px) {
+
   .draft-workspace-grid,
   .draft-workspace-two-col {
     grid-template-columns: 1fr;
