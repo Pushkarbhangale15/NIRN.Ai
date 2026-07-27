@@ -28,6 +28,7 @@ from schemas import (
     AnalysisSummary,
     ConflictHit,
     CorpusSearchResponse,
+    FullOCRResponse,
     Draft,
     DraftCreate,
     ReferenceHit,
@@ -188,6 +189,17 @@ def run_full_analysis(draft_id: str) -> AnalysisReport:
 # =====================================================================
 # Corpus search
 # =====================================================================
+
+@router.get("/api/corpus/{gr_id}/ocr", response_model=FullOCRResponse, tags=["corpus"])
+def get_corpus_ocr(gr_id: str) -> FullOCRResponse:
+    """
+    Fetch the full OCR text reconstructed from chunks.
+    """
+    res = retrieval.get_full_ocr(gr_id)
+    if not res:
+        raise HTTPException(status_code=404, detail=f"GR {gr_id} not found in corpus")
+    return FullOCRResponse(**res)
+
 
 @router.get("/api/corpus/search",
             response_model=CorpusSearchResponse, tags=["corpus"])

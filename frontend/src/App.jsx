@@ -5,6 +5,7 @@ import Analyze from "./pages/Analyze.jsx";
 import Search from "./pages/Search.jsx";
 import Copilot from "./pages/Copilot.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
+import { useEffect } from "react";
 
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
@@ -53,6 +54,16 @@ function Navbar() {
 }
 
 export default function App() {
+  const { siteLanguage } = useLanguage();
+
+  useEffect(() => {
+    if (siteLanguage === 'mr') {
+      document.body.classList.add('lang-mr');
+    } else {
+      document.body.classList.remove('lang-mr');
+    }
+  }, [siteLanguage]);
+
   return (
     <>
       <Navbar />

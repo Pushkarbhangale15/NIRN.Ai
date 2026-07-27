@@ -129,6 +129,29 @@ def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
             )
     return None
 
+def get_full_ocr(gr_id: str) -> Optional[dict]:
+    _load_faiss()
+    if _chunks is None:
+        return None
+
+    # Filter chunks belonging to this GR
+    gr_chunks = [c for c in _chunks if c.get("gr_id") == gr_id]
+    if not gr_chunks:
+        return None
+
+    # Try to sort by chunk_id if it exists, otherwise assume list order is correct
+    gr_chunks.sort(key=lambda x: x.get("chunk_id", 0))
+
+    full_text = "\n\n".join(c.get("text", "") for c in gr_chunks)
+    
+    # Return a dictionary with metadata and full text
+    return {
+        "gr_id": gr_id,
+        "department": gr_chunks[0].get("department", "Unknown Department"),
+        "title": gr_chunks[0].get("title", f"GR {gr_id}"),
+        "text": full_text
+    }
+
 def is_connected() -> bool:
     _load_faiss()
     return _index is not None and _chunks is not None

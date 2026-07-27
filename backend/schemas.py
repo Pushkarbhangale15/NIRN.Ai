@@ -159,6 +159,12 @@ class CorpusSearchResponse(BaseModel):
     hits: List[CorpusHit]
     took_ms: int
 
+class FullOCRResponse(BaseModel):
+    gr_id: str
+    department: str
+    title: str
+    text: str
+
 
 # ---------------------------------------------------------------------
 # Copilot / Chat
