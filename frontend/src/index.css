@@ -160,12 +160,15 @@ body {
   font-size: clamp(44px, 6.2vw, 80px);
   line-height: 0.98;
   letter-spacing: -1px;
-  text-transform: uppercase;
 }
 
 .display .accent {
   color: var(--red);
   display: block;
+}
+
+.brand-red {
+  color: var(--red);
 }
 
 .underline-blue {
@@ -1058,12 +1061,25 @@ body {
   animation: bounce 1.1s infinite ease-in-out;
 }
 
-.copilot-typing span:nth-child(2) { animation-delay: 0.16s; }
-.copilot-typing span:nth-child(3) { animation-delay: 0.32s; }
+.copilot-typing span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.copilot-typing span:nth-child(3) {
+  animation-delay: 0.32s;
+}
 
 @keyframes bounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30%           { transform: translateY(-7px); }
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+
+  30% {
+    transform: translateY(-7px);
+  }
 }
 
 /* ── Follow-up suggestions ───────────────────────────────────── */
@@ -1231,7 +1247,9 @@ body {
 }
 
 /* ── Markdown block renderer ─────────────────────────────────── */
-.copilot-md { line-height: 1.65; }
+.copilot-md {
+  line-height: 1.65;
+}
 
 .copilot-md-h1 {
   font-family: var(--font-display);

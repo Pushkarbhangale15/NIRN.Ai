@@ -273,30 +273,25 @@ def copilot_draft(payload: DraftGenerateRequest) -> DraftGenerateResponse:
         examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
 
     # 2. LLM drafting call
-    system_prompt = (
-        "You are an expert drafting officer for the Government of Maharashtra. "
-        "Draft a professional Government Resolution based on the user's prompt. "
-        "Incorporate the format, style, formal register (e.g. 'shall'), and conventions of "
-        "the provided example GRs. Make sure to structure the output with clear headers:\n"
-        "- GOVERNMENT OF MAHARASHTRA\n"
-        "- DEPARTMENT\n"
-        "- GR REFERENCE NUMBER & DATE\n"
-        "- PREAMBLE / प्रस्तावना\n"
-        "- GOVERNMENT RESOLUTION / शासन निर्णय (with numbered operative clauses)\n"
-        "Cite the GR IDs from the examples that influenced this draft."
+    system_prompt = prompts.COPILOT_DRAFT
+    user_msg = (
+        f"Input:\n"
+        f"- User Prompt: {payload.prompt}\n"
+        f"- Language: {payload.language}\n"
+        f"- Retrieved Context:\n{examples_str}"
     )
-    user_msg = f"USER PROMPT: {payload.prompt}\n\nSIMILAR GR EXAMPLES IN CORPUS:\n{examples_str}"
     body_text = llm.call_model(system_prompt, user_msg)
     
     title = f"Draft GR: {payload.prompt[:50]}"
     dept = hits[0].department if hits else "General Administration Department"
     
     # 3. Save as a draft so the user can run standard template / conflict checks
+    lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH
     draft = store.create_draft(DraftCreate(
         title=title,
         department=dept,
         body_text=body_text,
-        language=Language.ENGLISH
+        language=lang_enum
     ))
     
     return DraftGenerateResponse(

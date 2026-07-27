@@ -4,8 +4,11 @@ import Home from "./pages/Home.jsx";
 import Analyze from "./pages/Analyze.jsx";
 import Search from "./pages/Search.jsx";
 import Copilot from "./pages/Copilot.jsx";
+import { useLanguage } from "./LanguageContext.jsx";
 
 function Navbar() {
+  const { t, siteLanguage, toggleLanguage } = useLanguage();
+
   return (
     <div className="container">
       <nav className="nav">
@@ -19,22 +22,31 @@ function Navbar() {
 
         <div className="nav-links">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
+            {t('nav_home')}
           </NavLink>
           <NavLink to="/search" className={({ isActive }) => (isActive ? "active" : "")}>
-            Search
+            {t('nav_search')}
           </NavLink>
           <NavLink to="/analyze" className={({ isActive }) => (isActive ? "active" : "")}>
-            Analyze
+            {t('nav_analyze')}
           </NavLink>
           <NavLink to="/copilot" className={({ isActive }) => (isActive ? "active" : "")}>
-            Copilot
+            {t('nav_copilot')}
           </NavLink>
         </div>
 
-        <NavLink to="/copilot" className="nav-cta">
-          AI Copilot <span>→</span>
-        </NavLink>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            onClick={toggleLanguage} 
+            className="btn btn-ghost" 
+            style={{ padding: '6px 12px', fontSize: '14px', borderRadius: '20px' }}
+          >
+            {siteLanguage === 'en' ? 'मराठी' : 'English'}
+          </button>
+          <NavLink to="/copilot" className="nav-cta">
+            {t('nav_ai_copilot')}
+          </NavLink>
+        </div>
       </nav>
     </div>
   );

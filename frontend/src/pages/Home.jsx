@@ -34,48 +34,51 @@ const IconResolutions = () => (
   </svg>
 );
 
-const TRY_QUERIES = [
-  "GR about work from home policy",
-  "Leave rules for government employees",
-  "Latest circulars on procurement",
-];
-
 const FEATURES = [
   {
     icon: <IconSearch />, color: "c-blue", underline: "c-blue",
-    title: "Semantic Search",
-    desc: "Understand natural language and find relevant GRs instantly.",
-    link: "/search", label: "Search now",
+    titleKey: "feat_search_title",
+    descKey: "feat_search_desc",
+    link: "/search", labelKey: "feat_search_label",
   },
   {
     icon: <IconUpload />, color: "c-yellow", underline: "c-yellow",
-    title: "Upload & Analyze",
-    desc: "Submit a draft GR and get AI-powered alignment checks instantly.",
-    link: "/analyze", label: "Upload GR",
+    titleKey: "feat_upload_title",
+    descKey: "feat_upload_desc",
+    link: "/analyze", labelKey: "feat_upload_label",
   },
   {
     icon: <IconConflict />, color: "c-red", underline: "c-red",
-    title: "Conflict Detection",
-    desc: "Flag clashes with existing resolutions across departments.",
-    link: "/analyze", label: "Explore",
+    titleKey: "feat_conflict_title",
+    descKey: "feat_conflict_desc",
+    link: "/analyze", labelKey: "feat_conflict_label",
   },
   {
     icon: <IconTemplate />, color: "c-ink", underline: "c-ink",
-    title: "Template Checks",
-    desc: "Enforce the Manual of Office Procedure rule by rule.",
-    link: "/analyze", label: "View checks",
+    titleKey: "feat_template_title",
+    descKey: "feat_template_desc",
+    link: "/analyze", labelKey: "feat_template_label",
   },
 ];
+
+import { useLanguage } from "../LanguageContext.jsx";
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const { t, siteLanguage } = useLanguage();
 
   const goSearch = (q) => {
     const text = (q ?? query).trim();
     if (text) navigate(`/search?q=${encodeURIComponent(text)}`);
     else navigate("/search");
   };
+
+  const tryQueries = [
+    t('home_sug_1'),
+    t('home_sug_2'),
+    t('home_sug_3'),
+  ];
 
   return (
     <main>
@@ -89,21 +92,17 @@ export default function Home() {
           <div className="hero-grid">
             <div className="hero-copy">
               <h1 className="display">
-                NIRN.AI for
-                <span className="accent">Governance</span>
+                <span className="brand-red">NIRN.Ai</span> {t('home_title_2')}
               </h1>
               <div className="underline-blue" />
-              <p className="hero-sub">
-                NIRN.AI is your intelligent assistant for drafting, aligning
-                and verifying Government Resolutions of Maharashtra.
-              </p>
+
             </div>
 
             <div className="hero-stat">
               <div className="stat-icon"><IconResolutions /></div>
-              <div className="stat-number">98,950+</div>
-              <div className="stat-label">Government Resolutions</div>
-              <div className="stat-sub">Across departments. At your fingertips.</div>
+              <div className="stat-number">{t('home_stat_num')}</div>
+              <div className="stat-label">{t('home_stat_label')}</div>
+              <div className="stat-sub">{t('home_stat_sub')}</div>
             </div>
           </div>
 
@@ -115,15 +114,15 @@ export default function Home() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask anything about Government Resolutions..."
-              aria-label="Search Government Resolutions"
+              placeholder={t('home_search_placeholder')}
+              aria-label={t('home_search_placeholder')}
             />
             <button className="go" type="submit" aria-label="Search">→</button>
           </form>
 
           <div className="try-row">
-            <span className="try-label">Try asking:</span>
-            {TRY_QUERIES.map((q) => (
+            <span className="try-label">{t('home_try_label')}</span>
+            {tryQueries.map((q) => (
               <button key={q} className="chip" onClick={() => goSearch(q)}>
                 {q} <span className="arr">↗</span>
               </button>
@@ -132,13 +131,13 @@ export default function Home() {
 
           <div className="features">
             {FEATURES.map((f) => (
-              <div className="feature" key={f.title}>
+              <div className="feature" key={f.titleKey}>
                 <div className={`f-icon ${f.color}`}>{f.icon}</div>
                 <div className={`f-underline ${f.underline}`} />
-                <div className="f-title">{f.title}</div>
-                <p className="f-desc">{f.desc}</p>
+                <div className="f-title">{t(f.titleKey)}</div>
+                <p className="f-desc">{t(f.descKey)}</p>
                 <Link className="f-link" to={f.link}>
-                  {f.label} <span>→</span>
+                  {t(f.labelKey)} <span>→</span>
                 </Link>
               </div>
             ))}

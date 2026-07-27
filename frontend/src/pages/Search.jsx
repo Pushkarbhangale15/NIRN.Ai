@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
+import { useLanguage } from "../LanguageContext.jsx";
 
 export default function Search() {
   const [params, setParams] = useSearchParams();
@@ -9,6 +10,7 @@ export default function Search() {
   const [tookMs, setTookMs] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useLanguage();
 
   const runSearch = async (q) => {
     const text = (q ?? query).trim();
@@ -37,11 +39,10 @@ export default function Search() {
   return (
     <main className="container search-page">
       <header className="page-head">
-        <div className="eyebrow">Semantic Search</div>
-        <h1 className="page-title">Search the Corpus</h1>
+        <div className="eyebrow">{t('search_eyebrow')}</div>
+        <h1 className="page-title">{t('search_title')}</h1>
         <p className="page-sub">
-          Search past Government Resolutions by meaning, not keywords —
-          a query about “late admission” finds “delayed enrolment procedure”.
+          {t('search_sub')}
         </p>
       </header>
 
@@ -53,8 +54,8 @@ export default function Search() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. lateral entry intake in technical institutions"
-          aria-label="Search the GR corpus"
+          placeholder={t('search_placeholder')}
+          aria-label={t('search_title')}
         />
         <button className="go" type="submit" aria-label="Search">→</button>
       </form>
@@ -65,21 +66,21 @@ export default function Search() {
         {loading && (
           <div className="empty-state">
             <div className="big"><span className="spinner" /></div>
-            <p>Searching the corpus…</p>
+            <p>{t('search_searching')}</p>
           </div>
         )}
 
         {!loading && hits === null && !error && (
           <div className="empty-state">
             <div className="big">🗂️</div>
-            <p>Results appear here. Try one of the suggestions on the home page.</p>
+            <p>{t('search_empty')}</p>
           </div>
         )}
 
         {!loading && hits !== null && (
           <>
             <p className="ri-sub" style={{ marginBottom: 14 }}>
-              {hits.length} result{hits.length === 1 ? "" : "s"} · {tookMs} ms
+              {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')} · {tookMs} ms
             </p>
             {hits.map((h) => (
               <div className="result-item" key={h.gr_id}>
@@ -97,7 +98,7 @@ export default function Search() {
                 {h.source_url && (
                   <a className="f-link" style={{ marginTop: 10, display: "inline-flex" }}
                      href={h.source_url} target="_blank" rel="noreferrer">
-                    View source →
+                    {t('search_view_source')}
                   </a>
                 )}
               </div>

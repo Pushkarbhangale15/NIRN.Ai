@@ -49,10 +49,10 @@ export const api = {
       body: JSON.stringify({ query, session_id: sessionId }),
     }),
 
-  copilotDraft: (prompt) =>
+  copilotDraft: (prompt, language = "english") =>
     request("/api/copilot/draft", {
       method: "POST",
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, language }),
     }),
 
   copilotCompare: (grId1, grId2) =>
