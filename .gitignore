@@ -34,4 +34,7 @@ file structure.md
 response.json
 *.db
 backend/data/*.db
+backend/data/*.faiss
+backend/data/*.pkl
+backend/data/metadata.json
 

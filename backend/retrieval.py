@@ -34,12 +34,16 @@ def _load_faiss():
     with _faiss_lock:
         # We load them once lazily when first needed.
         if _index is None:
-            index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "index.faiss")
+            index_path = os.path.join(os.path.dirname(__file__), "data", "index.faiss")
+            if not os.path.exists(index_path):
+                index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "index.faiss")
             if os.path.exists(index_path):
                 _index = faiss.read_index(index_path)
         
         if _chunks is None:
-            chunks_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "chunks.pkl")
+            chunks_path = os.path.join(os.path.dirname(__file__), "data", "chunks.pkl")
+            if not os.path.exists(chunks_path):
+                chunks_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "chunks.pkl")
             if os.path.exists(chunks_path):
                 with open(chunks_path, "rb") as f:
                     _chunks = pickle.load(f)

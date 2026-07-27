@@ -53,37 +53,61 @@ NIRN.Ai/
 
 ## 🚀 Quick Start
 
-Clone the repository
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd NIRN.Ai
+   ```
 
+2. **Create a virtual environment**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate      # macOS/Linux
+   # Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Initialize Embeddings & Backend Data**
+   Run the automatic setup script to download the prebuilt vector index and document chunks from Google Drive:
+   ```bash
+   python setup.py
+   ```
+   *Note: This script automatically downloads the raw embeddings (~300MB) from the shared Google Drive folder and compiles the local FAISS database under `backend/data/`.*
+
+5. **Run the backend**
+   ```bash
+   cd backend
+   uvicorn app:app --reload
+   ```
+
+---
+
+## 🗃️ Embeddings & Database Setup
+
+### Automatic Download (Google Drive)
+Prebuilt embeddings and corpus chunk metadata are hosted on [Google Drive](https://drive.google.com/drive/folders/1f__XsLWW8hEV19uNNgkhRVyWIim7dwNB?usp=drive_link). The `python setup.py` script:
+- Checks if `backend/data/index.faiss`, `backend/data/chunks.pkl`, and `backend/data/metadata.json` are present.
+- Downloads the raw source files using `gdown` if any are missing.
+- Builds the FAISS index locally.
+- Verifies the compiled index is ready.
+
+### Manual Embeddings Regeneration
+If you want to modify the documents dataset (located in `mahGRs-main/GRs`) or if the Google Drive download fails, you can regenerate the embeddings locally from scratch:
 ```bash
-git clone <repository-url>
-cd NIRN.Ai
+python build_embeddings.py
 ```
+This script will:
+- Parse and chunk the raw text files in your local dataset.
+- Generate embeddings locally using the SentenceTransformer model (`intfloat/multilingual-e5-base`).
+- Re-compile the FAISS index database and save the files to `backend/data/`.
 
-Create a virtual environment
-
-```bash
-python3 -m venv venv
-source venv/bin/activate      # macOS/Linux
-```
-
-Windows
-
-```powershell
-venv\Scripts\activate
-```
-
-Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the backend
-
-```bash
-uvicorn backend.app:app --reload
-```
+### Troubleshooting
+- **gdown download failures**: If you get a download quota or access error, ensure you have an active internet connection. If the issue persists, run the local regeneration script (`python build_embeddings.py`) to compile the index from your local `mahGRs-main` text corpus.
+- **Memory Limit / CUDA crash**: Local embedding generation requires Python to load the `multilingual-e5-base` model. If your machine runs out of memory, verify that you have closed resource-intensive applications, or use a machine with Apple Silicon (MPS) or a GPU.
 
 ---
 
