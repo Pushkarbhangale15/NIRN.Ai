@@ -318,7 +318,6 @@ function DraftTab() {
             draft={draftResult}
             loading={loading}
             onRegenerate={handleGenerate}
-            onTranslate={() => setLanguage(l => l === 'English' ? 'Marathi' : 'English')}
           />
         </div>
 

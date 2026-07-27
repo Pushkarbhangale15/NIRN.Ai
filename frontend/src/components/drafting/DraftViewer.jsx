@@ -4,8 +4,7 @@ import { motion } from 'framer-motion';
 export default function DraftViewer({
   draft,
   loading,
-  onRegenerate,
-  onTranslate
+  onRegenerate
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -189,23 +188,7 @@ export default function DraftViewer({
           >
             📄 PDF Print
           </button>
-          {onTranslate && (
-            <button
-              type="button"
-              onClick={onTranslate}
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                background: '#fff',
-                border: '1px solid var(--ink)',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              🌐 Translate
-            </button>
-          )}
+
           {onRegenerate && (
             <button
               type="button"
