@@ -73,21 +73,39 @@ function Footer() {
   const { siteLanguage } = useLanguage();
   return (
     <footer className={`footer ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
-      <div className="container footer-content">
-        <div className="footer-left">
-          <div className="footer-brand">NIRN.Ai</div>
-          <p className="footer-text">brought to you by</p>
-          <h4 className="footer-institute">Veermata Jijabai Technological Institute</h4>
-          <p className="footer-branch">Branch - Master of Computer Application (MCA)</p>
+      <div className="container">
+        <hr className="footer-divider" />
+
+        <div className="footer-content">
+          <div className="footer-left">
+            <div className="footer-brand">NIRN.Ai</div>
+            <div className="footer-tagline">AI-assisted Government Resolution Search & Drafting Platform</div>
+            <div className="footer-section">
+              <span className="footer-label">Developed at</span>
+              <div className="footer-value">Veermata Jijabai Technological Institute (VJTI), Mumbai</div>
+              <div className="footer-value">Master of Computer Applications (MCA)</div>
+            </div>
+          </div>
+
+          <div className="footer-right">
+            <div className="footer-team-title">Project Team (SYMCA)</div>
+            <ul className="footer-team-list">
+              <li>Pushkar Bhangale</li>
+              <li>Kumar Tambe</li>
+              <li>Tanmay Shinde</li>
+              <li>Prasad Aher</li>
+            </ul>
+          </div>
         </div>
-        <div className="footer-right">
-          <h4 className="footer-team-title">By Team (SYMCA)</h4>
-          <ul className="footer-team-list">
-            <li>Pushkar Bhangale <span className="leader-tag">[Leader]</span></li>
-            <li>Kumar Tambe</li>
-            <li>Tanmay Shinde</li>
-            <li>Prasad Aher</li>
-          </ul>
+
+        <hr className="footer-divider" />
+
+        <div className="footer-bottom">
+          <p className="footer-copy">© 2026 NIRN.AI | Developed for the Government of Maharashtra Hackathon</p>
+          <p className="footer-disclaimer">
+            This project is an academic prototype developed at VJTI for research and
+            demonstration purposes. It is not an official Government of Maharashtra service.
+          </p>
         </div>
       </div>
     </footer>
