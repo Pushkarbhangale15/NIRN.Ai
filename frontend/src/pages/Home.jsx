@@ -63,11 +63,37 @@ const FEATURES = [
 ];
 
 import { useLanguage } from "../LanguageContext.jsx";
+import { api } from "../api.js";
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { t, siteLanguage } = useLanguage();
+
+  const [grNumber, setGrNumber] = useState("");
+  const [foundGr, setFoundGr] = useState(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+
+  const handleGrLookup = async () => {
+    const id = grNumber.trim();
+    if (!id) return;
+    setLookupLoading(true);
+    setLookupError("");
+    setFoundGr(null);
+    try {
+      const res = await api.getCorpusOcr(id);
+      if (res && res.gr_id) {
+        setFoundGr(res);
+      } else {
+        setLookupError(t('home_gr_number_not_found'));
+      }
+    } catch (err) {
+      setLookupError(t('home_gr_number_not_found'));
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const goSearch = (q) => {
     const text = (q ?? query).trim();
@@ -142,6 +168,87 @@ export default function Home() {
               </button>
             ))}
           </div>
+
+          {/* GR ID lookup searchbar */}
+          <form
+            className="searchbar gr-number-searchbar"
+            onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
+          >
+            <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
+            <input
+              value={grNumber}
+              onChange={(e) => setGrNumber(e.target.value)}
+              placeholder={t('home_gr_number_placeholder')}
+              aria-label={t('home_gr_number_placeholder')}
+            />
+            <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
+              {lookupLoading ? '...' : '→'}
+            </button>
+          </form>
+
+          {lookupError && (
+            <div className="lookup-error" style={{ color: 'var(--red)', marginTop: '12px', fontSize: '15px' }}>
+              ⚠️ {lookupError}
+            </div>
+          )}
+
+          {foundGr && (
+            <div className="gr-card" style={{
+              marginTop: '24px',
+              padding: '24px',
+              border: '2px solid var(--ink)',
+              borderRadius: '12px',
+              background: 'var(--paper)',
+              boxShadow: '0 4px 0 var(--ink)',
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => setFoundGr(null)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: 'var(--ink)'
+                }}
+              >
+                ✕
+              </button>
+              <span className="badge" style={{
+                display: 'inline-block',
+                padding: '4px 8px',
+                background: 'var(--blue)',
+                color: '#fff',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                marginBottom: '12px'
+              }}>
+                {t('home_gr_number_result_title')}
+              </span>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', textAlign: 'left' }}>{foundGr.title}</h3>
+              <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '14px', textAlign: 'left' }}>
+                <strong>Department:</strong> {foundGr.department.replace(/_/g, ' ')} | <strong>ID:</strong> {foundGr.gr_id}
+              </p>
+              <div style={{
+                maxHeight: '300px',
+                overflowY: 'auto',
+                padding: '16px',
+                background: '#f8f6f2',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                whiteSpace: 'pre-wrap',
+                textAlign: 'left'
+              }}>
+                {foundGr.text}
+              </div>
+            </div>
+          )}
 
           <div className="features">
             {FEATURES.map((f) => (

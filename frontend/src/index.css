@@ -321,6 +321,28 @@ body {
   background: #c72f16;
 }
 
+/* ---------------- GR number mini search bar (1/3rd smaller) ---------------- */
+.gr-number-searchbar {
+  max-width: 480px;
+  margin-top: 24px;
+}
+
+.gr-number-searchbar .lead {
+  width: 50px;
+  font-size: 18px;
+}
+
+.gr-number-searchbar input {
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+.gr-number-searchbar .go {
+  width: 60px;
+  font-size: 18px;
+}
+
+
 .try-row {
   display: flex;
   align-items: center;
