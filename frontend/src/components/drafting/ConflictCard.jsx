@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function ConflictCard({ conflicts = [], loading, hasGenerated, isOwnDept }) {
+export default function ConflictCard({ conflicts = [], loading, hasGenerated }) {
   const [isOpen, setIsOpen] = useState(true);
 
   if (!hasGenerated) {
@@ -15,7 +15,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated, is
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            {isOwnDept ? '🏢 Card 2 — Own Dept Conflicts' : '⚠️ Card 2 — Cross-Dept Conflicts'}
+            ⚠️ Policy Conflicts
           </span>
           <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
             Pending Draft
@@ -39,7 +39,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated, is
         onClick={() => setIsOpen(!isOpen)}
         style={{
           padding: '16px 20px',
-          background: conflicts.length > 0 ? (isOwnDept ? '#fef3c7' : '#fff1f0') : '#f0fdf4',
+          background: conflicts.length > 0 ? '#fff1f0' : '#f0fdf4',
           borderBottom: isOpen ? '2px solid var(--ink)' : 'none',
           display: 'flex',
           justifyContent: 'space-between',
@@ -49,13 +49,13 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated, is
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--ink)' }}>
-            {isOwnDept ? '🏢 Own Department Conflicts' : '⚠️ Cross-Departmental Conflicts'}
+            ⚠️ Policy Conflicts
           </span>
           <span style={{
             fontSize: '11px',
             fontWeight: 'bold',
-            background: conflicts.length > 0 ? (isOwnDept ? 'var(--yellow)' : 'var(--red)') : 'var(--blue)',
-            color: conflicts.length > 0 && isOwnDept ? 'var(--ink)' : '#fff',
+            background: conflicts.length > 0 ? 'var(--red)' : 'var(--blue)',
+            color: '#fff',
             padding: '2px 8px',
             borderRadius: '12px',
             border: '1px solid var(--ink)'
@@ -88,10 +88,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated, is
               <div>
                 <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>No Conflicts Detected</div>
                 <div style={{ fontSize: '13.5px', lineHeight: '1.4', color: '#14532d' }}>
-                  {isOwnDept
-                    ? 'This draft is fully aligned with all previous resolutions issued by your department.'
-                    : 'This draft is fully aligned with all existing Maharashtra Government policies across other departments.'
-                  } No policy overlaps or clashing instructions were found.
+                  This draft is fully aligned with all existing Maharashtra Government policies. No policy overlaps or clashing instructions were found.
                 </div>
               </div>
             </div>

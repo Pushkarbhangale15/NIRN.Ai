@@ -158,8 +158,7 @@ export default function Draft() {
               }}>
                 {[
                   { id: "compliance", label: "📌 MOP Rules" },
-                  { id: "cross_conflicts", label: "⚠️ Cross-Dept Conflicts" },
-                  { id: "own_conflicts", label: "🏢 Own Dept Conflicts" },
+                  { id: "conflicts", label: "⚠️ Policy Conflicts" },
                   { id: "references", label: "🔗 References" },
                   { id: "terminology", label: "🔤 Terminology" },
                   { id: "suggestions", label: "💡 Suggestions" }
@@ -198,20 +197,11 @@ export default function Draft() {
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
-                {activeReviewTab === "cross_conflicts" && (
+                {activeReviewTab === "conflicts" && (
                   <ConflictCard
-                    conflicts={crossDeptConflicts}
+                    conflicts={allConflicts}
                     loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
-                    isOwnDept={false}
-                  />
-                )}
-                {activeReviewTab === "own_conflicts" && (
-                  <ConflictCard
-                    conflicts={ownDeptConflicts}
-                    loading={analysisLoading}
-                    hasGenerated={Boolean(draftResult)}
-                    isOwnDept={true}
                   />
                 )}
                 {activeReviewTab === "references" && (
