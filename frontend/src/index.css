@@ -1594,15 +1594,15 @@ mark.highlight-mark {
 
 /* ---------------- Footer ---------------- */
 .footer {
-  background: var(--cream);
-  color: var(--ink);
+  background: var(--ink);
+  color: #fff;
   padding: 40px 0 60px 0;
   margin-top: 80px;
 }
 
 .footer-divider {
   border: none;
-  border-top: 2px solid var(--ink);
+  border-top: 2px solid var(--ink-soft);
   margin: 24px 0;
 }
 
@@ -1629,7 +1629,7 @@ mark.highlight-mark {
 
 .footer-tagline {
   font-size: 14px;
-  color: var(--ink-soft);
+  color: #a09a8f;
   margin-bottom: 24px;
 }
 
@@ -1640,7 +1640,7 @@ mark.highlight-mark {
 .footer-label {
   font-size: 12px;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: #a09a8f;
   letter-spacing: 0.5px;
   display: block;
   margin-bottom: 4px;
@@ -1648,7 +1648,7 @@ mark.highlight-mark {
 
 .footer-value {
   font-size: 15px;
-  color: var(--ink);
+  color: #fff;
   margin-bottom: 2px;
 }
 
@@ -1666,7 +1666,7 @@ mark.highlight-mark {
 .footer-team-title {
   font-size: 16px;
   margin: 0 0 12px 0;
-  color: var(--ink-soft);
+  color: #a09a8f;
   font-weight: bold;
 }
 
@@ -1681,11 +1681,11 @@ mark.highlight-mark {
 
 .footer-team-list li {
   font-size: 15px;
-  color: var(--ink);
+  color: #fff;
 }
 
 .footer-team-list .leader-tag {
-  color: var(--ink-soft);
+  color: #a09a8f;
   font-size: 13px;
   margin-left: 6px;
   font-weight: normal;
@@ -1700,12 +1700,12 @@ mark.highlight-mark {
   font-weight: bold;
   font-size: 14px;
   margin-bottom: 8px;
-  color: var(--ink);
+  color: #fff;
 }
 
 .footer-disclaimer {
   font-size: 12px;
-  color: var(--ink-soft);
+  color: #a09a8f;
   max-width: 650px;
   margin: 0 auto;
   line-height: 1.6;
