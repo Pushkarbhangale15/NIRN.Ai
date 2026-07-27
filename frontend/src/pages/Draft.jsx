@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 
@@ -18,11 +18,17 @@ export default function Draft() {
   const [department, setDepartment] = useState("Higher_and_Technical_Education_Department");
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [reAnalysisLoading, setReAnalysisLoading] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [draftResult, setDraftResult] = useState(null);
   const [analysisReport, setAnalysisReport] = useState(null);
   const [error, setError] = useState("");
   const [activeReviewTab, setActiveReviewTab] = useState("compliance");
+
+  // Track user edits to the GR body text
+  const [editedBodyText, setEditedBodyText] = useState("");
+  // Whether the user has made edits since the last analysis
+  const [hasUnanalyzedEdits, setHasUnanalyzedEdits] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -30,12 +36,15 @@ export default function Draft() {
     setError("");
     setDraftResult(null);
     setAnalysisReport(null);
+    setEditedBodyText("");
+    setHasUnanalyzedEdits(false);
     setCurrentStage(1);
 
     try {
       // Step 1: LLM Draft Generation
       const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
       setDraftResult(res);
+      setEditedBodyText(res.body_text);
       setCurrentStage(2);
 
       // Step 2: AI Review & Conflict Analysis
@@ -60,6 +69,41 @@ export default function Draft() {
     }
   };
 
+  // Called by DraftViewer whenever the user edits the textarea
+  const handleTextChange = useCallback((newText) => {
+    setEditedBodyText(newText);
+    if (draftResult && newText !== draftResult.body_text) {
+      setHasUnanalyzedEdits(true);
+    } else {
+      setHasUnanalyzedEdits(false);
+    }
+  }, [draftResult]);
+
+  // Re-analyze using edited text: PATCH the draft first, then re-run analysis
+  const handleReAnalyze = async () => {
+    if (!draftResult?.draft_id || !editedBodyText.trim()) return;
+    setReAnalysisLoading(true);
+    setError("");
+    setAnalysisReport(null);
+
+    try {
+      // 1. Push edited text to backend
+      await api.patchDraft(draftResult.draft_id, editedBodyText);
+
+      // 2. Re-run full analysis on the updated draft
+      const report = await api.runFullAnalysis(draftResult.draft_id);
+      setAnalysisReport(report);
+      setHasUnanalyzedEdits(false);
+
+      // 3. Update draftResult to reflect the new body text
+      setDraftResult((prev) => prev ? { ...prev, body_text: editedBodyText } : prev);
+    } catch (err) {
+      setError(err.message || "Re-analysis failed.");
+    } finally {
+      setReAnalysisLoading(false);
+    }
+  };
+
   const handleReset = () => {
     setPrompt("");
     setDepartment("Higher_and_Technical_Education_Department");
@@ -67,17 +111,19 @@ export default function Draft() {
     setAnalysisReport(null);
     setCurrentStage(0);
     setError("");
+    setEditedBodyText("");
+    setHasUnanalyzedEdits(false);
   };
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
   const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
-  
+
   const ownDeptConflicts = allConflicts.filter(c => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft === normExist;
   });
-  
+
   const crossDeptConflicts = allConflicts.filter(c => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft !== normExist;
@@ -112,9 +158,64 @@ export default function Draft() {
             onReset={handleReset}
           />
 
+          {/* Re-analyze banner — shown when user has made edits */}
+          {hasUnanalyzedEdits && draftResult && (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              padding: '12px 20px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>✏️</span>
+                <div>
+                  <div style={{ fontWeight: '700', fontSize: '13px', color: '#92400e' }}>
+                    You have unsaved edits
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#b45309' }}>
+                    Click "Re-Analyze Edits" to run template & conflict checks against your updated text.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleReAnalyze}
+                disabled={reAnalysisLoading}
+                style={{
+                  padding: '8px 20px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  background: reAnalysisLoading ? '#d1d5db' : '#f59e0b',
+                  color: reAnalysisLoading ? '#6b7280' : '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: reAnalysisLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: reAnalysisLoading ? 'none' : '0 2px 4px rgba(245,158,11,0.3)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {reAnalysisLoading ? (
+                  <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> Analyzing...</>
+                ) : (
+                  <>🔄 Re-Analyze Edits</>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">
-            
+
             {/* Left Column: Official Document Viewer */}
             <div>
               {error && (
@@ -133,6 +234,7 @@ export default function Draft() {
               <DraftViewer
                 draft={draftResult}
                 loading={loading}
+                onTextChange={handleTextChange}
               />
             </div>
 
@@ -193,28 +295,28 @@ export default function Draft() {
                 {activeReviewTab === "compliance" && (
                   <ComplianceCard
                     report={analysisReport}
-                    loading={analysisLoading}
+                    loading={analysisLoading || reAnalysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "conflicts" && (
                   <ConflictCard
                     conflicts={allConflicts}
-                    loading={analysisLoading}
+                    loading={analysisLoading || reAnalysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "references" && (
                   <ReferencesCard
                     references={analysisReport?.references || draftResult?.references}
-                    loading={analysisLoading}
+                    loading={analysisLoading || reAnalysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "terminology" && (
                   <TerminologyCard
                     terms={analysisReport?.terms}
-                    loading={analysisLoading}
+                    loading={analysisLoading || reAnalysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}

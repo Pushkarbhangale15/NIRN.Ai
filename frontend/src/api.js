@@ -33,6 +33,12 @@ export const api = {
   createDraft: (draft) =>
     request("/api/drafts", { method: "POST", body: JSON.stringify(draft) }),
 
+  patchDraft: (draftId, bodyText) =>
+    request(`/api/drafts/${draftId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ body_text: bodyText }),
+    }),
+
   listDrafts: () => request("/api/drafts"),
 
   // The full report: template + references + conflicts + terminology

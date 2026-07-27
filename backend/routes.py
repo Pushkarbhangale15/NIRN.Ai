@@ -38,6 +38,7 @@ from schemas import (
     OfficialSourceResponse,
     Draft,
     DraftCreate,
+    DraftUpdate,
     ReferenceHit,
     Severity,
     TemplateIssue,
@@ -84,6 +85,17 @@ def list_drafts() -> List[Draft]:
 @router.get("/api/drafts/{draft_id}", response_model=Draft, tags=["drafts"])
 def get_draft(draft_id: str) -> Draft:
     return _load(draft_id)
+
+
+@router.patch("/api/drafts/{draft_id}", response_model=Draft, tags=["drafts"])
+def patch_draft(draft_id: str, payload: DraftUpdate) -> Draft:
+    """Update the body text of a draft (e.g. after user edits in the viewer).
+    Returns the updated draft so the frontend can confirm the save.
+    """
+    updated = store.update_draft(draft_id, payload.body_text)
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Draft {draft_id} not found")
+    return updated
 
 
 @router.delete("/api/drafts/{draft_id}",

@@ -113,6 +113,19 @@ def list_drafts() -> List[Draft]:
         ]
 
 
+def update_draft(draft_id: str, body_text: str) -> Optional[Draft]:
+    """Update the body_text of an existing draft. Returns the updated Draft or None if not found."""
+    with _get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE drafts SET body_text = ? WHERE id = ?",
+            (body_text, draft_id)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return None
+    return get_draft(draft_id)
+
+
 def delete_draft(draft_id: str) -> bool:
     """Returns True if something was deleted, False if the id was unknown."""
     with _get_conn() as conn:

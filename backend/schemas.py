@@ -70,6 +70,11 @@ class Draft(DraftCreate):
     created_at: datetime
 
 
+class DraftUpdate(BaseModel):
+    """Payload for PATCH /api/drafts/{draft_id} — allows editing the body text."""
+    body_text: str = Field(..., min_length=20)
+
+
 # ---------------------------------------------------------------------
 # Analysis results — one shape per hackathon objective
 # ---------------------------------------------------------------------
