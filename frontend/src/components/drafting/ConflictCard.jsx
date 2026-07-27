@@ -27,18 +27,6 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
 
   const conflicts = report?.conflicts || [];
 
-  // Default demonstration conflict if live conflict array is empty
-  const displayConflicts = conflicts.length > 0 ? conflicts : [
-    {
-      gr_id: "202402281146457522",
-      department: "Finance Department",
-      year: "2024",
-      risk_level: "High",
-      reason: "Current draft proposes ₹20,000 subsidy while existing Finance GR limits regional assistance to ₹15,000.",
-      recommendation: "Revise assistance ceiling or explicitly cite superseding Finance Department concurrence."
-    }
-  ];
-
   return (
     <div style={{
       background: 'var(--paper)',
@@ -53,7 +41,7 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
         onClick={() => setIsOpen(!isOpen)}
         style={{
           padding: '16px 20px',
-          background: '#fff1f0',
+          background: conflicts.length > 0 ? '#fff1f0' : '#f0fdf4',
           borderBottom: isOpen ? '2px solid var(--ink)' : 'none',
           display: 'flex',
           justifyContent: 'space-between',
@@ -68,13 +56,13 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
           <span style={{
             fontSize: '11px',
             fontWeight: 'bold',
-            background: 'var(--red)',
+            background: conflicts.length > 0 ? 'var(--red)' : 'var(--blue)',
             color: '#fff',
             padding: '2px 8px',
             borderRadius: '12px',
             border: '1px solid var(--ink)'
           }}>
-            {displayConflicts.length} Conflict{displayConflicts.length === 1 ? '' : 's'} Detected
+            {conflicts.length} Conflict{conflicts.length === 1 ? '' : 's'} Detected
           </span>
         </div>
         <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{isOpen ? '▲' : '▼'}</span>
@@ -87,9 +75,28 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <span className="spinner" /> <span style={{ fontSize: '13px' }}>Cross-referencing 98,950+ GRs across departments...</span>
             </div>
+          ) : conflicts.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '16px',
+              borderRadius: '8px',
+              background: '#f0fdf4',
+              border: '2px solid #bbf7d0',
+              color: '#166534'
+            }}>
+              <span style={{ fontSize: '20px', fontWeight: 'bold' }}>✓</span>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px' }}>No Conflicts Detected</div>
+                <div style={{ fontSize: '13.5px', lineHeight: '1.4', color: '#14532d' }}>
+                  This draft is fully aligned with all existing Maharashtra Government Department policies and resolutions. No overlap or financial clashes were found.
+                </div>
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {displayConflicts.map((item, idx) => {
+              {conflicts.map((item, idx) => {
                 const isHigh = item.risk_level === 'High' || item.confidence >= 0.8;
                 const isMed = item.risk_level === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
                 const badgeColor = isHigh ? 'var(--red)' : isMed ? 'var(--yellow)' : 'var(--blue)';
