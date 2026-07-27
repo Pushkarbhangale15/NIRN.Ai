@@ -24,6 +24,8 @@ import retrieval
 import store
 import template_rules
 import template_rules_marathi
+from conflict_detection import detect_cross_department_conflicts
+from conflict_detection.models import ConflictReportItem
 from lookup import get_adapter
 from config import settings
 from schemas import (
@@ -421,3 +423,12 @@ def copilot_explain_clause(payload: ClauseExplanationRequest) -> ClauseExplanati
     explanation = llm.call_model(system_prompt, user_msg)
     
     return ClauseExplanationResponse(explanation=explanation)
+
+
+@router.post("/api/conflicts/detect", response_model=List[ConflictReportItem], tags=["conflicts"])
+def detect_conflicts_endpoint(payload: DraftCreate) -> List[ConflictReportItem]:
+    """
+    Accepts a draft GR and returns a cross-departmental structured conflict report
+    using the modular rule-engine and LLM two-stage pipeline.
+    """
+    return detect_cross_department_conflicts(payload.body_text)

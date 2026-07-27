@@ -1,0 +1,97 @@
+{
+  "categories": {
+    "Funding Conflict": {
+      "keywords": ["funding", "grant", "budget", "csr", "loan", "निधी", "बजेट", "अनुदान", "कर्ज", "वित्तीय"],
+      "rules": [
+        {
+          "name": "CSR Funding Prohibited vs Permitted",
+          "draft_contains": ["prohibit csr", "csr funding is not allowed", "csr निधीस परवानगी नाही", "csr निधी वापरू नये"],
+          "match_contains": ["allow csr", "csr funding is permitted", "csr निधी वापरता येईल", "csr निधीस मान्यता"],
+          "reason": "Draft prohibits CSR funding whereas the referenced GR explicitly permits CSR funding.",
+          "recommendation": "Review funding provisions for consistency.",
+          "severity": "Critical",
+          "confidence": 0.95
+        },
+        {
+          "name": "Funding Ratio Contradiction",
+          "draft_contains": ["ratio of 50:50", "५०:५० प्रमाण"],
+          "match_contains": ["ratio of 60:40", "६०:४० प्रमाण"],
+          "reason": "Draft specifies a funding ratio of 50:50, while the referenced GR mandates a 60:40 share.",
+          "recommendation": "Align state and central funding ratios with matching GR guidelines.",
+          "severity": "High",
+          "confidence": 0.90
+        }
+      ]
+    },
+    "Authority Conflict": {
+      "keywords": ["collector", "secretary", "cabinet", "minister", "director", "अधिकार", "कलेक्टर", "जिल्हाधिकारी", "सचिव", "मंत्री"],
+      "rules": [
+        {
+          "name": "District Collector vs Ministry Level Approval",
+          "draft_contains": ["collector shall approve", "collector is empowered", "जिल्हाधिकारी मंजुरी देतील", "कलेक्टर यांच्या स्तरावर"],
+          "match_contains": ["secretary shall approve", "ministry approval is mandatory", "शासकीय मान्यता आवश्यक", "सचिव स्तरावर"],
+          "reason": "Draft delegates approval authority to the District Collector, whereas the referenced GR mandates Ministry/Secretary level approval.",
+          "recommendation": "Verify approval authority levels with the General Administration Department guidelines.",
+          "severity": "High",
+          "confidence": 0.90
+        }
+      ]
+    },
+    "Timeline Conflict": {
+      "keywords": ["days", "months", "weeks", "timeline", "expiry", "दिवस", "महिना", "मुदत"],
+      "rules": [
+        {
+          "name": "Completion Timeline Discrepancy",
+          "draft_contains": ["within 30 days", "३० दिवसांच्या आत", "३० दिवस"],
+          "match_contains": ["within 90 days", "९० दिवसांच्या आत", "९० दिवस"],
+          "reason": "Draft clause specifies a 30-day completion timeline, whereas the existing GR allows 90 days for the same process.",
+          "recommendation": "Ensure timeline consistency across procedural requirements.",
+          "severity": "Medium",
+          "confidence": 0.85
+        }
+      ]
+    },
+    "Committee Conflict": {
+      "keywords": ["committee", "members", "chairman", "samiti", "समिती", "अध्यक्ष", "सदस्य"],
+      "rules": [
+        {
+          "name": "Committee Size Contradiction",
+          "draft_contains": ["3 members", "३ सदस्य"],
+          "match_contains": ["5 members", "५ सदस्य"],
+          "reason": "Draft specifies a 3-member committee composition, whereas the reference GR mandates a 5-member committee.",
+          "recommendation": "Check Maharashtra MoOP committee standards for member composition.",
+          "severity": "Medium",
+          "confidence": 0.80
+        }
+      ]
+    },
+    "Legal Reference Conflict": {
+      "keywords": ["section", "act", "rule", "कलम", "कायदा", "नियम"],
+      "rules": [
+        {
+          "name": "Conflicting Act Version",
+          "draft_contains": ["Act 1999", "कायदा १९९९"],
+          "match_contains": ["Act 2015", "कायदा २०१५"],
+          "reason": "Draft cites the outdated 1999 version of the Act, while the active GR references the 2015 Amendment.",
+          "recommendation": "Update the draft to reference the latest amended version of the Act.",
+          "severity": "Critical",
+          "confidence": 0.95
+        }
+      ]
+    },
+    "Department Ownership Conflict": {
+      "keywords": ["department", "ministry", "nodal", "विभाग", "नोडल"],
+      "rules": [
+        {
+          "name": "Nodal Department Discrepancy",
+          "draft_contains": ["Higher and Technical Education", "उच्च व तंत्र शिक्षण"],
+          "match_contains": ["School Education", "शालेय शिक्षण"],
+          "reason": "Draft claims Higher & Technical Education department as the nodal authority, contradicting the reference GR naming School Education department.",
+          "recommendation": "Clarify the department jurisdiction with GAD circulars.",
+          "severity": "High",
+          "confidence": 0.90
+        }
+      ]
+    }
+  }
+}

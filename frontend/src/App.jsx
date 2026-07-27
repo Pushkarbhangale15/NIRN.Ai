@@ -7,6 +7,7 @@ import Home from "./pages/Home.jsx";
 import Analyze from "./pages/Analyze.jsx";
 import Search from "./pages/Search.jsx";
 import Copilot from "./pages/Copilot.jsx";
+import Conflicts from "./pages/Conflicts.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
 import { useEffect } from "react";
 
@@ -49,6 +50,9 @@ function Navbar() {
           </NavLink>
           <NavLink to="/chat" className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_chat')}
+          </NavLink>
+          <NavLink to="/conflicts" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_conflicts')}
           </NavLink>
         </div>
 
@@ -151,6 +155,15 @@ export default function App() {
             element={
               <PageWrapper>
                 <Copilot defaultTab="chat" />
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/conflicts"
+            element={
+              <PageWrapper>
+                <Conflicts />
               </PageWrapper>
             }
           />
