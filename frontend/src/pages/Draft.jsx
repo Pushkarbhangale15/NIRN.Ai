@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 
@@ -27,8 +27,15 @@ export default function Draft() {
 
   // Track user edits to the GR body text
   const [editedBodyText, setEditedBodyText] = useState("");
-  // Whether the user has made edits since the last analysis
+  
+  // Track save status: 'idle' | 'saving' | 'saved'
+  const [saveStatus, setSaveStatus] = useState("idle");
+
+  // Whether the user has made edits since the last save
   const [hasUnanalyzedEdits, setHasUnanalyzedEdits] = useState(false);
+
+  // Whether the user has edited the text such that a full analysis (conflicts, etc.) is needed
+  const [needFullReAnalysis, setNeedFullReAnalysis] = useState(false);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -38,6 +45,7 @@ export default function Draft() {
     setAnalysisReport(null);
     setEditedBodyText("");
     setHasUnanalyzedEdits(false);
+    setNeedFullReAnalysis(false);
     setCurrentStage(1);
 
     try {
@@ -69,15 +77,78 @@ export default function Draft() {
     }
   };
 
-  // Called by DraftViewer whenever the user edits the textarea
+  // Called by DraftViewer whenever the user edits the editor
   const handleTextChange = useCallback((newText) => {
     setEditedBodyText(newText);
-    if (draftResult && newText !== draftResult.body_text) {
+    if (draftResult && newText.trim() !== draftResult.body_text.trim()) {
       setHasUnanalyzedEdits(true);
+      setNeedFullReAnalysis(true);
     } else {
       setHasUnanalyzedEdits(false);
     }
   }, [draftResult]);
+
+  // Handle Save (Manual or Debounced Auto-Save)
+  const handleSave = async () => {
+    if (!draftResult?.draft_id) return;
+    setSaveStatus("saving");
+    try {
+      // 1. Push edited text to backend
+      await api.patchDraft(draftResult.draft_id, editedBodyText);
+
+      // 2. Automatically re-run the template check against the edited plain text
+      const templateIssues = await api.runTemplateCheck(draftResult.draft_id);
+
+      // 3. Update the analysis report's template issues and summary status
+      setAnalysisReport((prev) => {
+        if (!prev) return null;
+        const errors = templateIssues.filter((i) => i.severity === "error" || i.severity === "ERROR").length;
+        const warnings = templateIssues.filter((i) => i.severity === "warning" || i.severity === "WARNING").length;
+
+        // Check if there are existing conflicts
+        const conflictsCount = prev.conflicts?.length || 0;
+        const unresolvedCount = prev.summary?.unresolved_reference_count || 0;
+
+        let overall = "clean";
+        if (errors > 0 || conflictsCount > 0) {
+          overall = "blocked";
+        } else if (warnings > 0 || unresolvedCount > 0) {
+          overall = "needs_review";
+        }
+
+        return {
+          ...prev,
+          template_issues: templateIssues,
+          summary: {
+            ...prev.summary,
+            template_error_count: errors,
+            template_warning_count: warnings,
+            overall_status: overall,
+          },
+        };
+      });
+
+      // 4. Update local draftResult text
+      setDraftResult((prev) => (prev ? { ...prev, body_text: editedBodyText } : prev));
+      setHasUnanalyzedEdits(false);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (err) {
+      setError(err.message || "Failed to save edits.");
+      setSaveStatus("idle");
+    }
+  };
+
+  // Auto-Save Debounce Effect (2 Seconds of Inactivity)
+  useEffect(() => {
+    if (!hasUnanalyzedEdits || !draftResult?.draft_id) return;
+
+    const timer = setTimeout(() => {
+      handleSave();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [editedBodyText, hasUnanalyzedEdits, draftResult?.draft_id]);
 
   // Re-analyze using edited text: PATCH the draft first, then re-run analysis
   const handleReAnalyze = async () => {
@@ -94,9 +165,10 @@ export default function Draft() {
       const report = await api.runFullAnalysis(draftResult.draft_id);
       setAnalysisReport(report);
       setHasUnanalyzedEdits(false);
+      setNeedFullReAnalysis(false);
 
       // 3. Update draftResult to reflect the new body text
-      setDraftResult((prev) => prev ? { ...prev, body_text: editedBodyText } : prev);
+      setDraftResult((prev) => (prev ? { ...prev, body_text: editedBodyText } : prev));
     } catch (err) {
       setError(err.message || "Re-analysis failed.");
     } finally {
@@ -113,18 +185,20 @@ export default function Draft() {
     setError("");
     setEditedBodyText("");
     setHasUnanalyzedEdits(false);
+    setNeedFullReAnalysis(false);
+    setSaveStatus("idle");
   };
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
   const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
 
-  const ownDeptConflicts = allConflicts.filter(c => {
+  const ownDeptConflicts = allConflicts.filter((c) => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft === normExist;
   });
 
-  const crossDeptConflicts = allConflicts.filter(c => {
+  const crossDeptConflicts = allConflicts.filter((c) => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft !== normExist;
   });
@@ -158,8 +232,8 @@ export default function Draft() {
             onReset={handleReset}
           />
 
-          {/* Re-analyze banner — shown when user has made edits */}
-          {hasUnanalyzedEdits && draftResult && (
+          {/* Re-analyze banner — shown when user has made edits that require full analysis */}
+          {needFullReAnalysis && draftResult && (
             <div style={{
               background: '#fffbeb',
               border: '1px solid #f59e0b',
@@ -176,10 +250,11 @@ export default function Draft() {
                 <span style={{ fontSize: '18px' }}>✏️</span>
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '13px', color: '#92400e' }}>
-                    You have unsaved edits
+                    Document has been edited
                   </div>
                   <div style={{ fontSize: '12px', color: '#b45309' }}>
-                    Click "Re-Analyze Edits" to run template & conflict checks against your updated text.
+                    {hasUnanalyzedEdits ? "Changes will auto-save shortly. " : "Edits are auto-saved. "}
+                    Click "Re-Analyze Edits" to re-run full policy conflict checks on the updated text.
                   </div>
                 </div>
               </div>
@@ -235,6 +310,8 @@ export default function Draft() {
                 draft={draftResult}
                 loading={loading}
                 onTextChange={handleTextChange}
+                saveStatus={saveStatus}
+                onManualSave={handleSave}
               />
             </div>
 
@@ -264,7 +341,7 @@ export default function Draft() {
                   { id: "references", label: "🔗 References" },
                   { id: "terminology", label: "🔤 Terminology" },
                   { id: "suggestions", label: "💡 Suggestions" }
-                ].map(tab => {
+                ].map((tab) => {
                   const isActive = activeReviewTab === tab.id;
                   return (
                     <button

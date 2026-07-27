@@ -1,22 +1,79 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Underline } from '@tiptap/extension-underline';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { Color } from '@tiptap/extension-color';
+
+// ─── Custom Font Size Extension ─────────────────────────────────────────────
+const FontSize = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: element => element.style.fontSize,
+        renderHTML: attributes => {
+          if (!attributes.fontSize) return {};
+          return { style: `font-size: ${attributes.fontSize}` };
+        }
+      }
+    };
+  }
+});
 
 // ─── Print-only CSS injected once into the document head ────────────────────
 const PRINT_STYLE = `
 @media print {
-  body > * { display: none !important; }
-  #gr-print-document { display: block !important; }
-  #gr-print-document {
-    position: fixed;
-    top: 0; left: 0;
+  body * {
+    visibility: hidden;
+  }
+  #gr-print-root, #gr-print-root * {
+    visibility: visible;
+  }
+  #gr-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
-    height: auto;
+    margin: 0;
+    padding: 0;
     background: #fff;
-    z-index: 99999;
-    padding: 40px 60px;
-    font-family: 'Times New Roman', Georgia, serif;
-    font-size: 12pt;
     color: #000;
-    line-height: 1.7;
+  }
+  .print-footer-notice {
+    display: block !important;
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 9pt;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+    visibility: visible;
+  }
+  .print-footer-notice * {
+    visibility: visible;
+  }
+  /* Hide Tiptap toolbar and save state indicator on print */
+  .tiptap-toolbar-wrapper, .tiptap-save-badge, .edit-hint-banner {
+    display: none !important;
+  }
+  .tiptap-editor-container {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+}
+@media screen {
+  .print-footer-notice {
+    display: none;
   }
 }
 `;
@@ -35,375 +92,442 @@ function detectLanguage(text = '') {
   return devanagariCount > 20 ? 'mr' : 'en';
 }
 
-// ─── Parses the GR body into structured sections for display ────────────────
-function parseGRSections(text = '', lang = 'en') {
-  const lines = text.split('\n');
-  const sections = [];
-  let buffer = [];
-  let currentType = 'body';
+// ─── Convert Plain Text GR to Semantic HTML ─────────────────────────────────
+export function convertGRToHTML(plainText, language) {
+  if (!plainText) return '';
+  const lines = plainText.split('\n');
+  let html = '';
+  let inList = false;
+  let listType = null; // 'ol' or 'ul'
 
-  const isHeader = (line) => {
-    const t = line.trim();
-    if (!t) return false;
-    if (/महाराष्ट्र\s*शासन/i.test(t)) return true;
-    if (/government\s+of\s+maharashtra/i.test(t)) return true;
-    if (/विभाग/i.test(t) && t.length < 80) return true;
-    if (/department/i.test(t) && t.length < 80) return true;
-    if (/शासन\s*परिपत्रक\s*क्रमांक/i.test(t)) return true;
-    if (/government\s+(resolution|circular)\s+no/i.test(t)) return true;
-    if (/क्रमांक\s*:/i.test(t)) return true;
-    if (/हुतात्मा|मादाम\s*कामा|मंत्रालय\s*मुंबई/i.test(t)) return true;
-    if (/mantralaya|hutatma\s+rajguru/i.test(t)) return true;
-    if (/दिनांक\s*:|dated?\s*:/i.test(t)) return true;
-    return false;
-  };
+  // States: 'header', 'read', 'preamble', 'body', 'closing', 'distribution'
+  let state = 'header';
 
-  const isReadSection = (line) =>
-    /^\s*वाचा\s*:/i.test(line) || /^\s*read\s*:/i.test(line);
-  const isPreambleSection = (line) =>
-    /^\s*शासन\s*परिपत्रक\s*:/i.test(line) ||
-    /^\s*शासन\s*निर्णय\s*:/i.test(line) ||
-    /^\s*government\s+resolution\s*:/i.test(line);
-  const isClosing = (line) =>
-    /महाराष्ट्राचे\s+राज्यपाल/i.test(line) ||
-    /by\s+order\s+and\s+in\s+the\s+name\s+of\s+the\s+governor/i.test(line);
-  const isDistribution = (line) =>
-    /^\s*प्रत\s*[,:]/.test(line) || /^\s*copy\s+to\s*[,:]/i.test(line);
+  const isReadHeader = (t) => /^\s*(वाचा|read)\s*:/i.test(t);
+  const isPreambleHeader = (t) => /^\s*(शासन\s*परिपत्रक|शासन\s*निर्णय|government\s+resolution)\s*:/i.test(t);
+  const isClosing = (t) => /महाराष्ट्राचे\s+राज्यपाल/i.test(t) || /by\s+order\s+and\s+in\s+the\s+name\s+of\s+the\s+governor/i.test(t);
+  const isDistributionHeader = (t) => /^\s*(प्रत|copy\s+to)\s*[,:]/i.test(t);
 
-  const flush = (type) => {
-    if (buffer.length > 0) {
-      sections.push({ type: currentType, lines: [...buffer] });
-      buffer = [];
+  const closeList = () => {
+    if (inList) {
+      html += `</${listType}>`;
+      inList = false;
+      listType = null;
     }
-    currentType = type;
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmed = line.trim();
 
-    if (isHeader(line)) {
-      if (currentType !== 'header') flush('header');
-      buffer.push(line);
-    } else if (isReadSection(line)) {
-      flush('read');
-      buffer.push(line);
-    } else if (isPreambleSection(line)) {
-      flush('preamble');
-      buffer.push(line);
-    } else if (isClosing(line)) {
-      flush('closing');
-      buffer.push(line);
-    } else if (isDistribution(line)) {
-      flush('distribution');
-      buffer.push(line);
-    } else {
-      if (currentType === 'header' && line.trim() !== '') {
-        // If we're past the header section markers, switch to body
-        if (!isHeader(line)) {
-          flush('body');
+    if (!trimmed) {
+      closeList();
+      html += '<p></p>';
+      continue;
+    }
+
+    // Identify headings and perform state transitions
+    if (isReadHeader(trimmed)) {
+      closeList();
+      state = 'read';
+      html += `<p><strong><u>${trimmed}</u></strong></p>`;
+      continue;
+    } else if (isPreambleHeader(trimmed)) {
+      closeList();
+      state = 'preamble';
+      html += `<p><strong><u>${trimmed}</u></strong></p>`;
+      continue;
+    } else if (isClosing(trimmed)) {
+      closeList();
+      state = 'closing';
+      html += `<p style="text-align: right"><strong>${trimmed}</strong></p>`;
+      continue;
+    } else if (isDistributionHeader(trimmed)) {
+      closeList();
+      state = 'distribution';
+      html += `<p><strong><u>${trimmed}</u></strong></p>`;
+      continue;
+    }
+
+    // Process line based on active state
+    if (state === 'header') {
+      html += `<p style="text-align: center"><strong>${trimmed}</strong></p>`;
+    } else if (state === 'read') {
+      const listMatch = trimmed.match(/^([०-९\d]+[.)]|\*|-)\s+(.*)/);
+      if (listMatch) {
+        if (!inList) {
+          inList = true;
+          listType = (listMatch[1] === '*' || listMatch[1] === '-') ? 'ul' : 'ol';
+          const listStyle = listType === 'ol' ? (language === 'mr' ? 'style="list-style-type: devanagari"' : '') : '';
+          html += `<${listType} ${listStyle}>`;
         }
+        html += `<li>${listMatch[2]}</li>`;
+      } else {
+        closeList();
+        html += `<p style="padding-left: 24px">${trimmed}</p>`;
       }
-      buffer.push(line);
+    } else if (state === 'preamble') {
+      const clauseMatch = trimmed.match(/^([०-९\d]+[.)])\s+(.*)/);
+      if (clauseMatch) {
+        state = 'body';
+        inList = true;
+        listType = 'ol';
+        const listStyle = language === 'mr' ? 'style="list-style-type: devanagari"' : '';
+        html += `<ol ${listStyle}><li>${clauseMatch[2]}</li>`;
+      } else {
+        html += `<p style="text-indent: 2em; text-align: justify">${trimmed}</p>`;
+      }
+    } else if (state === 'body') {
+      const clauseMatch = trimmed.match(/^([०-९\d]+[.)])\s+(.*)/);
+      if (clauseMatch) {
+        if (!inList) {
+          inList = true;
+          listType = 'ol';
+          const listStyle = language === 'mr' ? 'style="list-style-type: devanagari"' : '';
+          html += `<ol ${listStyle}>`;
+        }
+        html += `<li>${clauseMatch[2]}</li>`;
+      } else {
+        closeList();
+        html += `<p style="text-align: justify">${trimmed}</p>`;
+      }
+    } else if (state === 'closing') {
+      // Name & designation lines following closing statement
+      html += `<p style="text-align: right">${trimmed}</p>`;
+    } else if (state === 'distribution') {
+      const listMatch = trimmed.match(/^([०-९\d]+[.)]|\*|-)\s+(.*)/);
+      if (listMatch) {
+        if (!inList) {
+          inList = true;
+          listType = (listMatch[1] === '*' || listMatch[1] === '-') ? 'ul' : 'ol';
+          const listStyle = listType === 'ol' ? (language === 'mr' ? 'style="list-style-type: devanagari"' : '') : '';
+          html += `<${listType} ${listStyle}>`;
+        }
+        html += `<li>${listMatch[2]}</li>`;
+      } else {
+        closeList();
+        html += `<p style="padding-left: 24px">${trimmed}</p>`;
+      }
     }
   }
-  if (buffer.length > 0) {
-    sections.push({ type: currentType, lines: buffer });
-  }
 
-  return sections;
+  closeList();
+  return html;
 }
 
-// ─── Renders the parsed sections as an official-looking document ─────────────
-function OfficialDocumentView({ text }) {
-  const lang = detectLanguage(text);
-  const sections = parseGRSections(text, lang);
+// ─── Convert HTML to Clean Plain Text GR ─────────────────────────────────────
+export function convertHTMLToGRText(html, language) {
+  if (!html) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const resultLines = [];
+
+  const devanagariNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  const toDevanagari = (num) => {
+    let s = num.toString();
+    if (s.length < 2) s = '0' + s;
+    return s.split('').map(d => devanagariNumerals[parseInt(d)] || d).join('');
+  };
+
+  const traverse = (node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') {
+        const text = node.textContent.trim();
+        resultLines.push(text);
+      } else if (tag === 'ol') {
+        const items = node.children;
+        let count = 1;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].tagName.toLowerCase() === 'li') {
+            const numStr = language === 'mr' ? toDevanagari(count) : count.toString().padStart(2, '0');
+            resultLines.push(`${numStr}. ${items[i].textContent.trim()}`);
+            count++;
+          }
+        }
+      } else if (tag === 'ul') {
+        const items = node.children;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].tagName.toLowerCase() === 'li') {
+            resultLines.push(`- ${items[i].textContent.trim()}`);
+          }
+        }
+      } else {
+        for (let i = 0; i < node.childNodes.length; i++) {
+          traverse(node.childNodes[i]);
+        }
+      }
+    }
+  };
+
+  const bodyChildren = doc.body.childNodes;
+  for (let i = 0; i < bodyChildren.length; i++) {
+    const child = bodyChildren[i];
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      traverse(child);
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent.trim();
+      if (text) resultLines.push(text);
+    }
+  }
+
+  return resultLines.join('\n');
+}
+
+// ─── Tiptap Toolbar Custom Component ─────────────────────────────────────────
+function TiptapToolbar({ editor }) {
+  if (!editor) return null;
+
+  const getActiveFontSize = () => {
+    const attrs = editor.getAttributes('textStyle');
+    return attrs.fontSize || 'normal';
+  };
+
+  const handleFontSizeChange = (e) => {
+    const size = e.target.value;
+    if (size === 'normal') {
+      editor.chain().focus().updateAttributes('textStyle', { fontSize: null }).run();
+    } else {
+      editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+    }
+  };
+
+  const getActiveHeading = () => {
+    if (editor.isActive('heading', { level: 1 })) return '1';
+    if (editor.isActive('heading', { level: 2 })) return '2';
+    return 'normal';
+  };
+
+  const handleHeadingChange = (e) => {
+    const val = e.target.value;
+    if (val === 'normal') {
+      editor.chain().focus().setParagraph().run();
+    } else {
+      editor.chain().focus().toggleHeading({ level: parseInt(val, 10) }).run();
+    }
+  };
 
   return (
-    <div style={{
-      fontFamily: "'Times New Roman', Georgia, 'Noto Serif Devanagari', serif",
-      fontSize: '14px',
-      lineHeight: 1.8,
-      color: '#1a1a1a',
-      position: 'relative',
+    <div className="tiptap-toolbar-wrapper" style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '8px 16px',
+      background: '#f8f9fa',
+      borderBottom: '1px solid #d9d4cb',
     }}>
-      {/* Subtle DRAFT watermark */}
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%) rotate(-35deg)',
-        fontSize: '80px',
-        fontWeight: 900,
-        color: 'rgba(0,0,0,0.04)',
-        letterSpacing: '8px',
-        pointerEvents: 'none',
-        userSelect: 'none',
-        fontFamily: 'Georgia, serif',
-        whiteSpace: 'nowrap',
-        zIndex: 0,
-      }}>
-        DRAFT
-      </div>
+      {/* Bold */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        disabled={!editor.can().chain().focus().toggleBold().run()}
+        className={editor.isActive('bold') ? 'is-active' : ''}
+        style={getButtonStyle(editor.isActive('bold'))}
+      >
+        <strong>B</strong>
+      </button>
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        {sections.map((section, idx) => {
-          if (section.type === 'header') {
-            return (
-              <div key={idx} style={{ textAlign: 'center', marginBottom: '20px' }}>
-                {section.lines.map((line, li) => {
-                  const t = line.trim();
-                  if (!t) return <div key={li} style={{ height: '6px' }} />;
+      {/* Italic */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        disabled={!editor.can().chain().focus().toggleItalic().run()}
+        className={editor.isActive('italic') ? 'is-active' : ''}
+        style={getButtonStyle(editor.isActive('italic'))}
+      >
+        <em>I</em>
+      </button>
 
-                  const isMahShasan = /महाराष्ट्र\s*शासन/i.test(t) || /government\s+of\s+maharashtra/i.test(t);
-                  const isDept = (/विभाग/i.test(t) || /department/i.test(t)) && t.length < 100;
-                  const isGRNum = /क्रमांक|GR\s*No|Resolution\s+No/i.test(t);
-                  const isAddr = /हुतात्मा|मादाम|मंत्रालय\s*मुंबई|mantralaya|hutatma/i.test(t);
-                  const isDate = /दिनांक|dated?/i.test(t);
+      {/* Underline */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={editor.isActive('underline') ? 'is-active' : ''}
+        style={getButtonStyle(editor.isActive('underline'))}
+      >
+        <u>U</u>
+      </button>
 
-                  if (isMahShasan) return (
-                    <div key={li} style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                      {t}
-                    </div>
-                  );
-                  if (isDept) return (
-                    <div key={li} style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '2px' }}>
-                      {t}
-                    </div>
-                  );
-                  if (isGRNum) return (
-                    <div key={li} style={{ fontSize: '13px', marginTop: '6px', color: '#333' }}>
-                      {t}
-                    </div>
-                  );
-                  if (isAddr) return (
-                    <div key={li} style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>
-                      {t}
-                    </div>
-                  );
-                  if (isDate) return (
-                    <div key={li} style={{ fontSize: '13px', marginTop: '4px', fontWeight: '600' }}>
-                      {t}
-                    </div>
-                  );
-                  return <div key={li} style={{ fontSize: '13px' }}>{t}</div>;
-                })}
-                {/* Horizontal rule after header block */}
-                <div style={{ borderBottom: '2px double #333', marginTop: '16px', marginBottom: '4px' }} />
-              </div>
-            );
-          }
+      <span style={{ width: '1px', height: '20px', background: '#d9d4cb', margin: '0 4px' }} />
 
-          if (section.type === 'read') {
-            return (
-              <div key={idx} style={{ marginBottom: '16px' }}>
-                {section.lines.map((line, li) => {
-                  const t = line.trim();
-                  if (!t) return <div key={li} style={{ height: '4px' }} />;
-                  const isHeading = /^\s*(वाचा|read)\s*:/i.test(line);
-                  if (isHeading) return (
-                    <div key={li} style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '6px' }}>
-                      {t}
-                    </div>
-                  );
-                  return (
-                    <div key={li} style={{ paddingLeft: '24px', textAlign: 'left' }}>
-                      {t}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }
+      {/* Heading Selector */}
+      <select
+        value={getActiveHeading()}
+        onChange={handleHeadingChange}
+        style={getSelectStyle()}
+      >
+        <option value="normal">Normal Text</option>
+        <option value="1">Heading 1</option>
+        <option value="2">Heading 2</option>
+      </select>
 
-          if (section.type === 'preamble') {
-            return (
-              <div key={idx} style={{ marginBottom: '16px' }}>
-                {section.lines.map((line, li) => {
-                  const t = line.trim();
-                  if (!t) return <div key={li} style={{ height: '8px' }} />;
-                  const isHeading = /^\s*(शासन\s*परिपत्रक|शासन\s*निर्णय|government\s+resolution)\s*:/i.test(line);
-                  if (isHeading) return (
-                    <div key={li} style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '8px' }}>
-                      {t}
-                    </div>
-                  );
-                  return (
-                    <p key={li} style={{ margin: '0 0 8px 0', textAlign: 'justify', textIndent: '2em' }}>
-                      {t}
-                    </p>
-                  );
-                })}
-              </div>
-            );
-          }
+      {/* Font Size Selector */}
+      <select
+        value={getActiveFontSize()}
+        onChange={handleFontSizeChange}
+        style={getSelectStyle()}
+      >
+        <option value="normal">Font Size: Normal</option>
+        <option value="12px">Font Size: Small</option>
+        <option value="20px">Font Size: Large</option>
+        <option value="28px">Font Size: Huge</option>
+      </select>
 
-          if (section.type === 'closing') {
-            return (
-              <div key={idx} style={{ marginTop: '24px', marginBottom: '16px' }}>
-                {section.lines.map((line, li) => {
-                  const t = line.trim();
-                  if (!t) return <div key={li} style={{ height: '6px' }} />;
-                  return <div key={li} style={{ fontStyle: 'normal' }}>{t}</div>;
-                })}
-              </div>
-            );
-          }
+      <span style={{ width: '1px', height: '20px', background: '#d9d4cb', margin: '0 4px' }} />
 
-          if (section.type === 'distribution') {
-            return (
-              <div key={idx} style={{ marginTop: '24px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
-                {section.lines.map((line, li) => {
-                  const t = line.trim();
-                  if (!t) return <div key={li} style={{ height: '4px' }} />;
-                  const isHeading = /^\s*(प्रत|copy\s+to)\s*[,:]/i.test(line);
-                  if (isHeading) return (
-                    <div key={li} style={{ fontWeight: 'bold', marginBottom: '4px' }}>{t}</div>
-                  );
-                  return <div key={li} style={{ paddingLeft: '24px' }}>{t}</div>;
-                })}
-              </div>
-            );
-          }
+      {/* Alignments */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        style={getButtonStyle(editor.isActive({ textAlign: 'left' }))}
+      >
+        Align Left
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+        style={getButtonStyle(editor.isActive({ textAlign: 'center' }))}
+      >
+        Align Center
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+        style={getButtonStyle(editor.isActive({ textAlign: 'right' }))}
+      >
+        Align Right
+      </button>
 
-          // Default body section
-          return (
-            <div key={idx} style={{ marginBottom: '12px' }}>
-              {section.lines.map((line, li) => {
-                const t = line.trim();
-                if (!t) return <div key={li} style={{ height: '8px' }} />;
+      <span style={{ width: '1px', height: '20px', background: '#d9d4cb', margin: '0 4px' }} />
 
-                // Operative clause (starts with 0X. or X.) — bold number
-                const clauseMatch = t.match(/^(0?[0-9]+|[०-९]+)[.)]\s+(.*)/);
-                if (clauseMatch) {
-                  return (
-                    <div key={li} style={{ display: 'flex', gap: '8px', marginBottom: '8px', paddingLeft: '8px' }}>
-                      <span style={{ fontWeight: 'bold', minWidth: '28px', flexShrink: 0 }}>
-                        {clauseMatch[1]}.
-                      </span>
-                      <span style={{ textAlign: 'justify' }}>{clauseMatch[2]}</span>
-                    </div>
-                  );
-                }
+      {/* Lists */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        style={getButtonStyle(editor.isActive('orderedList'))}
+      >
+        Numbered List
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        style={getButtonStyle(editor.isActive('bulletList'))}
+      >
+        Bullet List
+      </button>
 
-                return (
-                  <p key={li} style={{ margin: '0 0 6px 0', textAlign: 'justify', textIndent: '1.5em' }}>
-                    {t}
-                  </p>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+      <span style={{ width: '1px', height: '20px', background: '#d9d4cb', margin: '0 4px' }} />
+
+      {/* Undo/Redo */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().chain().focus().undo().run()}
+        style={getButtonStyle(false)}
+      >
+        Undo
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().chain().focus().redo().run()}
+        style={getButtonStyle(false)}
+      >
+        Redo
+      </button>
     </div>
   );
 }
 
-// ─── Main DraftViewer component ───────────────────────────────────────────────
-export default function DraftViewer({ draft, loading, onTextChange }) {
-  const [copied, setCopied] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedText, setEditedText] = useState('');
-  const textareaRef = useRef(null);
+function getButtonStyle(isActive) {
+  return {
+    background: isActive ? '#2b4bc8' : '#fff',
+    color: isActive ? '#fff' : '#1d1c1a',
+    border: '1px solid #d9d4cb',
+    padding: '4px 10px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '600',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.1s',
+  };
+}
 
-  // Inject print CSS once
-  useEffect(() => { injectPrintStyle(); }, []);
+function getSelectStyle() {
+  return {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: '1px solid #d9d4cb',
+    background: '#fff',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#1d1c1a',
+    cursor: 'pointer',
+  };
+}
 
-  // Sync editedText whenever a new draft arrives
+// ─── Main DraftViewer Component ──────────────────────────────────────────────
+export default function DraftViewer({ draft, loading, onTextChange, saveStatus, onManualSave }) {
+  const lang = draft ? detectLanguage(draft.body_text) : 'en';
+  const isFirstRender = useRef(true);
+
+  // Inject print styles on mount
   useEffect(() => {
-    if (draft?.body_text) {
-      setEditedText(draft.body_text);
-      setIsEditing(false);
-    }
-  }, [draft?.body_text]);
+    injectPrintStyle();
+  }, []);
 
-  // Auto-resize textarea
+  // Initialize Tiptap Editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2],
+        },
+      }),
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      FontFamily,
+      Color,
+      FontSize,
+    ],
+    content: draft ? convertGRToHTML(draft.body_text, lang) : '',
+    editorProps: {
+      attributes: {
+        class: `ProseMirror ${lang === 'mr' ? 'ProseMirror-marathi' : 'ProseMirror-english'}`,
+        style: 'outline: none; min-height: 600px;',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const plainText = convertHTMLToGRText(html, lang);
+      if (onTextChange) {
+        onTextChange(plainText);
+      }
+    },
+  });
+
+  // Sync content when draft.body_text updates externally
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-      textareaRef.current.focus();
+    if (editor && draft?.body_text) {
+      const currentHTML = editor.getHTML();
+      const currentPlain = convertHTMLToGRText(currentHTML, lang);
+      if (currentPlain.trim() !== draft.body_text.trim() || isFirstRender.current) {
+        const htmlContent = convertGRToHTML(draft.body_text, lang);
+        editor.commands.setContent(htmlContent);
+        isFirstRender.current = false;
+      }
     }
-  }, [isEditing]);
-
-  const handleTextChange = (e) => {
-    setEditedText(e.target.value);
-    // Auto-resize
-    e.target.style.height = 'auto';
-    e.target.style.height = e.target.scrollHeight + 'px';
-    // Notify parent
-    if (onTextChange) onTextChange(e.target.value);
-  };
-
-  const handleToggleEdit = () => {
-    if (isEditing) {
-      // Switching to view mode — notify parent of final text
-      if (onTextChange) onTextChange(editedText);
-    }
-    setIsEditing((prev) => !prev);
-  };
-
-  const displayText = editedText || draft?.body_text || '';
-
-  const handleCopy = () => {
-    if (!displayText) return;
-    navigator.clipboard.writeText(displayText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const handleDownloadTxt = () => {
-    if (!displayText) return;
-    const blob = new Blob([displayText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `GR_Draft_${draft?.gr_id || draft?.draft_id || 'NIRN'}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  }, [draft?.body_text, editor, lang]);
 
   const handlePrint = () => {
-    if (!displayText) return;
-    const lang = detectLanguage(displayText);
-    const printWin = window.open('', '_blank');
-    printWin.document.write(`
-      <html>
-        <head>
-          <title>${draft?.title || 'Government Resolution'}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Devanagari:wght@400;700&display=swap');
-            body {
-              font-family: 'Noto Serif Devanagari', 'Times New Roman', Georgia, serif;
-              padding: 60px 70px;
-              line-height: 1.8;
-              color: #000;
-              font-size: 12pt;
-            }
-            .gr-header { text-align: center; margin-bottom: 24px; }
-            .gr-title { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
-            .gr-dept { font-size: 13pt; font-weight: bold; margin: 4px 0; }
-            .gr-grnum { font-size: 11pt; margin-top: 6px; }
-            .gr-addr { font-size: 10pt; color: #444; margin-top: 4px; }
-            .gr-date { font-size: 11pt; font-weight: 600; margin-top: 4px; }
-            hr.header-rule { border: none; border-bottom: 2px double #000; margin: 16px 0 8px; }
-            .section-heading { font-weight: bold; text-decoration: underline; margin-bottom: 8px; }
-            .gr-body { white-space: pre-wrap; text-align: justify; }
-            .clause { display: flex; gap: 8px; margin-bottom: 8px; }
-            .clause-num { font-weight: bold; min-width: 30px; }
-            .closing { margin-top: 24px; }
-            .distribution { margin-top: 24px; padding-top: 12px; border-top: 1px solid #ccc; }
-          </style>
-        </head>
-        <body>
-          <div class="gr-body">${displayText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
-    printWin.focus();
-    setTimeout(() => { printWin.print(); }, 600);
+    window.print();
   };
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -460,9 +584,8 @@ export default function DraftViewer({ draft, loading, onTextChange }) {
     );
   }
 
-  // ── Main document view ─────────────────────────────────────────────────────
   return (
-    <div style={{
+    <div id="gr-print-root" style={{
       background: '#fff',
       border: '1px solid #d1d5db',
       borderRadius: '4px',
@@ -470,11 +593,10 @@ export default function DraftViewer({ draft, loading, onTextChange }) {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      // Simulate paper with subtle inner shadow
-      backgroundImage: 'linear-gradient(to bottom, #fafafa 0%, #fff 20px)',
+      position: 'relative',
     }}>
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div style={{
+      {/* ── Top Header Toolbar Info ────────────────────────────────────────── */}
+      <div className="tiptap-toolbar-wrapper" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -501,190 +623,112 @@ export default function DraftViewer({ draft, loading, onTextChange }) {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          {/* Edit/Done toggle */}
-          <button
-            id="gr-edit-toggle"
-            type="button"
-            onClick={handleToggleEdit}
-            style={{
-              padding: '5px 12px',
-              fontSize: '12px',
-              fontWeight: '600',
-              background: isEditing ? '#059669' : '#fff',
-              color: isEditing ? '#fff' : '#374151',
-              border: `1px solid ${isEditing ? '#059669' : '#d1d5db'}`,
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s',
-            }}
-          >
-            {isEditing ? '✓ Done Editing' : '✏️ Edit'}
-          </button>
-          <button
-            type="button"
-            onClick={handleCopy}
-            style={{
-              padding: '5px 10px',
-              fontSize: '12px',
-              fontWeight: '600',
-              background: '#fff',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            {copied ? '✓ Copied' : '📋 Copy'}
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadTxt}
-            style={{
-              padding: '5px 10px',
-              fontSize: '12px',
-              fontWeight: '600',
-              background: '#fff',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            ⬇ .txt
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onManualSave && (
+            <button
+              type="button"
+              onClick={onManualSave}
+              style={{
+                padding: '5px 12px',
+                fontSize: '12px',
+                fontWeight: '600',
+                background: '#059669',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              💾 Save
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handlePrint}
             style={{
-              padding: '5px 10px',
+              padding: '5px 12px',
               fontSize: '12px',
               fontWeight: '600',
               background: '#dc2626',
-              color: '#fff',
-              border: '1px solid #dc2626',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            🖨️ Print
-          </button>
-        </div>
-      </div>
-
-      {/* ── Edit hint banner (shown when not editing) ────────────────────── */}
-      {!isEditing && (
-        <div
-          onClick={handleToggleEdit}
-          style={{
-            padding: '5px 16px',
-            background: '#fffbeb',
-            borderBottom: '1px solid #fcd34d',
-            fontSize: '12px',
-            color: '#92400e',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            userSelect: 'none',
-          }}
-        >
-          ✏️ <span>Click to edit this document — any changes will be used in re-analysis.</span>
-        </div>
-      )}
-
-      {/* ── Document content area ────────────────────────────────────────── */}
-      <div
-        id="gr-print-document"
-        style={{
-          padding: '40px 48px',
-          maxHeight: '720px',
-          overflowY: 'auto',
-          background: '#fff',
-          // Subtle page-edge shadow on the sides
-          boxShadow: 'inset 6px 0 12px -6px rgba(0,0,0,0.04), inset -6px 0 12px -6px rgba(0,0,0,0.04)',
-        }}
-      >
-        {isEditing ? (
-          /* ── Editable textarea ──────────────────────────────────────────── */
-          <div style={{ position: 'relative' }}>
-            <div style={{
-              position: 'absolute',
-              top: '-28px',
-              left: 0,
-              fontSize: '11px',
-              color: '#059669',
-              fontWeight: '600',
-              letterSpacing: '0.3px',
-            }}>
-              ✏️ EDITING MODE — changes are tracked
-            </div>
-            <textarea
-              ref={textareaRef}
-              value={editedText}
-              onChange={handleTextChange}
-              spellCheck={false}
-              style={{
-                width: '100%',
-                minHeight: '600px',
-                fontFamily: "'Courier New', 'Courier', 'Noto Sans Mono', monospace",
-                fontSize: '13px',
-                lineHeight: 1.8,
-                color: '#1a1a1a',
-                border: '2px dashed #059669',
-                borderRadius: '4px',
-                padding: '16px',
-                resize: 'vertical',
-                outline: 'none',
-                background: '#f0fdf4',
-                boxSizing: 'border-box',
-                whiteSpace: 'pre',
-                overflowX: 'auto',
-              }}
-            />
-          </div>
-        ) : (
-          /* ── Official document view ─────────────────────────────────────── */
-          <OfficialDocumentView text={displayText} />
-        )}
-      </div>
-
-      {/* ── Edit mode footer ─────────────────────────────────────────────── */}
-      {isEditing && (
-        <div style={{
-          padding: '10px 16px',
-          background: '#f0fdf4',
-          borderTop: '1px solid #86efac',
-          fontSize: '12px',
-          color: '#166534',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <span>
-            {editedText.split('\n').length} lines · {editedText.length} characters
-          </span>
-          <button
-            type="button"
-            onClick={handleToggleEdit}
-            style={{
-              padding: '4px 14px',
-              fontSize: '12px',
-              fontWeight: '700',
-              background: '#059669',
               color: '#fff',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
             }}
           >
-            ✓ Done Editing
+            🖨️ Print Document
           </button>
         </div>
+      </div>
+
+      {/* ── Rich Text Toolbar ────────────────────────────────────────────── */}
+      <TiptapToolbar editor={editor} />
+
+      {/* ── Edit status badge ─────────────────────────────────────────────── */}
+      {saveStatus === 'saved' && (
+        <div className="tiptap-save-badge" style={{
+          position: 'absolute',
+          top: '90px',
+          right: '24px',
+          background: '#def7ec',
+          color: '#03543f',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          zIndex: 10,
+          border: '1px solid #bcf0da',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
+          Saved ✓
+        </div>
       )}
+      {saveStatus === 'saving' && (
+        <div className="tiptap-save-badge" style={{
+          position: 'absolute',
+          top: '90px',
+          right: '24px',
+          background: '#feecdc',
+          color: '#b45309',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          zIndex: 10,
+          border: '1px solid #fbd5b5',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
+          Saving...
+        </div>
+      )}
+
+      {/* ── Document container (A4 look) ─────────────────────────────────── */}
+      <div style={{
+        background: '#e9ecef',
+        padding: '30px 10px',
+        maxHeight: '720px',
+        overflowY: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+      }}>
+        <div className="tiptap-editor-container" style={{
+          background: '#ffffff',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          padding: '48px 56px',
+          width: '100%',
+          maxWidth: '780px',
+          minHeight: '800px',
+          boxSizing: 'border-box',
+        }}>
+          <EditorContent editor={editor} />
+        </div>
+      </div>
+
+      {/* ── Print footer notice (only shown in print mode) ───────────────── */}
+      <div className="print-footer-notice" style={{ display: 'none' }}>
+        <strong>Generated by NIRN.Ai | VJTI Mumbai</strong>
+      </div>
     </div>
   );
 }
