@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '../../LanguageContext.jsx';
+
+const IconLightbulb = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9 21h6v-1H9zm3-19a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2Z" />
+  </svg>
+);
 
 const EXAMPLE_PROMPTS = [
   "Policy on remote work and flexible hours for IT department staff",
@@ -54,14 +61,21 @@ export default function DraftInputCard({
   loading,
   onReset
 }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
 
+  const handleClear = () => {
+    if (window.confirm(t('draft_clear_confirm'))) {
+      onReset();
+    }
+  };
 
   return (
     <div style={{
       background: 'var(--paper)',
       border: '2px solid var(--ink)',
       borderRadius: '12px',
-      padding: '24px',
+      padding: '29px',
       boxShadow: '0 4px 0 var(--ink)',
       display: 'flex',
       flexDirection: 'column',
@@ -74,29 +88,28 @@ export default function DraftInputCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--ink)', paddingBottom: '14px' }}>
         <div>
           <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' }}>
-            Draft Brief & Parameters
+            {t('draft_brief_title')}
           </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
-            Describe the Government Resolution you need. NIRN.Ai will handle alignment, templates, and conflict checks.
+          <p style={{ margin: 0, fontSize: isMr ? '17px' : '15px', color: '#666' }}>
+            {t('draft_brief_desc')}
           </p>
         </div>
         {onReset && (
           <button
             type="button"
-            onClick={onReset}
+            onClick={handleClear}
+            className="btn-outline-warn"
             style={{
-              padding: '8px 16px',
-              background: '#fff',
-              color: 'var(--ink)',
-              border: '2px solid var(--ink)',
+              padding: '10px 18px',
+              background: 'transparent',
+              border: '2px solid var(--red)',
               borderRadius: '6px',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 0 var(--ink)'
+              fontWeight: 600,
+              fontSize: '14px',
+              cursor: 'pointer'
             }}
           >
-            Clear Fields
+            {t('draft_clear_fields')}
           </button>
         )}
       </div>
@@ -104,23 +117,23 @@ export default function DraftInputCard({
       {/* Main Form Fields Layout: Two Columns (Left: Textarea & Examples, Right: Parameters) */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '28px' }}>
         {/* Left Sub-Column: Textarea and Example Briefs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold' }}>
-              Describe the Resolution Brief
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: isMr ? '18px' : '16px', fontWeight: 700 }}>
+              {t('draft_describe_label')}
             </label>
             <textarea
               rows={4}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Issue a Government Resolution regarding financial assistance of ₹25,000 for university research labs..."
+              placeholder={t('draft_describe_placeholder')}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '14px',
                 border: '2px solid var(--ink)',
                 borderRadius: '8px',
                 fontFamily: 'inherit',
-                fontSize: '14px',
+                fontSize: isMr ? '18px' : '16px',
                 resize: 'none',
                 boxSizing: 'border-box'
               }}
@@ -128,31 +141,34 @@ export default function DraftInputCard({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '8px' }}>
-              Try Example Briefs:
+            <label style={{ display: 'block', fontSize: isMr ? '16px' : '14px', fontWeight: 700, color: '#666', marginBottom: '10px' }}>
+              {t('draft_try_examples')}
             </label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {EXAMPLE_PROMPTS.map((ex, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setPrompt(ex)}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
                     textAlign: 'left',
                     background: '#f9fafb',
                     border: '1px solid #d1d5db',
                     borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontSize: '12px',
+                    padding: '16px 20px',
+                    fontSize: isMr ? '17px' : '15px',
                     cursor: 'pointer',
                     color: 'var(--ink)',
                     transition: 'background 0.15s',
                     maxWidth: '32%'
                   }}
-                  onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
-                  onMouseLeave={(e) => e.target.style.background = '#f9fafb'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#f9fafb'}
                 >
-                  💡 {ex.slice(0, 45)}...
+                  <IconLightbulb /> {ex.slice(0, 45)}...
                 </button>
               ))}
             </div>
@@ -160,29 +176,30 @@ export default function DraftInputCard({
         </div>
 
         {/* Right Sub-Column: Language, Reference File, and Action Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', justifyContent: 'space-between' }}>
           {/* Department Selector */}
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>
-              Issuing Department
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: isMr ? '18px' : '16px', fontWeight: 700, marginBottom: '8px' }}>
+              {t('draft_issuing_dept')}
             </label>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 12px',
+                padding: '12px 14px',
                 borderRadius: '8px',
                 border: '2px solid var(--ink)',
                 background: '#fff',
-                color: 'var(--ink)',
+                color: department ? 'var(--ink)' : '#6b7280',
                 fontWeight: 'bold',
-                fontSize: '13px',
+                fontSize: isMr ? '17px' : '15px',
                 cursor: 'pointer',
                 outline: 'none',
                 boxShadow: '0 2px 0 var(--ink)'
               }}
             >
+              <option value="" disabled>{t('draft_select_dept')}</option>
               {DEPARTMENTS.map((dept) => (
                 <option key={dept.value} value={dept.value}>
                   {dept.label}
@@ -191,10 +208,16 @@ export default function DraftInputCard({
             </select>
           </div>
 
-          {/* Language Selector */}
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>
-              Output Language
+          {/* Language Selector — grouped tightly with its label to read as one control */}
+          <div style={{
+            border: '1.5px solid var(--line)',
+            borderRadius: '10px',
+            padding: '14px',
+            background: '#fbfaf7',
+            marginBottom: '24px'
+          }}>
+            <label style={{ display: 'block', fontSize: isMr ? '18px' : '16px', fontWeight: 700, marginBottom: '10px' }}>
+              {t('draft_output_lang')}
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -202,36 +225,36 @@ export default function DraftInputCard({
                 onClick={() => setLanguage('English')}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
+                  padding: '10px 12px',
                   borderRadius: '8px',
                   border: '2px solid var(--ink)',
                   background: language === 'English' ? 'var(--blue)' : '#fff',
                   color: language === 'English' ? '#fff' : 'var(--ink)',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontSize: isMr ? '16px' : '14px',
                   cursor: 'pointer',
                   boxShadow: language === 'English' ? '0 2px 0 var(--ink)' : 'none'
                 }}
               >
-                English
+                {t('draft_lang_english')}
               </button>
               <button
                 type="button"
                 onClick={() => setLanguage('Marathi')}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
+                  padding: '10px 12px',
                   borderRadius: '8px',
                   border: '2px solid var(--ink)',
                   background: language === 'Marathi' ? 'var(--blue)' : '#fff',
                   color: language === 'Marathi' ? '#fff' : 'var(--ink)',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontSize: isMr ? '16px' : '14px',
                   cursor: 'pointer',
                   boxShadow: language === 'Marathi' ? '0 2px 0 var(--ink)' : 'none'
                 }}
               >
-                मराठी (Marathi)
+                {t('draft_lang_marathi')}
               </button>
             </div>
           </div>
@@ -243,21 +266,23 @@ export default function DraftInputCard({
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onGenerate}
-            disabled={loading || !prompt.trim()}
+            disabled={loading || !prompt.trim() || !department}
             style={{
               width: '100%',
-              padding: '12px',
-              background: loading || !prompt.trim() ? '#9ca3af' : 'var(--blue)',
+              minHeight: '52px',
+              marginTop: '20px',
+              padding: '14px',
+              background: loading || !prompt.trim() || !department ? '#9ca3af' : 'var(--blue)',
               color: '#fff',
               border: '2px solid var(--ink)',
               borderRadius: '8px',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              cursor: loading || !prompt.trim() ? 'not-allowed' : 'pointer',
-              boxShadow: loading || !prompt.trim() ? 'none' : '0 3px 0 var(--ink)'
+              fontWeight: 600,
+              fontSize: isMr ? '17px' : '15px',
+              cursor: loading || !prompt.trim() || !department ? 'not-allowed' : 'pointer',
+              boxShadow: loading || !prompt.trim() || !department ? 'none' : '0 3px 0 var(--ink)'
             }}
           >
-            {loading ? 'Generating GR & Running Analysis...' : 'Generate Draft GR →'}
+            {loading ? t('draft_generating') : t('draft_generate_btn')}
           </motion.button>
         </div>
       </div>

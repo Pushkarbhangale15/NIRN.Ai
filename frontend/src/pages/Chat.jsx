@@ -8,8 +8,8 @@ const IconSend = () => (
     <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
   </svg>
 );
-const IconBot = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+const IconBot = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" {...props}>
     <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 16.5 13M3 21v-2h18v2z"/>
   </svg>
 );
@@ -41,11 +41,11 @@ function CopyBtn({ text }) {
 }
 
 /* ─── Shared: reference GR pill list ─────────────────────────── */
-function RefPills({ refs }) {
+function RefPills({ refs, label }) {
   if (!refs || refs.length === 0) return null;
   return (
     <div className="copilot-refs">
-      <span className="copilot-refs-label">Sources used:</span>
+      <span className="copilot-refs-label">{label}</span>
       {refs.slice(0, 5).map((h) => (
         <span className="copilot-ref-pill" key={h.gr_id}>
           {h.gr_id} · <span className="ri-sub" style={{ display: "inline" }}>{h.department}</span>
@@ -55,14 +55,13 @@ function RefPills({ refs }) {
   );
 }
 
-const CHAT_STARTERS = [
-  "What is the policy on lateral entry in technical colleges?",
-  "Summarise the rules for government employee leave.",
-  "Which department handles scholarship grievances?",
-];
-
 export default function Chat() {
-  const { t } = useLanguage();
+  const { t, siteLanguage, toggleLanguage } = useLanguage();
+  const CHAT_STARTERS = [
+    t('chat_starter_1'),
+    t('chat_starter_2'),
+    t('chat_starter_3'),
+  ];
   const [messages, setMessages] = useState(() => {
     try { return JSON.parse(localStorage.getItem("nirn_chat_messages") || "[]"); }
     catch { return []; }
@@ -122,11 +121,9 @@ export default function Chat() {
   return (
     <main className="container">
       <header className="page-head">
-        <div className="eyebrow">Ask anything</div>
-        <h1 className="page-title">NIRN.Ai Chat</h1>
-        <p className="page-sub">
-          Your intelligent assistant for querying and understanding Government Resolutions of Maharashtra.
-        </p>
+        <div className="eyebrow">{t('chat_eyebrow')}</div>
+        <h1 className="page-title">{t('chat_title')}</h1>
+        <p className="page-sub">{t('chat_sub')}</p>
       </header>
 
       <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
@@ -135,12 +132,9 @@ export default function Chat() {
           <div className="copilot-messages">
             {messages.length === 0 && (
               <div className="copilot-empty">
-                <div className="copilot-empty-icon">🤖</div>
-                <div className="copilot-empty-title">NIRN.Ai Copilot</div>
-                <p className="copilot-empty-sub">
-                  Ask any question about Maharashtra Government Resolutions.<br />
-                  I ground every answer in the actual GR corpus.
-                </p>
+                <div className="copilot-empty-icon"><IconBot width="48" height="48" /></div>
+                <div className="copilot-empty-title">{t('chat_empty_title')}</div>
+                <p className="copilot-empty-sub">{t('chat_empty_sub')}</p>
                 <div className="copilot-starters">
                   {CHAT_STARTERS.map((s) => (
                     <button key={s} className="chip" onClick={() => send(s)}>{s} <span className="arr">↗</span></button>
@@ -156,7 +150,7 @@ export default function Chat() {
                 </div>
                 <div className="copilot-msg-body">
                   <div className="copilot-msg-text" style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
-                  {msg.refs && <RefPills refs={msg.refs} />}
+                  {msg.refs && <RefPills refs={msg.refs} label={t('chat_sources_used')} />}
                   {msg.suggestions && msg.suggestions.length > 0 && (
                     <div className="copilot-suggestions">
                       {msg.suggestions.map((s, si) => (

@@ -36,6 +36,24 @@ const IconResolutions = () => (
   </svg>
 );
 
+const IconWarning = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" {...props}>
+    <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
+  </svg>
+);
+
+const IconGlobe = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" {...props}>
+    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.93 8ZM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96ZM4.26 14a7.9 7.9 0 0 1 0-4h3.38a16.5 16.5 0 0 0 0 4Zm.81 2h2.95c.35 1.25.8 2.45 1.38 3.56A8.03 8.03 0 0 1 5.07 16Zm2.95-8H5.07a8.03 8.03 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.02 8ZM12 19.96A15.7 15.7 0 0 1 10.09 16h3.82a15.7 15.7 0 0 1-1.91 3.96ZM14.4 14H9.6a14.5 14.5 0 0 1 0-4h4.8a14.5 14.5 0 0 1 0 4Zm.19 5.56c.58-1.11 1.03-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56ZM16.36 14a16.5 16.5 0 0 0 0-4h3.38a7.9 7.9 0 0 1 0 4Z" />
+  </svg>
+);
+
+const IconClose = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" {...props}>
+    <path d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.41 1.41 6.3-6.3 6.29 6.3 1.41-1.41-6.3-6.29 6.3-6.3z" />
+  </svg>
+);
+
 const FEATURES = [
   {
     icon: <IconSearch />, color: "c-blue", underline: "c-blue",
@@ -237,7 +255,8 @@ export default function Home() {
           <div className="hero-grid">
             <div className="hero-copy">
               <h1 className="display">
-                <span className="brand-red">NIRN.Ai</span> {t('home_title_2')}
+                <span className="display-line">{t('home_title_line1')}</span>
+                <span className="display-line accent">{t('home_title_line2')}</span>
               </h1>
               <div className="underline-blue" />
 
@@ -289,54 +308,63 @@ export default function Home() {
             ))}
           </div>
 
-          {/* GR ID lookup searchbar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '24px' }}>
-            <form
-              className="searchbar gr-number-searchbar"
-              onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
-              style={{ marginTop: 0, flex: '1', minWidth: '280px' }}
-            >
-              <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
-              <input
-                value={grNumber}
-                onChange={(e) => setGrNumber(e.target.value)}
-                placeholder={t('home_gr_number_placeholder')}
-                aria-label={t('home_gr_number_placeholder')}
-              />
-              <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
-                {lookupLoading ? '...' : '→'}
-              </button>
-            </form>
-
-            {foundGr && (
-              <button
-                type="button"
-                onClick={openOfficialPdfForFoundGr}
-                className="chip"
-                style={{
-                  height: '42px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'var(--red)',
-                  color: '#fff',
-                  border: '2px solid var(--ink)',
-                  borderRadius: '12px',
-                  padding: '0 16px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  boxShadow: '0 3px 0 var(--ink)',
-                  transition: 'transform 0.1s'
-                }}
+          {/* GR ID lookup section */}
+          <div className="gr-lookup-section">
+            <div className="gr-lookup-label-row">
+              <span className="gr-lookup-label">{t('home_gr_lookup_label')}</span>
+              <span className="gr-lookup-tooltip-wrap" tabIndex={0}>
+                <span className="gr-lookup-tooltip-icon" aria-label={t('home_gr_lookup_tooltip')}>i</span>
+                <span className="gr-lookup-tooltip-bubble">{t('home_gr_lookup_tooltip')}</span>
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <form
+                className="searchbar gr-number-searchbar"
+                onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
+                style={{ marginTop: 0, flex: '1', minWidth: '280px' }}
               >
-                🌐 View Official GR ↗
-              </button>
-            )}
+                <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
+                <input
+                  value={grNumber}
+                  onChange={(e) => setGrNumber(e.target.value)}
+                  placeholder={t('home_gr_number_placeholder')}
+                  aria-label={t('home_gr_number_placeholder')}
+                />
+                <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
+                  {lookupLoading ? '...' : '→'}
+                </button>
+              </form>
+
+              {foundGr && (
+                <button
+                  type="button"
+                  onClick={openOfficialPdfForFoundGr}
+                  className="chip"
+                  style={{
+                    height: '42px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'var(--red)',
+                    color: '#fff',
+                    border: '2px solid var(--ink)',
+                    borderRadius: '12px',
+                    padding: '0 16px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 3px 0 var(--ink)',
+                    transition: 'transform 0.1s'
+                  }}
+                >
+                  <IconGlobe /> View Official GR ↗
+                </button>
+              )}
+            </div>
           </div>
 
           {lookupError && (
-            <div className="lookup-error" style={{ color: 'var(--red)', marginTop: '12px', fontSize: '15px' }}>
-              ⚠️ {lookupError}
+            <div className="lookup-error" style={{ color: 'var(--red)', marginTop: '12px', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <IconWarning /> {lookupError}
             </div>
           )}
 
@@ -350,8 +378,8 @@ export default function Home() {
               boxShadow: '0 4px 0 var(--ink)',
               textAlign: 'left'
             }}>
-              <p style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>
-                ⚠️ {pendingGrNumber} could not be found locally. Would you like to view the official PDF?
+              <p style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconWarning /> {pendingGrNumber} could not be found locally. Would you like to view the official PDF?
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
@@ -428,7 +456,7 @@ export default function Home() {
                   color: 'var(--ink)'
                 }}
               >
-                ✕
+                <IconClose />
               </button>
               <span className="badge" style={{
                 display: 'inline-block',

@@ -33,12 +33,6 @@ export const api = {
   createDraft: (draft) =>
     request("/api/drafts", { method: "POST", body: JSON.stringify(draft) }),
 
-  patchDraft: (draftId, bodyText) =>
-    request(`/api/drafts/${draftId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ body_text: bodyText }),
-    }),
-
   listDrafts: () => request("/api/drafts"),
 
   // The full report: template + references + conflicts + terminology
@@ -47,9 +41,6 @@ export const api = {
 
   runFullAnalysis: (draftId) =>
     request(`/api/analysis/${draftId}`, { method: "POST" }),
-
-  runTemplateCheck: (draftId) =>
-    request(`/api/analysis/${draftId}/template`, { method: "POST" }),
 
   searchCorpus: (q, topK = 8) =>
     request(`/api/corpus/search?q=${encodeURIComponent(q)}&top_k=${topK}`),

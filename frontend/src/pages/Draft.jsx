@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 
@@ -11,48 +11,71 @@ import ReferencesCard from "../components/drafting/ReferencesCard.jsx";
 import TerminologyCard from "../components/drafting/TerminologyCard.jsx";
 import SuggestionsCard from "../components/drafting/SuggestionsCard.jsx";
 
+const IconChecklist = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M3 5h2v2H3zm4 0h14v2H7zM3 11h2v2H3zm4 0h14v2H7zM3 17h2v2H3zm4 0h14v2H7z" />
+  </svg>
+);
+const IconWarningTriangle = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
+  </svg>
+);
+const IconLink = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M3.9 12a5 5 0 0 1 5-5H13v2H8.9a3 3 0 0 0 0 6H13v2H8.9a5 5 0 0 1-5-5Zm7.1 1h2v-2h-2v-2H8.9a5 5 0 0 0 0 10H11v-2h-2.1a3 3 0 0 1 0-6H11Zm4.1-6H15v2h4.1a3 3 0 0 1 0 6H15v2h4.1a5 5 0 0 0 0-10Z" />
+  </svg>
+);
+const IconTranslate = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 8.36 6H10v2H7.75l-.09.34a15.3 15.3 0 0 1-2.1 4.06 12.34 12.34 0 0 0 3.8-2.13Zm5.63-1.53H16l-4.5 12h1.75l1.13-3h5.24l1.13 3H22ZM14.9 15h4.2L17 10.35Z" />
+    <path d="M11 4H2v2h2.5v1H2v2h2.5A9.5 9.5 0 0 0 2 14h2c.15-.63.36-1.24.63-1.8A11 11 0 0 0 6 14h2a10 10 0 0 1-1.9-2.4A8.4 8.4 0 0 0 6.5 9H11Z" />
+  </svg>
+);
+const IconLightbulb = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9 21h6v-1H9zm3-19a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2Z" />
+  </svg>
+);
+const IconAlert = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
+  </svg>
+);
+
+const REVIEW_TABS = [
+  { id: "compliance", labelKey: "draft_tab_mop", Icon: IconChecklist },
+  { id: "conflicts", labelKey: "draft_tab_conflicts", Icon: IconWarningTriangle },
+  { id: "references", labelKey: "draft_tab_references", Icon: IconLink },
+  { id: "terminology", labelKey: "draft_tab_terminology", Icon: IconTranslate },
+  { id: "suggestions", labelKey: "draft_tab_suggestions", Icon: IconLightbulb },
+];
+
 export default function Draft() {
   const { t, siteLanguage } = useLanguage();
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState(siteLanguage === 'mr' ? 'Marathi' : 'English');
-  const [department, setDepartment] = useState("Higher_and_Technical_Education_Department");
+  const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [reAnalysisLoading, setReAnalysisLoading] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [draftResult, setDraftResult] = useState(null);
   const [analysisReport, setAnalysisReport] = useState(null);
   const [error, setError] = useState("");
   const [activeReviewTab, setActiveReviewTab] = useState("compliance");
 
-  // Track user edits to the GR body text
-  const [editedBodyText, setEditedBodyText] = useState("");
-  
-  // Track save status: 'idle' | 'saving' | 'saved'
-  const [saveStatus, setSaveStatus] = useState("idle");
-
-  // Whether the user has made edits since the last save
-  const [hasUnanalyzedEdits, setHasUnanalyzedEdits] = useState(false);
-
-  // Whether the user has edited the text such that a full analysis (conflicts, etc.) is needed
-  const [needFullReAnalysis, setNeedFullReAnalysis] = useState(false);
-
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !department) return;
     setLoading(true);
     setError("");
     setDraftResult(null);
     setAnalysisReport(null);
-    setEditedBodyText("");
-    setHasUnanalyzedEdits(false);
-    setNeedFullReAnalysis(false);
     setCurrentStage(1);
 
     try {
       // Step 1: LLM Draft Generation
       const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
       setDraftResult(res);
-      setEditedBodyText(res.body_text);
       setCurrentStage(2);
 
       // Step 2: AI Review & Conflict Analysis
@@ -77,128 +100,25 @@ export default function Draft() {
     }
   };
 
-  // Called by DraftViewer whenever the user edits the editor
-  const handleTextChange = useCallback((newText) => {
-    setEditedBodyText(newText);
-    if (draftResult && newText.trim() !== draftResult.body_text.trim()) {
-      setHasUnanalyzedEdits(true);
-      setNeedFullReAnalysis(true);
-    } else {
-      setHasUnanalyzedEdits(false);
-    }
-  }, [draftResult]);
-
-  // Handle Save (Manual or Debounced Auto-Save)
-  const handleSave = async () => {
-    if (!draftResult?.draft_id) return;
-    setSaveStatus("saving");
-    try {
-      // 1. Push edited text to backend
-      await api.patchDraft(draftResult.draft_id, editedBodyText);
-
-      // 2. Automatically re-run the template check against the edited plain text
-      const templateIssues = await api.runTemplateCheck(draftResult.draft_id);
-
-      // 3. Update the analysis report's template issues and summary status
-      setAnalysisReport((prev) => {
-        if (!prev) return null;
-        const errors = templateIssues.filter((i) => i.severity === "error" || i.severity === "ERROR").length;
-        const warnings = templateIssues.filter((i) => i.severity === "warning" || i.severity === "WARNING").length;
-
-        // Check if there are existing conflicts
-        const conflictsCount = prev.conflicts?.length || 0;
-        const unresolvedCount = prev.summary?.unresolved_reference_count || 0;
-
-        let overall = "clean";
-        if (errors > 0 || conflictsCount > 0) {
-          overall = "blocked";
-        } else if (warnings > 0 || unresolvedCount > 0) {
-          overall = "needs_review";
-        }
-
-        return {
-          ...prev,
-          template_issues: templateIssues,
-          summary: {
-            ...prev.summary,
-            template_error_count: errors,
-            template_warning_count: warnings,
-            overall_status: overall,
-          },
-        };
-      });
-
-      // 4. Update local draftResult text
-      setDraftResult((prev) => (prev ? { ...prev, body_text: editedBodyText } : prev));
-      setHasUnanalyzedEdits(false);
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    } catch (err) {
-      setError(err.message || "Failed to save edits.");
-      setSaveStatus("idle");
-    }
-  };
-
-  // Auto-Save Debounce Effect (2 Seconds of Inactivity)
-  useEffect(() => {
-    if (!hasUnanalyzedEdits || !draftResult?.draft_id) return;
-
-    const timer = setTimeout(() => {
-      handleSave();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [editedBodyText, hasUnanalyzedEdits, draftResult?.draft_id]);
-
-  // Re-analyze using edited text: PATCH the draft first, then re-run analysis
-  const handleReAnalyze = async () => {
-    if (!draftResult?.draft_id || !editedBodyText.trim()) return;
-    setReAnalysisLoading(true);
-    setError("");
-    setAnalysisReport(null);
-
-    try {
-      // 1. Push edited text to backend
-      await api.patchDraft(draftResult.draft_id, editedBodyText);
-
-      // 2. Re-run full analysis on the updated draft
-      const report = await api.runFullAnalysis(draftResult.draft_id);
-      setAnalysisReport(report);
-      setHasUnanalyzedEdits(false);
-      setNeedFullReAnalysis(false);
-
-      // 3. Update draftResult to reflect the new body text
-      setDraftResult((prev) => (prev ? { ...prev, body_text: editedBodyText } : prev));
-    } catch (err) {
-      setError(err.message || "Re-analysis failed.");
-    } finally {
-      setReAnalysisLoading(false);
-    }
-  };
-
   const handleReset = () => {
     setPrompt("");
-    setDepartment("Higher_and_Technical_Education_Department");
+    setDepartment("");
     setDraftResult(null);
     setAnalysisReport(null);
     setCurrentStage(0);
     setError("");
-    setEditedBodyText("");
-    setHasUnanalyzedEdits(false);
-    setNeedFullReAnalysis(false);
-    setSaveStatus("idle");
   };
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
   const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
-
-  const ownDeptConflicts = allConflicts.filter((c) => {
+  
+  const ownDeptConflicts = allConflicts.filter(c => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft === normExist;
   });
-
-  const crossDeptConflicts = allConflicts.filter((c) => {
+  
+  const crossDeptConflicts = allConflicts.filter(c => {
     const normExist = (c.existing_department || "").toLowerCase().replace(/_/g, " ").trim();
     return normDraft && normExist && normDraft !== normExist;
   });
@@ -206,12 +126,9 @@ export default function Draft() {
   return (
     <main className="container">
       <header className="page-head">
-        <div className="eyebrow">AI drafting</div>
-        <h1 className="page-title">Draft a GR</h1>
-        <p className="page-sub">
-          Your intelligent assistant for drafting, querying, and auditing
-          Government Resolutions of Maharashtra.
-        </p>
+        <div className="eyebrow">{t('draft_eyebrow')}</div>
+        <h1 className="page-title">{t('draft_title')}</h1>
+        <p className="page-sub">{t('draft_sub')}</p>
       </header>
 
       <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
@@ -232,65 +149,9 @@ export default function Draft() {
             onReset={handleReset}
           />
 
-          {/* Re-analyze banner — shown when user has made edits that require full analysis */}
-          {needFullReAnalysis && draftResult && (
-            <div style={{
-              background: '#fffbeb',
-              border: '1px solid #f59e0b',
-              borderRadius: '8px',
-              padding: '12px 20px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '18px' }}>✏️</span>
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '13px', color: '#92400e' }}>
-                    Document has been edited
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#b45309' }}>
-                    {hasUnanalyzedEdits ? "Changes will auto-save shortly. " : "Edits are auto-saved. "}
-                    Click "Re-Analyze Edits" to re-run full policy conflict checks on the updated text.
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleReAnalyze}
-                disabled={reAnalysisLoading}
-                style={{
-                  padding: '8px 20px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  background: reAnalysisLoading ? '#d1d5db' : '#f59e0b',
-                  color: reAnalysisLoading ? '#6b7280' : '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: reAnalysisLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  boxShadow: reAnalysisLoading ? 'none' : '0 2px 4px rgba(245,158,11,0.3)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {reAnalysisLoading ? (
-                  <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> Analyzing...</>
-                ) : (
-                  <>🔄 Re-Analyze Edits</>
-                )}
-              </button>
-            </div>
-          )}
-
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">
-
+            
             {/* Left Column: Official Document Viewer */}
             <div>
               {error && (
@@ -301,17 +162,17 @@ export default function Draft() {
                   padding: '12px 16px',
                   borderRadius: '8px',
                   fontWeight: 'bold',
-                  marginBottom: '16px'
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}>
-                  ⚠️ {error}
+                  <IconAlert /> {error}
                 </div>
               )}
               <DraftViewer
                 draft={draftResult}
                 loading={loading}
-                onTextChange={handleTextChange}
-                saveStatus={saveStatus}
-                onManualSave={handleSave}
               />
             </div>
 
@@ -320,7 +181,7 @@ export default function Draft() {
               background: 'var(--paper)',
               border: '2px solid var(--ink)',
               borderRadius: '12px',
-              padding: '24px',
+              padding: '28px',
               boxShadow: '0 4px 0 var(--ink)',
               minHeight: '550px',
               display: 'flex',
@@ -329,39 +190,38 @@ export default function Draft() {
               {/* Tab Selection Header */}
               <div style={{
                 display: 'flex',
-                gap: '8px',
+                gap: '12px',
                 borderBottom: '2px solid var(--ink)',
-                paddingBottom: '12px',
-                marginBottom: '20px',
+                paddingBottom: '16px',
+                marginBottom: '24px',
                 flexWrap: 'wrap'
               }}>
-                {[
-                  { id: "compliance", label: "📌 MOP Rules" },
-                  { id: "conflicts", label: "⚠️ Policy Conflicts" },
-                  { id: "references", label: "🔗 References" },
-                  { id: "terminology", label: "🔤 Terminology" },
-                  { id: "suggestions", label: "💡 Suggestions" }
-                ].map((tab) => {
+                {REVIEW_TABS.map(tab => {
                   const isActive = activeReviewTab === tab.id;
+                  const Icon = tab.Icon;
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveReviewTab(tab.id)}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
                         background: isActive ? 'var(--blue)' : '#fff',
                         color: isActive ? '#fff' : 'var(--ink)',
                         border: '2px solid var(--ink)',
                         borderRadius: '6px',
-                        padding: '8px 14px',
+                        padding: '10px 18px',
+                        minHeight: '44px',
                         fontWeight: 'bold',
-                        fontSize: '15px',
+                        fontSize: siteLanguage === 'mr' ? '17px' : '15px',
                         cursor: 'pointer',
                         boxShadow: isActive ? 'none' : '0 2px 0 var(--ink)',
                         transform: isActive ? 'translateY(2px)' : 'none',
                         transition: 'all 0.1s'
                       }}
                     >
-                      {tab.label}
+                      <Icon /> {t(tab.labelKey)}
                     </button>
                   );
                 })}
@@ -372,28 +232,28 @@ export default function Draft() {
                 {activeReviewTab === "compliance" && (
                   <ComplianceCard
                     report={analysisReport}
-                    loading={analysisLoading || reAnalysisLoading}
+                    loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "conflicts" && (
                   <ConflictCard
                     conflicts={allConflicts}
-                    loading={analysisLoading || reAnalysisLoading}
+                    loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "references" && (
                   <ReferencesCard
                     references={analysisReport?.references || draftResult?.references}
-                    loading={analysisLoading || reAnalysisLoading}
+                    loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}
                 {activeReviewTab === "terminology" && (
                   <TerminologyCard
                     terms={analysisReport?.terms}
-                    loading={analysisLoading || reAnalysisLoading}
+                    loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
                   />
                 )}

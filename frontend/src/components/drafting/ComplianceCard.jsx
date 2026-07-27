@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import CountUp from 'react-countup';
+import { useLanguage } from '../../LanguageContext.jsx';
+
+const IconChecklist = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M3 5h2v2H3zm4 0h14v2H7zM3 11h2v2H3zm4 0h14v2H7zM3 17h2v2H3zm4 0h14v2H7z" />
+  </svg>
+);
 
 export default function ComplianceCard({ report, loading, hasGenerated }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
 
   if (!hasGenerated) {
@@ -14,12 +23,12 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         opacity: 0.6,
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            📋 Card 1 — Template Compliance
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+            <IconChecklist /> Card 1 — Template Compliance
           </span>
-          <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
-            Pending Draft
+          <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
+            {t('draft_pending')}
           </span>
         </div>
       </div>
@@ -65,15 +74,15 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>
-            📋 Card 1 — Template Compliance
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px' }}>
+            <IconChecklist /> Card 1 — Template Compliance
           </span>
           <span style={{
-            fontSize: '11px',
+            fontSize: '13px',
             fontWeight: 'bold',
             background: score >= 90 ? 'var(--blue)' : score >= 80 ? 'var(--yellow)' : 'var(--red)',
             color: score >= 90 ? '#fff' : 'var(--ink)',
-            padding: '2px 8px',
+            padding: '3px 10px',
             borderRadius: '12px',
             border: '1px solid var(--ink)'
           }}>
@@ -83,7 +92,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '13px', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase' }}>
               Compliance Score
             </div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--ink)' }}>
@@ -99,7 +108,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '13px' }}>Evaluating MoOP rules...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Evaluating MoOP rules...</span>
             </div>
           ) : (
             <>
@@ -118,7 +127,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
                       {item.status === 'pass' ? '✓' : '⚠'} {item.label}
                     </span>
                     <span style={{
-                      fontSize: '12px',
+                      fontSize: '14px',
                       fontWeight: 'bold',
                       color: item.status === 'pass' ? '#166534' : '#854d0e'
                     }}>

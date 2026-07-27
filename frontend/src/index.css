@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Marathi:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700;800&display=swap');
 
 /* ================================================================
    NIRN.AI — design system
@@ -19,6 +20,7 @@
 
   --font-display: "Archivo Black", "Archivo", sans-serif;
   --font-body: "Archivo", sans-serif;
+  --font-marathi: "Noto Sans Devanagari", "Mangal", sans-serif;
 
   --radius: 10px;
   --shadow: 0 2px 0 var(--ink);
@@ -32,6 +34,7 @@
 
 body {
   font-family: var(--font-body);
+  font-size: 15px;
   background-color: var(--cream);
   background-image: radial-gradient(var(--line) 1.1px, transparent 1.1px);
   background-size: 26px 26px;
@@ -39,9 +42,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+p, span, div, li, td, th, label, input, textarea, select, button {
+  font-size: max(15px, 1em);
+}
+
 .lang-mr {
-  --font-display: "Archivo Black", "Tiro Devanagari Marathi", serif;
-  --font-body: "Archivo", "Tiro Devanagari Marathi", serif;
+  --font-display: "Archivo Black", "Noto Sans Devanagari", "Tiro Devanagari Marathi", sans-serif;
+  --font-body: "Noto Sans Devanagari", "Mangal", "Archivo", sans-serif;
+  font-family: var(--font-marathi), var(--font-body);
+}
+
+.lang-mr, .lang-mr * {
+  font-family: var(--font-marathi), "Archivo", sans-serif;
+}
+
+/* Marathi text runs ~2px larger than the English equivalent for legibility */
+.lang-mr {
+  font-size: calc(1em + 2px);
 }
 
 .container {
@@ -56,7 +73,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 0;
+  min-height: 72px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--cream) 82%, transparent);
   backdrop-filter: blur(6px);
@@ -71,6 +89,7 @@ body {
   gap: 14px;
   text-decoration: none;
   color: var(--ink);
+  height: 100%;
 }
 
 /* SVG is cropped square around the emblem, so height = width. */
@@ -108,8 +127,8 @@ body {
   text-decoration: none;
   color: var(--ink);
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 1.4px;
+  font-size: 15px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   padding-bottom: 6px;
   border-bottom: 3px solid transparent;
@@ -117,6 +136,10 @@ body {
 
 .nav-links a.active {
   border-bottom-color: var(--red);
+}
+
+.lang-mr .nav-links a {
+  font-size: 17px;
 }
 
 .nav-links a:hover {
@@ -144,6 +167,48 @@ body {
   color: var(--cream);
 }
 
+/* Navbar action hierarchy: AI Copilot CTA is primary (filled), language toggle is secondary (outline) */
+.nav-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.6px;
+  background: var(--red);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 3px 0 var(--ink);
+  transition: transform 0.08s ease;
+}
+
+.nav-cta-primary:hover {
+  background: #c72f16;
+}
+
+.nav-cta-primary:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.nav-lang-toggle {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1.5px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+}
+
+.nav-lang-toggle:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
 /* ---------------- Hero ---------------- */
 .hero {
   position: relative;
@@ -165,14 +230,22 @@ body {
 
 .display {
   font-family: var(--font-display);
-  font-size: clamp(44px, 6.2vw, 80px);
-  line-height: 0.98;
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: 0.96;
   letter-spacing: -1px;
 }
 
 .display .accent {
   color: var(--red);
   display: block;
+}
+
+.display-line {
+  display: block;
+}
+
+.display-line.accent {
+  color: var(--red);
 }
 
 .brand-red {
@@ -322,25 +395,84 @@ body {
   background: #c72f16;
 }
 
-/* ---------------- GR number mini search bar (1/3rd smaller) ---------------- */
+/* ---------------- GR ID lookup section ---------------- */
+.gr-lookup-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1.5px dashed var(--line);
+}
+
+.gr-lookup-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gr-lookup-label {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.gr-lookup-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.gr-lookup-tooltip-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-soft);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.gr-lookup-tooltip-icon:hover,
+.gr-lookup-tooltip-icon:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.gr-lookup-tooltip-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 10px 14px;
+  border-radius: 8px;
+  width: max-content;
+  max-width: 280px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.gr-lookup-tooltip-wrap:hover .gr-lookup-tooltip-bubble,
+.gr-lookup-tooltip-wrap:focus-within .gr-lookup-tooltip-bubble {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
 .gr-number-searchbar {
-  max-width: 480px;
-  margin-top: 24px;
-}
-
-.gr-number-searchbar .lead {
-  width: 50px;
-  font-size: 18px;
-}
-
-.gr-number-searchbar input {
-  padding: 12px 16px;
-  font-size: 15px;
-}
-
-.gr-number-searchbar .go {
-  width: 60px;
-  font-size: 18px;
+  max-width: 560px;
 }
 
 
@@ -361,7 +493,8 @@ body {
   border: 1px solid var(--line);
   background: var(--paper);
   border-radius: 8px;
-  padding: 10px 16px;
+  padding: 12px 18px;
+  min-height: 44px;
   font-size: 14px;
   cursor: pointer;
   font-family: var(--font-body);
@@ -410,8 +543,9 @@ body {
 }
 
 .f-underline {
-  width: 34px;
-  height: 4px;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
   margin-bottom: 14px;
 }
 
@@ -477,7 +611,7 @@ body {
 
 .page-title {
   font-family: var(--font-display);
-  font-size: clamp(34px, 4.5vw, 54px);
+  font-size: clamp(42px, 4.5vw, 54px);
   text-transform: uppercase;
   letter-spacing: -0.5px;
 }
@@ -487,6 +621,7 @@ body {
   margin-top: 12px;
   max-width: 640px;
   line-height: 1.6;
+  font-size: 18px;
 }
 
 /* ---------------- Analyze layout ---------------- */
@@ -523,7 +658,7 @@ body {
 }
 
 .panel-body {
-  padding: 22px;
+  padding: 26px;
 }
 
 .field {
@@ -555,8 +690,13 @@ body {
 
 .field input:focus,
 .field select:focus,
-.field textarea:focus {
+.field textarea:focus,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   border-color: var(--blue);
+  outline: 3px solid color-mix(in srgb, var(--blue) 35%, transparent);
+  outline-offset: 1px;
 }
 
 .field textarea {
@@ -581,12 +721,24 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-family: var(--font-body);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 14px;
   letter-spacing: 1px;
   text-transform: uppercase;
   padding: 14px 26px;
+  min-height: 52px;
   transition: transform 0.05s ease;
+}
+
+.btn-outline-warn {
+  background: transparent;
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.btn-outline-warn:hover {
+  background: var(--red);
+  color: #fff;
 }
 
 .btn:active {
@@ -911,11 +1063,12 @@ body {
 
 .copilot-tab {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 1.6px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
   padding: 12px 24px;
+  min-height: 44px;
   border: none;
   border-bottom: none;
   background: transparent;
@@ -980,9 +1133,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 60px 40px 40px;
+  padding: 40px;
   margin: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
 }
 
 .copilot-empty-icon {
@@ -1006,10 +1163,25 @@ body {
 }
 
 .copilot-starters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 760px;
+  margin-top: 4px;
+}
+
+.copilot-starters .chip {
+  width: 100%;
   justify-content: center;
+  text-align: center;
+  padding: 12px 16px;
+}
+
+@media (max-width: 700px) {
+  .copilot-starters {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Chat bubbles ────────────────────────────────────────────── */
@@ -1639,7 +1811,7 @@ mark.highlight-mark {
 }
 
 .footer-label {
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   color: #a09a8f;
   letter-spacing: 0.5px;
@@ -1658,15 +1830,9 @@ mark.highlight-mark {
   text-align: left;
 }
 
-@media (min-width: 768px) {
-  .footer-right {
-    text-align: right;
-  }
-}
-
 .footer-team-title {
   font-size: 16px;
-  margin: 0 0 12px 0;
+  margin: 0 0 14px 0;
   color: #a09a8f;
   font-weight: bold;
 }
@@ -1675,14 +1841,19 @@ mark.highlight-mark {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px;
 }
 
 .footer-team-list li {
   font-size: 15px;
   color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
 }
 
 .footer-team-list .leader-tag {
@@ -1705,7 +1876,7 @@ mark.highlight-mark {
 }
 
 .footer-disclaimer {
-  font-size: 12px;
+  font-size: 13px;
   color: #a09a8f;
   max-width: 650px;
   margin: 0 auto;
@@ -1723,8 +1894,8 @@ mark.highlight-mark {
 
 .draft-workspace-two-col {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 28px;
+  grid-template-columns: 55fr 45fr;
+  gap: 36px;
   align-items: start;
   width: 100%;
 }
@@ -1734,5 +1905,21 @@ mark.highlight-mark {
   .draft-workspace-grid,
   .draft-workspace-two-col {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .draft-workspace-grid,
+  .draft-workspace-two-col,
+  .analyze-grid,
+  .hero-grid,
+  .copilot-tool-layout {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .container {
+    width: 100%;
+    padding: 0 16px;
   }
 }

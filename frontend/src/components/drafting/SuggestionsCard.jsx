@@ -1,5 +1,21 @@
 import React from 'react';
 
+const IconLightbulb = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9 21h6v-1H9zm3-19a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2Z" />
+  </svg>
+);
+const IconCheckSmall = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+  </svg>
+);
+const IconWarnSmall = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
+  </svg>
+);
+
 export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
   if (!hasGenerated) {
     return null;
@@ -21,8 +37,8 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
       boxShadow: '0 4px 0 var(--ink)',
       marginTop: '16px'
     }}>
-      <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        ✨ AI Review Suggestions
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <IconLightbulb /> AI Review Suggestions
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {defaultSuggestions.map((item, idx) => {
@@ -43,8 +59,8 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
                 border: isPass ? '1px solid #bbf7d0' : '1px solid #ffe58f'
               }}
             >
-              <span style={{ fontWeight: 'bold', color: isPass ? '#166534' : '#854d0e', fontSize: '16px' }}>
-                {isPass ? '✓' : '⚠'}
+              <span style={{ fontWeight: 'bold', color: isPass ? '#166534' : '#854d0e', display: 'inline-flex' }}>
+                {isPass ? <IconCheckSmall /> : <IconWarnSmall />}
               </span>
               <span style={{ color: isPass ? '#166534' : '#854d0e', lineHeight: '1.5' }}>
                 {textStr}

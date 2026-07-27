@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../../LanguageContext.jsx';
+
+const IconWarningTriangle = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
+  </svg>
+);
 
 export default function ConflictCard({ conflicts = [], loading, hasGenerated }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
 
   if (!hasGenerated) {
@@ -13,12 +22,12 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
         opacity: 0.6,
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            ⚠️ Policy Conflicts
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+            <IconWarningTriangle /> Policy Conflicts
           </span>
-          <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
-            Pending Draft
+          <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
+            {t('draft_pending')}
           </span>
         </div>
       </div>
@@ -48,8 +57,8 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--ink)' }}>
-            ⚠️ Policy Conflicts
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
+            <IconWarningTriangle /> Policy Conflicts
           </span>
           <span style={{
             fontSize: '11px',
@@ -71,7 +80,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '13px' }}>Cross-referencing 98,950+ GRs across departments...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Cross-referencing 98,950+ GRs across departments...</span>
             </div>
           ) : conflicts.length === 0 ? (
             <div style={{
@@ -137,7 +146,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
 
                     {/* Department and Conflicting GR Metadata */}
                     <div style={{ fontSize: '14.5px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-                      🏢 {item.existing_department?.replace(/_/g, ' ')} ({item.existing_gr_id})
+                      {item.existing_department?.replace(/_/g, ' ')} ({item.existing_gr_id})
                     </div>
 
                     {/* Conflicting Text Comparison */}
@@ -179,7 +188,7 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
                       color: '#92400e',
                       lineHeight: '1.4'
                     }}>
-                      <strong>💡 Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
+                      <strong>Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
                     </div>
                   </div>
                 );

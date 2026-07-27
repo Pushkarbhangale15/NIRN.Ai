@@ -46,19 +46,18 @@ function Navbar() {
           <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_draft')}
           </NavLink>
-          <NavLink to="/chat" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_chat')}
-          </NavLink>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <button
             onClick={toggleLanguage}
-            className="btn btn-ghost"
-            style={{ padding: '6px 12px', fontSize: '14px', borderRadius: '20px' }}
+            className="nav-lang-toggle"
           >
             {siteLanguage === 'en' ? 'मराठी' : 'English'}
           </button>
+          <NavLink to="/chat" className="nav-cta-primary">
+            {t('nav_ai_copilot')}
+          </NavLink>
         </div>
       </nav>
     </div>

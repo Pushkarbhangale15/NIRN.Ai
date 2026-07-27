@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../../LanguageContext.jsx';
+
+const IconLink = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M3.9 12a5 5 0 0 1 5-5H13v2H8.9a3 3 0 0 0 0 6H13v2H8.9a5 5 0 0 1-5-5Zm7.1 1h2v-2h-2v-2H8.9a5 5 0 0 0 0 10H11v-2h-2.1a3 3 0 0 1 0-6H11Zm4.1-6H15v2h4.1a3 3 0 0 1 0 6H15v2h4.1a5 5 0 0 0 0-10Z" />
+  </svg>
+);
 
 export default function ReferencesCard({ references = [], loading, hasGenerated }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
   const [expandedIndex, setExpandedIndex] = useState(0);
 
@@ -14,12 +23,12 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         opacity: 0.6,
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            📚 Card 3 — References Used
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+            <IconLink /> Card 3 — References Used
           </span>
-          <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
-            Pending Draft
+          <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
+            {t('draft_pending')}
           </span>
         </div>
       </div>
@@ -71,8 +80,8 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--ink)' }}>
-            📚 Card 3 — References Used
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
+            <IconLink /> Card 3 — References Used
           </span>
           <span style={{
             fontSize: '11px',
@@ -94,7 +103,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '13px' }}>Resolving GR citations...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Resolving GR citations...</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

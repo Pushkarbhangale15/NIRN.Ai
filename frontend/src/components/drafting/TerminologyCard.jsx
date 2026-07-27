@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../../LanguageContext.jsx';
+
+const IconTranslate = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 8.36 6H10v2H7.75l-.09.34a15.3 15.3 0 0 1-2.1 4.06 12.34 12.34 0 0 0 3.8-2.13Zm5.63-1.53H16l-4.5 12h1.75l1.13-3h5.24l1.13 3H22ZM14.9 15h4.2L17 10.35Z" />
+    <path d="M11 4H2v2h2.5v1H2v2h2.5A9.5 9.5 0 0 0 2 14h2c.15-.63.36-1.24.63-1.8A11 11 0 0 0 6 14h2a10 10 0 0 1-1.9-2.4A8.4 8.4 0 0 0 6.5 9H11Z" />
+  </svg>
+);
 
 export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
 
   if (!hasGenerated) {
@@ -13,12 +23,12 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
         opacity: 0.6,
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#6b7280' }}>
-            🌐 Card 4 — Legal Terminology Assistance
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+            <IconTranslate /> Card 4 — Legal Terminology Assistance
           </span>
-          <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '4px', color: '#6b7280' }}>
-            Pending Draft
+          <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
+            {t('draft_pending')}
           </span>
         </div>
       </div>
@@ -67,8 +77,8 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--ink)' }}>
-            🌐 Card 4 — Legal Terminology
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
+            <IconTranslate /> Card 4 — Legal Terminology
           </span>
           <span style={{
             fontSize: '11px',
@@ -90,7 +100,7 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '13px' }}>Mapping administrative Marathi/English legal vocabulary...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Mapping administrative Marathi/English legal vocabulary...</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -107,7 +117,7 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
                       {t.english_term}
                     </span>
                     <span style={{ fontSize: '13px', color: '#6b7280' }}>↓ Marathi</span>
-                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: 'marathi, sans-serif' }}>
+                    <span style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: "'Noto Sans Devanagari', 'Mangal', sans-serif" }}>
                       {t.marathi_term}
                     </span>
                   </div>

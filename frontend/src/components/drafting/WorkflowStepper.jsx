@@ -1,22 +1,26 @@
 import React from 'react';
+import { useLanguage } from '../../LanguageContext.jsx';
 
-const STAGES = [
-  "Brief",
-  "Generate Draft",
-  "Template Validation",
-  "Conflict Detection",
-  "Reference Tracking",
-  "Ready for Review"
+const STAGE_KEYS = [
+  "draft_stage_brief",
+  "draft_stage_generate",
+  "draft_stage_template",
+  "draft_stage_conflict",
+  "draft_stage_reference",
+  "draft_stage_ready"
 ];
 
 export default function WorkflowStepper({ currentStage = 0, isGenerating = false }) {
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
+
   return (
     <div className="workflow-stepper-container" style={{
       background: 'var(--paper)',
       border: '2px solid var(--ink)',
       borderRadius: '12px',
-      padding: '16px 20px',
-      marginBottom: '20px',
+      padding: '28px 32px',
+      marginBottom: '28px',
       boxShadow: '0 4px 0 var(--ink)',
     }}>
       <div style={{
@@ -25,16 +29,16 @@ export default function WorkflowStepper({ currentStage = 0, isGenerating = false
         justifyContent: 'space-between',
         position: 'relative',
         flexWrap: 'wrap',
-        gap: '12px'
+        gap: '20px'
       }}>
-        {STAGES.map((stage, idx) => {
+        {STAGE_KEYS.map((stageKey, idx) => {
           const isCompleted = idx < currentStage;
           const isActive = idx === currentStage;
           const isPending = idx > currentStage;
 
           let badgeBg = '#e5e7eb';
-          let badgeColor = '#6b7280';
-          let borderColor = '#d1d5db';
+          let badgeColor = '#374151';
+          let borderColor = '#9ca3af';
 
           if (isCompleted) {
             badgeBg = 'var(--blue)';
@@ -47,45 +51,47 @@ export default function WorkflowStepper({ currentStage = 0, isGenerating = false
           }
 
           return (
-            <React.Fragment key={stage}>
+            <React.Fragment key={stageKey}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '10px',
                 zIndex: 2,
-                opacity: isPending && !isGenerating && currentStage === 0 ? 0.6 : 1,
+                opacity: isPending ? 0.4 : 1,
                 transition: 'all 0.2s ease'
               }}>
                 <div style={{
-                  width: '28px',
-                  height: '28px',
+                  width: isActive ? '36px' : '30px',
+                  height: isActive ? '36px' : '30px',
                   borderRadius: '50%',
                   background: badgeBg,
                   color: badgeColor,
-                  border: `2px solid ${borderColor}`,
+                  border: `${isActive ? 3 : 2}px solid ${borderColor}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '13px',
-                  fontWeight: 'bold',
-                  boxShadow: isActive || isCompleted ? '0 2px 0 var(--ink)' : 'none'
+                  fontSize: isActive ? '15px' : '13px',
+                  fontWeight: 800,
+                  boxShadow: isActive || isCompleted ? '0 2px 0 var(--ink)' : 'none',
+                  transition: 'all 0.2s ease'
                 }}>
                   {isCompleted ? '✓' : idx + 1}
                 </div>
                 <span style={{
-                  fontSize: '13px',
-                  fontWeight: isActive ? 'bold' : isCompleted ? '600' : '500',
-                  color: isActive ? 'var(--ink)' : isCompleted ? 'var(--ink)' : '#6b7280'
+                  fontSize: isMr ? '17px' : '15px',
+                  fontWeight: isActive ? 800 : isCompleted ? 700 : 600,
+                  color: isActive || isCompleted ? 'var(--ink)' : '#4b5563'
                 }}>
-                  {stage}
+                  {t(stageKey)}
                 </span>
               </div>
-              {idx < STAGES.length - 1 && (
+              {idx < STAGE_KEYS.length - 1 && (
                 <div style={{
                   flex: 1,
-                  height: '2px',
-                  minWidth: '16px',
-                  background: isCompleted ? 'var(--ink)' : '#e5e7eb',
+                  height: '5px',
+                  minWidth: '24px',
+                  borderRadius: '3px',
+                  background: isCompleted ? 'var(--blue)' : '#d1d5db',
                   transition: 'background 0.3s ease'
                 }} />
               )}
