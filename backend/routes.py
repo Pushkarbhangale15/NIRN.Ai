@@ -365,13 +365,15 @@ def copilot_chat(payload: ChatRequest) -> ChatResponse:
 @router.post("/api/copilot/draft", response_model=DraftGenerateResponse, tags=["copilot"])
 def copilot_draft(payload: DraftGenerateRequest) -> DraftGenerateResponse:
     # 1. Retrieve similar GRs for styling/reference — trim snippets to save tokens
-    hits = retrieval.search(payload.prompt, top_k=3)
+    # Using top_k=2 and snippet[:250] saves ~400-500 tokens of context, speeding up prompt processing in local models.
+    hits = retrieval.search(payload.prompt, top_k=2, draft_language="mr" if payload.language.lower() == "marathi" else "en")
     examples_str = ""
     for idx, hit in enumerate(hits):
-        examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
+        examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:250]}\n\n"
 
     # 2. LLM drafting call
-    system_prompt = prompts.COPILOT_DRAFT
+    # Dynamically build system prompt for target language to save over 1000 input tokens.
+    system_prompt = prompts.build_draft_prompt(payload.language)
     dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
     dept_display = dept.replace("_", " ")
 
