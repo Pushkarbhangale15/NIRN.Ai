@@ -202,27 +202,9 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
     """
     Send a request to a locally running Ollama instance.
     Returns (text_response, is_real_llm_response).
-
-    IMPORTANT: Do NOT set format='json' when the prompt contains Devanagari
-    (Marathi) text. gemma3:4b and most small models return {} or malformed
-    JSON when constrained to JSON mode with non-Latin scripts. Without the
-    constraint, they produce valid JSON inside markdown fences which
-    parse_json_reply() extracts correctly.
     """
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
-
-    # Detect Devanagari in either message — if present, skip JSON mode.
-    _deva_pattern = re.compile(r'[\u0900-\u097F]')
-    has_devanagari = (
-        bool(_deva_pattern.search(system_prompt))
-        or bool(_deva_pattern.search(user_message))
-    )
-    need_json = (
-        "json" in system_prompt.lower()
-        and "drafting officer" not in system_prompt.lower()
-        and not has_devanagari   # <-- KEY FIX: no JSON mode for Marathi
-    )
-
+    need_json = "json" in system_prompt.lower() and "drafting officer" not in system_prompt.lower()
     payload: dict = {
         "model": settings.OLLAMA_MODEL,
         "messages": [
@@ -573,15 +555,7 @@ def detect_conflicts(
 
         raw_reply = call_model(system_prompt, user_msg)
         parsed = parse_json_reply(raw_reply)
-
-        # Validate: model must return a non-empty JSON list.
-        # gemma3:4b sometimes returns {} or [] for Marathi text — log and skip.
-        if not parsed or not isinstance(parsed, list) or len(parsed) == 0:
-            logger.warning(
-                "Conflict LLM returned invalid/empty response for clause %d "
-                "(draft_language=%s). Raw reply starts: %s",
-                clause_idx, draft_language, (raw_reply or "")[:120],
-            )
+        if not parsed or not isinstance(parsed, list):
             continue
 
         for item in parsed:
