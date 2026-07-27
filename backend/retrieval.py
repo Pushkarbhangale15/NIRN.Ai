@@ -105,6 +105,7 @@ def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[Corpus
         chunk = _chunks[idx]
         title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
 
+        lang_path = "English" if chunk.get("language") == "en" else "Marathi"
         hit = CorpusHit(
             gr_id=chunk.get("gr_id", "Unknown"),
             title=title,
@@ -112,7 +113,7 @@ def search(query: str, top_k: int = None, min_score: float = 0.0) -> List[Corpus
             issued_on=chunk.get("issued_on"),
             snippet=chunk.get("text", "")[:800],
             score=norm_score,
-            source_url=f"https://gr.maharashtra.gov.in/{chunk.get('gr_id', '')}"
+            source_url=f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang_path}/{chunk.get('gr_id', '')}.pdf"
         )
         results.append(hit)
 
@@ -127,6 +128,7 @@ def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
     for chunk in _chunks:
         if chunk.get("gr_id") == gr_number:
             title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+            lang_path = "English" if chunk.get("language") == "en" else "Marathi"
             return CorpusHit(
                 gr_id=chunk.get("gr_id", "Unknown"),
                 title=title,
@@ -134,7 +136,7 @@ def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
                 issued_on=chunk.get("issued_on"),
                 snippet=chunk.get("text", "")[:1000],
                 score=1.0,
-                source_url=f"https://gr.maharashtra.gov.in/{chunk.get('gr_id', '')}"
+                source_url=f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang_path}/{chunk.get('gr_id', '')}.pdf"
             )
     return None
 
