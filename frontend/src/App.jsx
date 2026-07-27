@@ -11,26 +11,11 @@ import { useLanguage } from "./LanguageContext.jsx";
 import { useEffect } from "react";
 
 
-function PageWrapper({ children }) {
-  const { siteLanguage } = useLanguage();
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.25 }}
-      className={siteLanguage === 'mr' ? 'lang-mr' : ''}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
 
   return (
-    <div className={`container ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
+    <div className="container">
       <nav className="nav">
         <NavLink to="/" className="brand">
           <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
@@ -44,11 +29,14 @@ function Navbar() {
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_home')}
           </NavLink>
-          <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_draft')}
+          <NavLink to="/search" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_search')}
           </NavLink>
-          <NavLink to="/chat" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_chat')}
+          <NavLink to="/analyze" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_analyze')}
+          </NavLink>
+          <NavLink to="/copilot" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_copilot')}
           </NavLink>
         </div>
 
@@ -60,52 +48,12 @@ function Navbar() {
           >
             {siteLanguage === 'en' ? 'मराठी' : 'English'}
           </button>
+          <NavLink to="/copilot" className="nav-cta">
+            {t('nav_ai_copilot')}
+          </NavLink>
         </div>
       </nav>
     </div>
-  );
-}
-
-function Footer() {
-  const { siteLanguage } = useLanguage();
-  return (
-    <footer className={`footer ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
-      <div className="container">
-        <hr className="footer-divider" />
-
-        <div className="footer-content">
-          <div className="footer-left">
-            <div className="footer-brand">NIRN.Ai</div>
-            <div className="footer-tagline">AI-assisted Government Resolution Search & Drafting Platform</div>
-            <div className="footer-section">
-              <span className="footer-label">Developed at</span>
-              <div className="footer-value">Veermata Jijabai Technological Institute (VJTI), Mumbai</div>
-              <div className="footer-value">Master of Computer Applications (MCA)</div>
-            </div>
-          </div>
-
-          <div className="footer-right">
-            <div className="footer-team-title">Project Team (SYMCA)</div>
-            <ul className="footer-team-list">
-              <li>Pushkar Bhangale</li>
-              <li>Kumar Tambe</li>
-              <li>Tanmay Shinde</li>
-              <li>Prasad Aher</li>
-            </ul>
-          </div>
-        </div>
-
-        <hr className="footer-divider" />
-
-        <div className="footer-bottom">
-          <p className="footer-copy">© 2026 NIRN.AI | Developed for the Government of Maharashtra Hackathon</p>
-          <p className="footer-disclaimer">
-            This project is an academic prototype developed at VJTI for research and
-            demonstration purposes. It is not an official Government of Maharashtra service.
-          </p>
-        </div>
-      </div>
-    </footer>
   );
 }
 
@@ -113,51 +61,83 @@ export default function App() {
   const location = useLocation();
   const { siteLanguage } = useLanguage();
 
+  useEffect(() => {
+    if (siteLanguage === 'mr') {
+      document.body.classList.add('lang-mr');
+    } else {
+      document.body.classList.remove('lang-mr');
+    }
+  }, [siteLanguage]);
+
   return (
     <>
       <Navbar />
 
       <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname + siteLanguage}>
+        <Routes location={location} key={location.pathname}>
           <Route
             path="/"
             element={
-              <PageWrapper>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
                 <Home />
-              </PageWrapper>
+              </motion.div>
             }
           />
 
           <Route
-            path="/draft"
+            path="/search"
             element={
-              <PageWrapper>
-                <Copilot defaultTab="draft" />
-              </PageWrapper>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
+                <Search />
+              </motion.div>
             }
           />
 
           <Route
-            path="/chat"
+            path="/analyze"
             element={
-              <PageWrapper>
-                <Copilot defaultTab="chat" />
-              </PageWrapper>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
+                <Analyze />
+              </motion.div>
             }
           />
 
           <Route
             path="/copilot"
             element={
-              <PageWrapper>
-                <Copilot defaultTab="chat" />
-              </PageWrapper>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
+                <Copilot />
+              </motion.div>
             }
           />
         </Routes>
       </AnimatePresence>
-
-      <Footer />
+      {/* <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/analyze" element={<Analyze />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/copilot" element={<Copilot />} />
+      </Routes> */}
     </>
   );
 }
