@@ -4,33 +4,22 @@ from datetime import datetime, timezone
 
 def verify_predictable_url(gr_number: str) -> Optional[str]:
     """
-    Attempts to verify if the GR Number maps directly to a predictable Government PDF URL
-    using an HTTP HEAD request.
+    Constructs the predictable Government PDF URL for the given GR number.
+    Uses the language from the corpus if found, otherwise defaults to Marathi.
     """
-    # Clean the GR number (e.g. remove "GR" prefix if any)
     clean_gr = gr_number.strip()
     if clean_gr.upper().startswith("GR"):
         clean_gr = clean_gr[2:]
-        
-    languages = ["Marathi", "English"]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    for lang in languages:
-        url = f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang}/{clean_gr}.pdf"
-        try:
-            # Verify using an HTTP HEAD request (follows redirects)
-            response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
-            if response.status_code == 200:
-                # Double check content-type or content-length if possible
-                ct = response.headers.get("Content-Type", "").lower()
-                if "pdf" in ct or response.status_code == 200:
-                    return url
-        except Exception:
-            pass
-            
-    return None
+
+    try:
+        from retrieval import lookup_by_gr_number
+        hit = lookup_by_gr_number(clean_gr)
+        if hit and hit.source_url:
+            return hit.source_url
+    except Exception:
+        pass
+
+    return f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/Marathi/{clean_gr}.pdf"
 
 def search_government_portal(gr_number: str, department: str, date: Optional[str] = None, subject: Optional[str] = None) -> Optional[str]:
     """
