@@ -227,6 +227,13 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
 
 
 def call_model(system_prompt: str, user_message: str) -> str:
+    raw = _call_model_raw(system_prompt, user_message)
+    if raw:
+        return raw.replace("**", "")
+    return raw
+
+
+def _call_model_raw(system_prompt: str, user_message: str) -> str:
     """
     Send one request to the active LLM provider and return its raw text reply.
 
