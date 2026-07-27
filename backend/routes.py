@@ -22,6 +22,7 @@ import references
 import retrieval
 import store
 import template_rules
+from lookup import get_adapter
 from config import settings
 from schemas import (
     AnalysisReport,
@@ -29,6 +30,7 @@ from schemas import (
     ConflictHit,
     CorpusSearchResponse,
     FullOCRResponse,
+    OfficialSourceResponse,
     Draft,
     DraftCreate,
     ReferenceHit,
@@ -191,14 +193,38 @@ def run_full_analysis(draft_id: str) -> AnalysisReport:
 # =====================================================================
 
 @router.get("/api/corpus/{gr_id}/ocr", response_model=FullOCRResponse, tags=["corpus"])
-def get_corpus_ocr(gr_id: str) -> FullOCRResponse:
+def get_corpus_ocr(gr_id: str, language: str = Query(None, description="Filter by language 'mr' or 'en'")) -> FullOCRResponse:
     """
     Fetch the full OCR text reconstructed from chunks.
     """
-    res = retrieval.get_full_ocr(gr_id)
+    res = retrieval.get_full_ocr(gr_id, language)
     if not res:
         raise HTTPException(status_code=404, detail=f"GR {gr_id} not found in corpus")
     return FullOCRResponse(**res)
+
+
+@router.get("/api/official-source/{gr_number}", response_model=OfficialSourceResponse, tags=["corpus"])
+def get_official_source(
+    gr_number: str,
+    department: str = Query(..., description="Department name for lookup routing"),
+    date: str = Query(None, description="Optional date string"),
+    subject: str = Query(None, description="Optional subject string")
+) -> OfficialSourceResponse:
+    # 1. Check Cache
+    cached = store.get_cached_official_url(gr_number)
+    if cached and cached.get("official_url"):
+        return OfficialSourceResponse(status="found", url=cached["official_url"])
+    
+    # 2. Get Adapter and look up
+    adapter = get_adapter(department)
+    url = adapter.find_pdf(gr_number, date, subject)
+    
+    # 3. Store result in Cache if found
+    if url:
+        store.set_cached_official_url(gr_number, department, url)
+        return OfficialSourceResponse(status="found", url=url)
+    
+    return OfficialSourceResponse(status="not_found", url=None)
 
 
 @router.get("/api/corpus/search",

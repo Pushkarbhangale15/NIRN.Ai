@@ -42,8 +42,11 @@ export const api = {
   searchCorpus: (q, topK = 8) =>
     request(`/api/corpus/search?q=${encodeURIComponent(q)}&top_k=${topK}`),
 
-  getCorpusOcr: (grId) =>
-    request(`/api/corpus/${grId}/ocr`),
+  getCorpusOcr: (grId, language = "") =>
+    request(`/api/corpus/${grId}/ocr?language=${language}`),
+
+  getOfficialSource: (grId, department, date = "", subject = "") =>
+    request(`/api/official-source/${grId}?department=${encodeURIComponent(department)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}`),
 
   // ── Copilot ──────────────────────────────────────────────────
   copilotChat: (query, sessionId = null) =>

@@ -46,6 +46,15 @@ def _init_db():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_session_id ON chat_sessions(session_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS official_url_cache (
+                gr_number TEXT PRIMARY KEY,
+                department TEXT,
+                official_url TEXT,
+                last_verified TEXT,
+                status TEXT
+            )
+        """)
         conn.commit()
 
 
@@ -129,5 +138,28 @@ def add_message(session_id: str, message: dict):
         conn.execute(
             "INSERT INTO chat_sessions (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
             (session_id, message.get("role", "user"), message.get("content", ""), now_iso)
+        )
+        conn.commit()
+
+def get_cached_official_url(gr_number: str) -> Optional[dict]:
+    with _get_conn() as conn:
+        row = conn.execute("SELECT * FROM official_url_cache WHERE gr_number = ?", (gr_number,)).fetchone()
+        if not row:
+            return None
+        return dict(row)
+
+def set_cached_official_url(gr_number: str, department: str, official_url: str, status: str = "verified"):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO official_url_cache (gr_number, department, official_url, last_verified, status)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(gr_number) DO UPDATE SET
+                official_url=excluded.official_url,
+                last_verified=excluded.last_verified,
+                status=excluded.status
+            """,
+            (gr_number, department, official_url, now_iso, status)
         )
         conn.commit()

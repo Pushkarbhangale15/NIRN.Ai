@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { useIsPresent } from 'framer-motion';
 
 const translations = {
   en: {
@@ -223,5 +224,29 @@ export function LanguageProvider({ children }) {
 }
 
 export function useLanguage() {
-  return useContext(LanguageContext);
+  const context = useContext(LanguageContext);
+  let isPresent = true;
+  try {
+    isPresent = useIsPresent();
+  } catch (e) {
+    // ignore
+  }
+
+  const saved = useRef({
+    siteLanguage: context.siteLanguage,
+    t: context.t,
+  });
+
+  if (isPresent) {
+    saved.current = {
+      siteLanguage: context.siteLanguage,
+      t: context.t,
+    };
+  }
+
+  return {
+    ...context,
+    siteLanguage: saved.current.siteLanguage,
+    t: saved.current.t,
+  };
 }

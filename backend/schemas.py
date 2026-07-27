@@ -165,6 +165,10 @@ class FullOCRResponse(BaseModel):
     title: str
     text: str
 
+class OfficialSourceResponse(BaseModel):
+    status: str
+    url: Optional[str] = None
+
 
 # ---------------------------------------------------------------------
 # Copilot / Chat

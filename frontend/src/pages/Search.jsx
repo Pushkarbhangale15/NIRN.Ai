@@ -2,6 +2,13 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
+import { motion } from "framer-motion";
+
+const IconSearch = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 24 24" {...props}>
+    <path d="M18 10c0-4.41-3.59-8-8-8s-8 3.59-8 8 3.59 8 8 8c1.85 0 3.54-.63 4.9-1.69l5.1 5.1L21.41 20l-5.1-5.1A8 8 0 0 0 18 10M4 10c0-3.31 2.69-6 6-6s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6" />
+  </svg>
+);
 
 export default function Search() {
   const [params, setParams] = useSearchParams();
@@ -11,12 +18,20 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [k, setK] = useState(8);
   const [error, setError] = useState("");
-  
+
   // OCR Viewer state
   const [selectedGr, setSelectedGr] = useState(null);
   const [ocrText, setOcrText] = useState("");
   const [ocrLoading, setOcrLoading] = useState(false);
   const contentRef = useRef(null);
+
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  useEffect(() => {
+    const handleClick = () => setOpenDropdown(null);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
 
   const { t } = useLanguage();
 
@@ -44,18 +59,40 @@ export default function Search() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openSource = async (h, e) => {
-    e.preventDefault();
+  const openSource = async (h, language = "", e) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    } else if (language && language.preventDefault) {
+      e = language;
+      language = "";
+      e.preventDefault();
+    }
     setSelectedGr(h);
     setOcrLoading(true);
     setOcrText("");
     try {
-      const res = await api.getCorpusOcr(h.gr_id);
+      const res = await api.getCorpusOcr(h.gr_id, language);
       setOcrText(res.text || "");
     } catch (err) {
       setOcrText("Error loading full text for this GR.");
     } finally {
       setOcrLoading(false);
+    }
+  };
+
+  const openOfficialPdf = async (h, e) => {
+    e.preventDefault();
+    try {
+      const res = await api.getOfficialSource(h.gr_id, h.department, h.issued_on || "");
+      if (res.status === "found" && res.url) {
+        window.open(res.url, '_blank');
+      } else {
+        alert("Official Government PDF is currently unavailable. Displaying the archived OCR version.");
+        openSource(h, e);
+      }
+    } catch (err) {
+      alert("Error looking up official PDF. Displaying archived OCR version.");
+      openSource(h, e);
     }
   };
 
@@ -94,14 +131,21 @@ export default function Search() {
         className="searchbar" style={{ marginTop: 28 }}
         onSubmit={(e) => { e.preventDefault(); runSearch(); }}
       >
-        <span className="lead">🔍</span>
+        <span className="lead" style={{ display: 'flex', alignItems: 'center' }}><IconSearch width="22" height="22" /></span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('search_placeholder')}
           aria-label={t('search_title')}
         />
-        <button className="go" type="submit" aria-label="Search">→</button>
+        <motion.button 
+          whileTap={{ scale: 0.9 }} 
+          className="go" 
+          type="submit" 
+          aria-label="Search"
+        >
+          →
+        </motion.button>
       </form>
 
       <div className="retrieve-row">
@@ -168,37 +212,39 @@ export default function Search() {
             <p className="ri-sub" style={{ marginBottom: 14 }}>
               {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')} · {tookMs} ms
             </p>
-            {hits.map((h) => (
-              <div className="result-item" key={h.gr_id}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}>
-                  <div>
-                    <div className="hit-title">{h.title}</div>
-                    <div className="hit-meta">
-                      {h.department} · <span className="mono">{h.gr_id}</span>
-                      {h.issued_on ? ` · ${h.issued_on}` : ""}
-                    </div>
-                  </div>
-                  <div className="hit-score">{(h.score * 100).toFixed(0)}%</div>
-                </div>
-                <div className="ri-sub" style={{ marginTop: 10 }}>{h.snippet}</div>
-<<<<<<< HEAD
-                {h.source_url && (
-                  <a className="f-link" style={{ marginTop: 10, display: "inline-flex" }}
-                    href={h.source_url} target="_blank" rel="noreferrer">
-                    {t('search_view_source')}
-                  </a>
-                )}
-=======
-                <button 
-                  className="btn btn-ghost" 
-                  style={{ marginTop: 10, display: "inline-flex", padding: '6px 12px' }}
-                  onClick={(e) => openSource(h, e)}
-                >
-                  {t('search_view_source')}
-                </button>
->>>>>>> origin/prasad
-              </div>
-            ))}
+             {hits.map((h, idx) => {
+               const uniqueId = `${h.gr_id}_${idx}`;
+               return (
+                 <div className="result-item" key={uniqueId}>
+                   <div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}>
+                     <div>
+                       <div className="hit-title">{h.title}</div>
+                       <div className="hit-meta">
+                         {h.department} · <span className="mono">{h.gr_id}</span>
+                         {h.issued_on ? ` · ${h.issued_on}` : ""}
+                       </div>
+                     </div>
+                     <div className="hit-score">{(h.score * 100).toFixed(0)}%</div>
+                   </div>
+                   <div className="ri-sub" style={{ marginTop: 10 }}>{h.snippet}</div>
+                   <div className="source-dropdown" onClick={(e) => e.stopPropagation()}>
+                     <button 
+                       className="source-dropdown-btn" 
+                       onClick={() => setOpenDropdown(openDropdown === uniqueId ? null : uniqueId)}
+                     >
+                       {t('search_view_source')}
+                     </button>
+                     {openDropdown === uniqueId && (
+                       <div className="source-menu">
+                         <button onClick={(e) => { setOpenDropdown(null); openSource(h, 'mr', e); }}>View Marathi OCR</button>
+                         <button onClick={(e) => { setOpenDropdown(null); openSource(h, 'en', e); }}>View English OCR</button>
+                         <button onClick={(e) => { setOpenDropdown(null); openOfficialPdf(h, e); }}>View Official Government PDF</button>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               );
+             })}
           </>
         )}
       </div>

@@ -11,11 +11,26 @@ import { useLanguage } from "./LanguageContext.jsx";
 import { useEffect } from "react";
 
 
+function PageWrapper({ children }) {
+  const { siteLanguage } = useLanguage();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.25 }}
+      className={siteLanguage === 'mr' ? 'lang-mr' : ''}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
 
   return (
-    <div className="container">
+    <div className={`container ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
       <nav className="nav">
         <NavLink to="/" className="brand">
           <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
@@ -41,9 +56,9 @@ function Navbar() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={toggleLanguage} 
-            className="btn btn-ghost" 
+          <button
+            onClick={toggleLanguage}
+            className="btn btn-ghost"
             style={{ padding: '6px 12px', fontSize: '14px', borderRadius: '20px' }}
           >
             {siteLanguage === 'en' ? 'मराठी' : 'English'}
@@ -58,89 +73,52 @@ function Navbar() {
 }
 
 export default function App() {
-<<<<<<< HEAD
   const location = useLocation();
-=======
   const { siteLanguage } = useLanguage();
 
-  useEffect(() => {
-    if (siteLanguage === 'mr') {
-      document.body.classList.add('lang-mr');
-    } else {
-      document.body.classList.remove('lang-mr');
-    }
-  }, [siteLanguage]);
-
->>>>>>> origin/prasad
   return (
     <>
       <Navbar />
 
       <AnimatePresence mode="wait">
-  <Routes location={location} key={location.pathname}>
-    <Route
-      path="/"
-      element={
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Home />
-        </motion.div>
-      }
-    />
+        <Routes location={location} key={location.pathname + siteLanguage}>
+          <Route
+            path="/"
+            element={
+              <PageWrapper>
+                <Home />
+              </PageWrapper>
+            }
+          />
 
-    <Route
-      path="/search"
-      element={
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Search />
-        </motion.div>
-      }
-    />
+          <Route
+            path="/search"
+            element={
+              <PageWrapper>
+                <Search />
+              </PageWrapper>
+            }
+          />
 
-    <Route
-      path="/analyze"
-      element={
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Analyze />
-        </motion.div>
-      }
-    />
+          <Route
+            path="/analyze"
+            element={
+              <PageWrapper>
+                <Analyze />
+              </PageWrapper>
+            }
+          />
 
-    <Route
-      path="/copilot"
-      element={
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Copilot />
-        </motion.div>
-      }
-    />
-  </Routes>
-</AnimatePresence>
-      {/* <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/analyze" element={<Analyze />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/copilot" element={<Copilot />} />
-      </Routes> */}
+          <Route
+            path="/copilot"
+            element={
+              <PageWrapper>
+                <Copilot />
+              </PageWrapper>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
     </>
   );
 }

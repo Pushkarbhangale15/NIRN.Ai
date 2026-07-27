@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
+import { motion } from "framer-motion";
 
 /* ─── Tab config ──────────────────────────────────────────────── */
 const TABS = [
@@ -675,13 +676,14 @@ export default function Copilot() {
       {/* Tab bar */}
       <div className="copilot-tabs">
         {TABS.map((t) => (
-          <button
+          <motion.div
             key={t.id}
+            whileTap={{ scale: 0.95 }}
             className={`copilot-tab${activeTab === t.id ? " copilot-tab--active" : ""}`}
             onClick={() => setActiveTab(t.id)}
           >
             {t.label}
-          </button>
+          </motion.div>
         ))}
       </div>
 
