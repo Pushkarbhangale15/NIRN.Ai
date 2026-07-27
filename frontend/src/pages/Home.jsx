@@ -95,6 +95,20 @@ export default function Home() {
     }
   };
 
+  const openOfficialPdfForFoundGr = async () => {
+    if (!foundGr) return;
+    try {
+      const res = await api.getOfficialGr(foundGr.gr_id, foundGr.department, "", foundGr.title || "");
+      if (res.status === "found" && res.url) {
+        window.open(res.url, '_blank');
+      } else {
+        alert("Official Government Resolution could not be located.");
+      }
+    } catch (err) {
+      alert("Official Government Resolution could not be located.");
+    }
+  };
+
   const goSearch = (q) => {
     const text = (q ?? query).trim();
     if (text) navigate(`/search?q=${encodeURIComponent(text)}`);
@@ -170,21 +184,49 @@ export default function Home() {
           </div>
 
           {/* GR ID lookup searchbar */}
-          <form
-            className="searchbar gr-number-searchbar"
-            onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
-          >
-            <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
-            <input
-              value={grNumber}
-              onChange={(e) => setGrNumber(e.target.value)}
-              placeholder={t('home_gr_number_placeholder')}
-              aria-label={t('home_gr_number_placeholder')}
-            />
-            <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
-              {lookupLoading ? '...' : '→'}
-            </button>
-          </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '24px' }}>
+            <form
+              className="searchbar gr-number-searchbar"
+              onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
+              style={{ marginTop: 0, flex: '1', minWidth: '280px' }}
+            >
+              <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
+              <input
+                value={grNumber}
+                onChange={(e) => setGrNumber(e.target.value)}
+                placeholder={t('home_gr_number_placeholder')}
+                aria-label={t('home_gr_number_placeholder')}
+              />
+              <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
+                {lookupLoading ? '...' : '→'}
+              </button>
+            </form>
+
+            {foundGr && (
+              <button
+                type="button"
+                onClick={openOfficialPdfForFoundGr}
+                className="chip"
+                style={{
+                  height: '42px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'var(--red)',
+                  color: '#fff',
+                  border: '2px solid var(--ink)',
+                  borderRadius: '12px',
+                  padding: '0 16px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  boxShadow: '0 3px 0 var(--ink)',
+                  transition: 'transform 0.1s'
+                }}
+              >
+                🌐 View Official GR ↗
+              </button>
+            )}
+          </div>
 
           {lookupError && (
             <div className="lookup-error" style={{ color: 'var(--red)', marginTop: '12px', fontSize: '15px' }}>

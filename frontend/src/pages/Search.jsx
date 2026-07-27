@@ -83,16 +83,16 @@ export default function Search() {
   const openOfficialPdf = async (h, e) => {
     e.preventDefault();
     try {
-      const res = await api.getOfficialSource(h.gr_id, h.department, h.issued_on || "");
+      const res = await api.getOfficialGr(h.gr_id, h.department, h.issued_on || "", h.title || "");
       if (res.status === "found" && res.url) {
         window.open(res.url, '_blank');
       } else {
-        alert("Official Government PDF is currently unavailable. Displaying the archived OCR version.");
-        openSource(h, e);
+        alert("Official Government Resolution could not be located. Displaying the archived OCR version.");
+        openSource(h, 'mr', e);
       }
     } catch (err) {
-      alert("Error looking up official PDF. Displaying archived OCR version.");
-      openSource(h, e);
+      alert("Official Government Resolution could not be located. Displaying the archived OCR version.");
+      openSource(h, 'mr', e);
     }
   };
 
@@ -238,7 +238,7 @@ export default function Search() {
                        <div className="source-menu">
                          <button onClick={(e) => { setOpenDropdown(null); openSource(h, 'mr', e); }}>View Marathi OCR</button>
                          <button onClick={(e) => { setOpenDropdown(null); openSource(h, 'en', e); }}>View English OCR</button>
-                         <button onClick={(e) => { setOpenDropdown(null); openOfficialPdf(h, e); }}>View Official Government PDF</button>
+                         <button onClick={(e) => { setOpenDropdown(null); openOfficialPdf(h, e); }}>View Official Government Resolution</button>
                        </div>
                      )}
                    </div>

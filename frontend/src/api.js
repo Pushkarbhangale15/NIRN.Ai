@@ -48,6 +48,9 @@ export const api = {
   getOfficialSource: (grId, department, date = "", subject = "") =>
     request(`/api/official-source/${grId}?department=${encodeURIComponent(department)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}`),
 
+  getOfficialGr: (grId, department, date = "", subject = "") =>
+    request(`/api/official-gr/${grId}?department=${encodeURIComponent(department)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}`),
+
   // ── Copilot ──────────────────────────────────────────────────
   copilotChat: (query, sessionId = null) =>
     request("/api/copilot/chat", {
