@@ -39,6 +39,9 @@ export const api = {
   analyze: (draftId) =>
     request(`/api/analysis/${draftId}`, { method: "POST" }),
 
+  runFullAnalysis: (draftId) =>
+    request(`/api/analysis/${draftId}`, { method: "POST" }),
+
   searchCorpus: (q, topK = 8) =>
     request(`/api/corpus/search?q=${encodeURIComponent(q)}&top_k=${topK}`),
 
