@@ -14,31 +14,31 @@ import SuggestionsCard from "../components/drafting/SuggestionsCard.jsx";
 
 /* ─── Tab config ──────────────────────────────────────────────── */
 const TABS = [
-  { id: "chat",    label: "Chat",         eyebrow: "Ask anything" },
-  { id: "draft",   label: "Draft a GR",   eyebrow: "AI drafting" },
-  { id: "compare", label: "Compare GRs",  eyebrow: "Side-by-side" },
+  { id: "chat", label: "Chat", eyebrow: "Ask anything" },
+  { id: "draft", label: "Draft a GR", eyebrow: "AI drafting" },
+  { id: "compare", label: "Compare GRs", eyebrow: "Side-by-side" },
   { id: "explain", label: "Explain Clause", eyebrow: "Plain language" },
 ];
 
 /* ─── Inline SVG icons ───────────────────────────────────────── */
 const IconSend = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
+    <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
   </svg>
 );
 const IconBot = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 16.5 13M3 21v-2h18v2z"/>
+    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 16.5 13M3 21v-2h18v2z" />
   </svg>
 );
 const IconUser = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12m0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8"/>
+    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12m0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8" />
   </svg>
 );
 const IconCopy = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
   </svg>
 );
 
@@ -97,13 +97,13 @@ function ChatTab() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    try { localStorage.setItem("nirn_chat_messages", JSON.stringify(messages)); } catch {}
+    try { localStorage.setItem("nirn_chat_messages", JSON.stringify(messages)); } catch { }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   useEffect(() => {
     if (sessionId) {
-      try { localStorage.setItem("nirn_chat_session_id", sessionId); } catch {}
+      try { localStorage.setItem("nirn_chat_session_id", sessionId); } catch { }
     } else {
       localStorage.removeItem("nirn_chat_session_id");
     }
@@ -137,7 +137,7 @@ function ChatTab() {
     try {
       localStorage.removeItem("nirn_chat_messages");
       localStorage.removeItem("nirn_chat_session_id");
-    } catch {}
+    } catch { }
   };
 
   return (
@@ -298,7 +298,7 @@ function DraftTab() {
 
       {/* 3. 2-Column Side-by-Side Workspace */}
       <div className="draft-workspace-two-col">
-        
+
         {/* Left Column: Official Document Viewer */}
         <div>
           {error && (
@@ -317,7 +317,6 @@ function DraftTab() {
           <DraftViewer
             draft={draftResult}
             loading={loading}
-            onRegenerate={handleGenerate}
           />
         </div>
 
@@ -703,8 +702,8 @@ export default function Copilot({ defaultTab }) {
 
       {/* Tab panels */}
       <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
-        {activeTab === "chat"    && <ChatTab />}
-        {activeTab === "draft"   && <DraftTab />}
+        {activeTab === "chat" && <ChatTab />}
+        {activeTab === "draft" && <DraftTab />}
       </div>
     </main>
   );

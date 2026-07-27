@@ -1,5 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Marathi:ital@0;1&display=swap');
 
+@font-face {
+  font-family: 'Tiro Devanagari Marathi';
+  src: url('./assets/fonts/TiroDevanagariMarathi-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Tiro Devanagari Marathi';
+  src: url('./assets/fonts/TiroDevanagariMarathi-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* ================================================================
    NIRN.AI — design system
    Matches the reference: Bauhaus palette on warm cream, dotted

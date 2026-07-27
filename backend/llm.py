@@ -192,13 +192,25 @@ _MAX_RETRIES = 3
 _BASE_BACKOFF = 2.0   # seconds; doubles each retry
 
 
+def sanitize_llm_text(text: str) -> str:
+    """
+    Remove accidental CJK / Chinese / Japanese characters from LLM outputs.
+    Multilingual models (like Gemma/Llama) sometimes hallucinate CJK ideographs
+    (e.g., 勤務 for work/duty) when generating technical Marathi terms.
+    """
+    if not text:
+        return ""
+    cjk_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\u3040-\u309f\u30a0-\u30ff]+')
+    return cjk_pattern.sub('', text)
+
+
 def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
     """
     Send a request to a locally running Ollama instance.
     Returns (text_response, is_real_llm_response).
     """
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
-    need_json = "json" in system_prompt.lower() and "drafting officer" not in system_prompt.lower()
+    need_json = any(kw in system_prompt.lower() for kw in ["respond in json", "output json", "json array", "json object", "return a json", "return json"]) and "draft" not in system_prompt.lower()
     payload: dict = {
         "model": settings.OLLAMA_MODEL,
         "messages": [
@@ -214,7 +226,7 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
         response = httpx.post(url, json=payload, timeout=120.0)  # local can be slow on first token
         response.raise_for_status()
         text = response.json()["message"]["content"]
-        return text, True
+        return sanitize_llm_text(text), True
     except httpx.ConnectError:
         logger.error(
             "Cannot connect to Ollama at %s — is it running? "
@@ -297,7 +309,7 @@ def _call_model_raw(system_prompt: str, user_message: str) -> str:
 
             response.raise_for_status()
             result = response.json()
-            text = result["candidates"][0]["content"]["parts"][0]["text"]
+            text = sanitize_llm_text(result["candidates"][0]["content"]["parts"][0]["text"])
 
             # 4. Store in cache before returning
             _cache.set(provider, system_prompt, user_message, text)

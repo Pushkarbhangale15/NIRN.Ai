@@ -152,7 +152,8 @@ COPILOT_DRAFT = (
     "• महाराष्ट्राचे राज्यपाल यांच्या आदेशानुसार व नावाने.\n"
     "Avoid conversational Marathi.\n"
     "Avoid literal English translations.\n"
-    "Prefer official administrative terminology wherever possible.\n\n"
+    "Prefer official administrative terminology wherever possible.\n"
+    "CRITICAL SCRIPT RULE: NEVER output Chinese, Japanese, or CJK characters (such as 勤務). Use ONLY Devanagari Unicode for Marathi and standard English for technical terms.\n\n"
 
     "### Retrieval Behaviour ###\n"
     "If retrieved documents are predominantly Marathi:\n"
