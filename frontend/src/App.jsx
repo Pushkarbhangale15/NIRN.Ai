@@ -4,9 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 //import { NavLink, Route, Routes } from "react-router-dom";
 import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
-import Analyze from "./pages/Analyze.jsx";
-import Search from "./pages/Search.jsx";
-import Copilot from "./pages/Copilot.jsx";
+import Draft from "./pages/Draft.jsx";
+import Chat from "./pages/Chat.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
 import { useEffect } from "react";
 
@@ -132,7 +131,7 @@ export default function App() {
             path="/draft"
             element={
               <PageWrapper>
-                <Copilot defaultTab="draft" />
+                <Draft />
               </PageWrapper>
             }
           />
@@ -141,7 +140,7 @@ export default function App() {
             path="/chat"
             element={
               <PageWrapper>
-                <Copilot defaultTab="chat" />
+                <Chat />
               </PageWrapper>
             }
           />
@@ -150,7 +149,7 @@ export default function App() {
             path="/copilot"
             element={
               <PageWrapper>
-                <Copilot defaultTab="chat" />
+                <Chat />
               </PageWrapper>
             }
           />
