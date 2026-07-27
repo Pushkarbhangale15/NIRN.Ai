@@ -44,14 +44,11 @@ function Navbar() {
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_home')}
           </NavLink>
-          <NavLink to="/search" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_search')}
+          <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_draft')}
           </NavLink>
-          <NavLink to="/analyze" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_analyze')}
-          </NavLink>
-          <NavLink to="/copilot" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_copilot')}
+          <NavLink to="/chat" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_chat')}
           </NavLink>
         </div>
 
@@ -132,19 +129,19 @@ export default function App() {
           />
 
           <Route
-            path="/search"
+            path="/draft"
             element={
               <PageWrapper>
-                <Search />
+                <Copilot defaultTab="draft" />
               </PageWrapper>
             }
           />
 
           <Route
-            path="/analyze"
+            path="/chat"
             element={
               <PageWrapper>
-                <Analyze />
+                <Copilot defaultTab="chat" />
               </PageWrapper>
             }
           />
@@ -153,7 +150,7 @@ export default function App() {
             path="/copilot"
             element={
               <PageWrapper>
-                <Copilot />
+                <Copilot defaultTab="chat" />
               </PageWrapper>
             }
           />

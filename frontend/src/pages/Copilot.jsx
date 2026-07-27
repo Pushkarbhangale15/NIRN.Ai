@@ -3,6 +3,15 @@ import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 import { motion } from "framer-motion";
 
+import WorkflowStepper from "../components/drafting/WorkflowStepper.jsx";
+import DraftInputCard from "../components/drafting/DraftInputCard.jsx";
+import DraftViewer from "../components/drafting/DraftViewer.jsx";
+import ComplianceCard from "../components/drafting/ComplianceCard.jsx";
+import ConflictCard from "../components/drafting/ConflictCard.jsx";
+import ReferencesCard from "../components/drafting/ReferencesCard.jsx";
+import TerminologyCard from "../components/drafting/TerminologyCard.jsx";
+import SuggestionsCard from "../components/drafting/SuggestionsCard.jsx";
+
 /* ─── Tab config ──────────────────────────────────────────────── */
 const TABS = [
   { id: "chat",    label: "Chat",         eyebrow: "Ask anything" },
@@ -213,186 +222,133 @@ function ChatTab() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TAB 2 — DRAFT A GR
+   TAB 2 — DRAFT A GR WORKSPACE (3-COLUMN WORKSPACE)
 ═══════════════════════════════════════════════════════════════ */
-const DRAFT_STARTERS = [
-  "Establish AI research labs in government engineering colleges with ₹5 crore budget",
-  "Revision of scholarship criteria for OBC students in higher education",
-  "Work from home policy for state government employees post-pandemic",
-];
-
 function DraftTab() {
   const { t, siteLanguage } = useLanguage();
   const [prompt, setPrompt] = useState("");
-  const [language, setLanguageState] = useState(localStorage.getItem('draftLanguage') || (siteLanguage === 'mr' ? 'marathi' : 'english'));
+  const [language, setLanguage] = useState(siteLanguage === 'mr' ? 'Marathi' : 'English');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [draftResult, setDraftResult] = useState(null);
+  const [analysisReport, setAnalysisReport] = useState(null);
   const [error, setError] = useState("");
 
-  const handleLanguageChange = (e) => {
-    const newLang = e.target.value;
-    setLanguageState(newLang);
-    localStorage.setItem('draftLanguage', newLang);
-  };
-
-  const generate = async (e) => {
-    e?.preventDefault();
+  const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
     setError("");
-    setResult(null);
+    setDraftResult(null);
+    setAnalysisReport(null);
+    setCurrentStage(1);
+
     try {
-      const res = await api.copilotDraft(prompt, language);
-      setResult(res);
+      // Step 1: LLM Draft Generation
+      const res = await api.copilotDraft(prompt, language.toLowerCase());
+      setDraftResult(res);
+      setCurrentStage(2);
+
+      // Step 2: AI Review & Conflict Analysis
+      setAnalysisLoading(true);
+      if (res && res.draft_id) {
+        try {
+          setCurrentStage(3);
+          const report = await api.runFullAnalysis(res.draft_id);
+          setCurrentStage(4);
+          setAnalysisReport(report);
+        } catch (err) {
+          console.warn("Analysis call warning:", err);
+        }
+      }
+      setCurrentStage(5);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Draft generation failed.");
+      setCurrentStage(0);
     } finally {
       setLoading(false);
+      setAnalysisLoading(false);
     }
   };
 
-  const downloadTxt = () => {
-    if (!result) return;
-    const element = document.createElement("a");
-    const file = new Blob([result.body_text], {type: 'text/plain;charset=utf-8'});
-    element.href = URL.createObjectURL(file);
-    element.download = "draft_gr.txt";
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const handleReset = () => {
+    setPrompt("");
+    setDraftResult(null);
+    setAnalysisReport(null);
+    setCurrentStage(0);
+    setError("");
   };
-
-  const downloadPdf = () => {
-    if (!result) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert("Please allow pop-ups to download PDF.");
-      return;
-    }
-    const htmlContent = `
-      <html>
-        <head>
-          <title>${result.title || "Draft GR"}</title>
-          <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              font-size: 14pt; 
-              line-height: 1.5; 
-              padding: 40px; 
-              max-width: 800px;
-              margin: 0 auto;
-            }
-            pre { 
-              white-space: pre-wrap; 
-              font-family: inherit; 
-            }
-          </style>
-        </head>
-        <body>
-          <h2>${result.title || "Government Resolution Draft"}</h2>
-          <pre>${result.body_text}</pre>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  };
-
-  const isMarathi = language === "marathi";
 
   return (
-    <div className="copilot-tool-layout">
-      {/* Left: prompt form */}
-      <div className="panel">
-        <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="panel-title">{t('copilot_brief_title')}</span>
-          <select value={language} onChange={handleLanguageChange} style={{ padding: '4px', borderRadius: '4px' }}>
-            <option value="english">English</option>
-            <option value="marathi">मराठी</option>
-          </select>
+    <div style={{ width: '100%' }}>
+      {/* 3-Column Workspace Grid */}
+      <div className="draft-workspace-grid">
+        
+        {/* LEFT PANEL: Input & Brief */}
+        <div>
+          <DraftInputCard
+            prompt={prompt}
+            setPrompt={setPrompt}
+            language={language}
+            setLanguage={setLanguage}
+            onGenerate={handleGenerate}
+            loading={loading}
+            onReset={handleReset}
+          />
         </div>
-        <div className="panel-body">
-          <div className="field">
-            <label htmlFor="draft-prompt">{t('copilot_describe_label')}</label>
-            <textarea
-              id="draft-prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={t('copilot_describe_placeholder')}
-              style={{ minHeight: 160 }}
-            />
-          </div>
-          <div className="copilot-starters" style={{ marginBottom: 20 }}>
-            <span className="try-label" style={{ fontSize: 12 }}>{t('copilot_try_label')}</span>
-            {DRAFT_STARTERS.map((s) => (
-              <button key={s} className="chip" style={{ fontSize: 12 }} onClick={() => setPrompt(s)}>
-                {s.slice(0, 48)}… <span className="arr">↗</span>
-              </button>
-            ))}
-          </div>
-          <div className="btn-row">
-            <button className="btn btn-red" onClick={generate} disabled={loading || !prompt.trim()}>
-              {loading ? <span className="spinner" /> : t('copilot_generate_btn')}
-            </button>
-            {result && (
-              <button className="btn btn-ghost" onClick={() => { setResult(null); setPrompt(""); }}>
-                {t('copilot_start_over')}
-              </button>
-            )}
-          </div>
-          {error && <div className="error-box" style={{ marginTop: 16 }}>{error}</div>}
-        </div>
-      </div>
 
-      {/* Right: generated draft */}
-      <div>
-        {!result && !loading && (
-          <div className="empty-state">
-            <div className="big">📝</div>
-            <p>{t('copilot_empty_title')}<br />{t('copilot_empty_desc')}</p>
-          </div>
-        )}
-        {loading && (
-          <div className="empty-state">
-            <div className="big"><span className="spinner" /></div>
-            <p>{t('copilot_loading_desc1')}<br />{t('copilot_loading_desc2')}</p>
-          </div>
-        )}
-        {result && (
-          <div className="panel">
-            <div className="panel-head">
-              <span className="panel-title">{result.title || "Generated GR"}</span>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="btn btn-ghost" onClick={downloadTxt} style={{ padding: '4px 8px', fontSize: '12px' }}>{t('copilot_download')}</button>
-                <button className="btn btn-ghost" onClick={downloadPdf} style={{ padding: '4px 8px', fontSize: '12px' }}>{t('copilot_download_pdf')}</button>
-                <CopyBtn text={result.body_text} />
-              </div>
+        {/* CENTER PANEL: Stepper & Official Document Viewer */}
+        <div>
+          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
+          {error && (
+            <div style={{
+              background: '#fee2e2',
+              border: '2px solid var(--red)',
+              color: 'var(--red)',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              marginBottom: '16px'
+            }}>
+              ⚠️ {error}
             </div>
-            <div className="panel-body">
-              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666' }}>
-                <span>{t('copilot_dept')} <strong>{result.department}</strong></span>
-                <span>{isMarathi ? t('copilot_out_lang_mr') : t('copilot_out_lang_en')}</span>
-              </div>
-              <pre className="copilot-draft-text">{result.body_text}</pre>
-              <RefPills refs={result.references} />
-              <div className="btn-row" style={{ marginTop: 18 }}>
-                <a
-                  className="btn btn-red"
-                  href={`/analyze`}
-                  onClick={() => {
-                    // Store in sessionStorage so Analyze page can pick it up
-                    sessionStorage.setItem("copilot_draft", JSON.stringify(result));
-                  }}
-                >
-                  {t('copilot_analyze_draft')}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+          <DraftViewer
+            draft={draftResult}
+            loading={loading}
+            onRegenerate={handleGenerate}
+            onTranslate={() => setLanguage(l => l === 'English' ? 'Marathi' : 'English')}
+          />
+        </div>
+
+        {/* RIGHT PANEL: AI Review Dashboard */}
+        <div>
+          <ComplianceCard
+            report={analysisReport}
+            loading={analysisLoading}
+            hasGenerated={Boolean(draftResult)}
+          />
+          <ConflictCard
+            report={analysisReport}
+            loading={analysisLoading}
+            hasGenerated={Boolean(draftResult)}
+          />
+          <ReferencesCard
+            references={analysisReport?.references || draftResult?.references}
+            loading={analysisLoading}
+            hasGenerated={Boolean(draftResult)}
+          />
+          <TerminologyCard
+            terms={analysisReport?.terms}
+            loading={analysisLoading}
+            hasGenerated={Boolean(draftResult)}
+          />
+          <SuggestionsCard
+            suggestions={analysisReport?.suggestions}
+            hasGenerated={Boolean(draftResult)}
+          />
+        </div>
+
       </div>
     </div>
   );
@@ -658,41 +614,34 @@ function MarkdownBlock({ text }) {
 /* ═══════════════════════════════════════════════════════════════
    ROOT — Copilot page
 ═══════════════════════════════════════════════════════════════ */
-export default function Copilot() {
-  const [activeTab, setActiveTab] = useState("chat");
+export default function Copilot({ defaultTab }) {
+  const [activeTab, setActiveTab] = useState(defaultTab || "chat");
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
+
   const tab = TABS.find((t) => t.id === activeTab);
 
   return (
     <main className="container">
       <header className="page-head">
         <div className="eyebrow">{tab.eyebrow}</div>
-        <h1 className="page-title">AI Copilot</h1>
+        <h1 className="page-title">
+          {activeTab === "chat" ? "NIRN.Ai Chat" : activeTab === "draft" ? "Draft a GR" : "AI Copilot"}
+        </h1>
         <p className="page-sub">
           Your intelligent assistant for drafting, querying, and understanding
           Government Resolutions of Maharashtra.
         </p>
       </header>
 
-      {/* Tab bar */}
-      <div className="copilot-tabs">
-        {TABS.map((t) => (
-          <motion.div
-            key={t.id}
-            whileTap={{ scale: 0.95 }}
-            className={`copilot-tab${activeTab === t.id ? " copilot-tab--active" : ""}`}
-            onClick={() => setActiveTab(t.id)}
-          >
-            {t.label}
-          </motion.div>
-        ))}
-      </div>
-
       {/* Tab panels */}
-      <div className="copilot-panel-area">
+      <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
         {activeTab === "chat"    && <ChatTab />}
         {activeTab === "draft"   && <DraftTab />}
-        {activeTab === "compare" && <CompareTab />}
-        {activeTab === "explain" && <ExplainTab />}
       </div>
     </main>
   );

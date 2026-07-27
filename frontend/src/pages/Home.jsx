@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CountUp from "react-countup";
+import { motion } from "framer-motion";
 
 const IconSearch = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 24 24" {...props}>
@@ -40,25 +41,26 @@ const FEATURES = [
     icon: <IconSearch />, color: "c-blue", underline: "c-blue",
     titleKey: "feat_search_title",
     descKey: "feat_search_desc",
-    link: "/search", labelKey: "feat_search_label",
+    link: "#search-box", labelKey: "feat_search_label",
+    isScroll: true,
   },
   {
     icon: <IconUpload />, color: "c-yellow", underline: "c-yellow",
     titleKey: "feat_upload_title",
     descKey: "feat_upload_desc",
-    link: "/analyze", labelKey: "feat_upload_label",
+    link: "/draft", labelKey: "feat_upload_label",
   },
   {
     icon: <IconConflict />, color: "c-red", underline: "c-red",
     titleKey: "feat_conflict_title",
     descKey: "feat_conflict_desc",
-    link: "/analyze", labelKey: "feat_conflict_label",
+    link: "/draft", labelKey: "feat_conflict_label",
   },
   {
     icon: <IconTemplate />, color: "c-ink", underline: "c-ink",
     titleKey: "feat_template_title",
     descKey: "feat_template_desc",
-    link: "/analyze", labelKey: "feat_template_label",
+    link: "/draft", labelKey: "feat_template_label",
   },
 ];
 
@@ -67,7 +69,6 @@ import { api } from "../api.js";
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const navigate = useNavigate();
   const { t, siteLanguage } = useLanguage();
 
   const [grNumber, setGrNumber] = useState("");
@@ -76,6 +77,109 @@ export default function Home() {
   const [lookupError, setLookupError] = useState("");
   const [promptOfficial, setPromptOfficial] = useState(false);
   const [pendingGrNumber, setPendingGrNumber] = useState("");
+
+  // Semantic search states
+  const [hits, setHits] = useState(null);
+  const [tookMs, setTookMs] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [k, setK] = useState(8);
+  const [searchError, setSearchError] = useState("");
+
+  // OCR Viewer state
+  const [selectedGr, setSelectedGr] = useState(null);
+  const [ocrText, setOcrText] = useState("");
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const contentRef = useRef(null);
+  const resultsSectionRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  useEffect(() => {
+    const handleClick = () => setOpenDropdown(null);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
+
+  const runSearch = async (q) => {
+    const text = (q ?? query).trim();
+    if (text.length < 3) return;
+    setLoading(true);
+    setSearchError("");
+    if (q) setQuery(q);
+    try {
+      const res = await api.searchCorpus(text, k);
+      setHits(res.hits);
+      setTookMs(res.took_ms);
+      
+      // Scroll to results section smoothly
+      setTimeout(() => {
+        resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (err) {
+      setSearchError(err.message || "An error occurred during search.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openSource = async (h, language = "", e) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    } else if (language && language.preventDefault) {
+      e = language;
+      language = "";
+      e.preventDefault();
+    }
+    setSelectedGr(h);
+    setOcrLoading(true);
+    setOcrText("");
+    try {
+      const res = await api.getCorpusOcr(h.gr_id, language);
+      setOcrText(res.text || "");
+    } catch (err) {
+      setOcrText("Error loading full text for this GR.");
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const openOfficialPdf = async (h, e) => {
+    e.preventDefault();
+    try {
+      const res = await api.getOfficialGr(h.gr_id, h.department, h.issued_on || "", h.title || "");
+      if (res.status === "found" && res.url) {
+        window.open(res.url, '_blank');
+      } else {
+        alert("Official Government Resolution could not be located. Displaying the archived OCR version.");
+        openSource(h, 'mr', e);
+      }
+    } catch (err) {
+      alert("Official Government Resolution could not be located. Displaying the archived OCR version.");
+      openSource(h, 'mr', e);
+    }
+  };
+
+  useEffect(() => {
+    if (ocrText && contentRef.current) {
+      const marks = contentRef.current.getElementsByTagName("mark");
+      if (marks.length > 0) {
+        marks[0].scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [ocrText]);
+
+  const renderHighlightedText = (text, highlightQuery) => {
+    if (!highlightQuery || !text) return text;
+    const parts = text.split(new RegExp(`(${highlightQuery.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === highlightQuery.toLowerCase() ? (
+        <mark key={i} className="highlight-mark">{part}</mark>
+      ) : (
+        part
+      )
+    );
+  };
 
   const handleGrLookup = async () => {
     const id = grNumber.trim();
@@ -115,12 +219,6 @@ export default function Home() {
     }
   };
 
-  const goSearch = (q) => {
-    const text = (q ?? query).trim();
-    if (text) navigate(`/search?q=${encodeURIComponent(text)}`);
-    else navigate("/search");
-  };
-
   const tryQueries = [
     t('home_sug_1'),
     t('home_sug_2'),
@@ -130,7 +228,7 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
-        <span className="geo geo-half-blue" />
+
         <span className="geo geo-sq-red" />
         <span className="geo geo-bar-yellow" />
         <span className="geo geo-circle-tan" />
@@ -168,10 +266,12 @@ export default function Home() {
 
           <form
             className="searchbar"
-            onSubmit={(e) => { e.preventDefault(); goSearch(); }}
+            id="search-box"
+            onSubmit={(e) => { e.preventDefault(); runSearch(); }}
           >
             <span className="lead"><IconSearch width="24" height="24" /></span>
             <input
+              ref={searchInputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('home_search_placeholder')}
@@ -183,7 +283,7 @@ export default function Home() {
           <div className="try-row">
             <span className="try-label">{t('home_try_label')}</span>
             {tryQueries.map((q) => (
-              <button key={q} className="chip" onClick={() => goSearch(q)}>
+              <button key={q} className="chip" onClick={() => runSearch(q)}>
                 {q} <span className="arr">↗</span>
               </button>
             ))}
@@ -363,18 +463,188 @@ export default function Home() {
             </div>
           )}
 
-          <div className="features">
-            {FEATURES.map((f) => (
-              <div className="feature" key={f.titleKey}>
-                <div className={`f-icon ${f.color}`}>{f.icon}</div>
-                <div className={`f-underline ${f.underline}`} />
-                <div className="f-title">{t(f.titleKey)}</div>
-                <p className="f-desc">{t(f.descKey)}</p>
-                <Link className="f-link" to={f.link}>
-                  {t(f.labelKey)} <span>→</span>
-                </Link>
+          {/* Semantic Search Results Section */}
+          <div ref={resultsSectionRef} style={{ marginTop: '30px', scrollMarginTop: '20px' }}>
+            {query.trim().length >= 3 && hits !== null && (
+              <div className="retrieve-row" style={{ marginTop: '20px', marginBottom: '20px' }}>
+                <div>
+                  <div className="retrieve-label">Results to retrieve</div>
+                  <div className="retrieve-hint">Default 8 · Range 1–50</div>
+                </div>
+
+                <div className="stepper">
+                  <button
+                    type="button"
+                    className="stepper-btn stepper-minus"
+                    onClick={() => setK((prev) => Math.max(1, (prev || 8) - 1))}
+                    aria-label="Decrease"
+                  >
+                    −
+                  </button>
+
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    className="stepper-input"
+                    value={k}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "") { setK(""); return; }
+                      const num = Number(value);
+                      if (num >= 1 && num <= 50) setK(num);
+                    }}
+                    onBlur={() => { if (k === "") setK(8); }}
+                  />
+
+                  <button
+                    type="button"
+                    className="stepper-btn stepper-plus"
+                    onClick={() => setK((prev) => Math.min(50, (prev || 8) + 1))}
+                    aria-label="Increase"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
+
+            {searchError && <div className="error-box" style={{ color: 'var(--red)', background: '#fee2e2', border: '1px solid #fca5a5', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>{searchError}</div>}
+
+            {loading && (
+              <div className="empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                <div className="big"><span className="spinner" /></div>
+                <p style={{ marginTop: '12px' }}>{t('search_searching')}</p>
+              </div>
+            )}
+
+            {!loading && hits !== null && (
+              <div style={{ marginBottom: '40px' }}>
+                <p className="ri-sub" style={{ marginBottom: 14, textAlign: 'left', fontWeight: 'bold' }}>
+                  {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')} · {tookMs} ms
+                </p>
+                {hits.map((h, idx) => {
+                  const uniqueId = `${h.gr_id}_${idx}`;
+                  return (
+                    <div className="result-item" key={uniqueId} style={{ background: 'var(--paper)', border: '2px solid var(--ink)', borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 4px 0 var(--ink)', textAlign: 'left' }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}>
+                        <div>
+                          <div className="hit-title" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>{h.title}</div>
+                          <div className="hit-meta" style={{ fontSize: '13px', color: '#666' }}>
+                            {h.department} · <span className="mono">{h.gr_id}</span>
+                            {h.issued_on ? ` · ${h.issued_on}` : ""}
+                          </div>
+                        </div>
+                        <div className="hit-score" style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--blue)' }}>{(h.score * 100).toFixed(0)}%</div>
+                      </div>
+                      <div className="ri-sub" style={{ marginTop: 10, fontSize: '14px', color: '#444' }}>{h.snippet}</div>
+                      <div className="source-dropdown" onClick={(e) => e.stopPropagation()} style={{ marginTop: '12px', position: 'relative', display: 'inline-block' }}>
+                        <button 
+                          className="source-dropdown-btn" 
+                          onClick={() => setOpenDropdown(openDropdown === uniqueId ? null : uniqueId)}
+                          style={{
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          {t('search_view_source')}
+                        </button>
+                        {openDropdown === uniqueId && (
+                          <div className="source-menu" style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            zIndex: 100,
+                            background: '#fff',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                            marginTop: '4px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minWidth: '220px'
+                          }}>
+                            <button 
+                              onClick={(e) => { setOpenDropdown(null); openSource(h, 'mr', e); }}
+                              style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6' }}
+                            >
+                              View Marathi OCR
+                            </button>
+                            <button 
+                              onClick={(e) => { setOpenDropdown(null); openSource(h, 'en', e); }}
+                              style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6' }}
+                            >
+                              View English OCR
+                            </button>
+                            <button 
+                              onClick={(e) => { setOpenDropdown(null); openOfficialPdf(h, e); }}
+                              style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                              View Official Government Resolution
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selectedGr && (
+            <>
+              <div className="ocr-sidepanel-overlay" onClick={() => setSelectedGr(null)} />
+              <div className="ocr-sidepanel" style={{ zIndex: 1000 }}>
+                <div className="ocr-sidepanel-header">
+                  <div>
+                    <h2 style={{ fontSize: '20px', margin: '0 0 8px 0', textAlign: 'left' }}>{selectedGr.title}</h2>
+                    <div className="ocr-sidepanel-meta" style={{ fontSize: '13px', color: '#666', textAlign: 'left' }}>
+                      {selectedGr.department} · <span className="mono">{selectedGr.gr_id}</span>
+                      {selectedGr.issued_on ? ` · ${selectedGr.issued_on}` : ""}
+                    </div>
+                  </div>
+                  <button className="ocr-sidepanel-close" onClick={() => setSelectedGr(null)}>×</button>
+                </div>
+                <div className="ocr-sidepanel-content" ref={contentRef} style={{ padding: '20px', maxHeight: '70vh', overflowY: 'auto', textAlign: 'left' }}>
+                  {ocrLoading ? (
+                    <div style={{ textAlign: "center", marginTop: "40px" }}>
+                      <div className="big"><span className="spinner" /></div>
+                      <p>Loading GR text...</p>
+                    </div>
+                  ) : (
+                    renderHighlightedText(ocrText, query)
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="features">
+            {FEATURES.map((f) => {
+              const handleClick = (e) => {
+                if (f.isScroll) {
+                  e.preventDefault();
+                  searchInputRef.current?.focus();
+                  document.getElementById("search-box")?.scrollIntoView({ behavior: "smooth" });
+                }
+              };
+              return (
+                <div className="feature" key={f.titleKey}>
+                  <div className={`f-icon ${f.color}`}>{f.icon}</div>
+                  <div className={`f-underline ${f.underline}`} />
+                  <div className="f-title">{t(f.titleKey)}</div>
+                  <p className="f-desc">{t(f.descKey)}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

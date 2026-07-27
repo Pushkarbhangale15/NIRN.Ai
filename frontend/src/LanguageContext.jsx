@@ -5,10 +5,12 @@ const translations = {
   en: {
     // Navbar
     nav_home: "Home",
+    nav_draft: "Draft a GR",
+    nav_chat: "NIRN.Ai Chat",
     nav_search: "Search",
     nav_analyze: "Analyze",
-    nav_copilot: "Copilot",
-    nav_ai_copilot: "AI Copilot →",
+    nav_copilot: "NIRN.Ai Chat",
+    nav_ai_copilot: "NIRN.Ai Chat →",
 
     // Home
     home_headline: "Draft, Analyze, and Search",
@@ -105,10 +107,12 @@ const translations = {
   mr: {
     // Navbar
     nav_home: "मुख्य पृष्ठ",
+    nav_draft: "मसुदा तयार करा",
+    nav_chat: "निर्णि.आय चॅट",
     nav_search: "शोध",
     nav_analyze: "विश्लेषण",
-    nav_copilot: "को-पायलट",
-    nav_ai_copilot: "एआय को-पायलट →",
+    nav_copilot: "निर्णि.आय चॅट",
+    nav_ai_copilot: "निर्णि.आय चॅट →",
 
     // Home
     home_headline: "मसुदा तयार करा, विश्लेषण करा आणि शोधा",

@@ -45,9 +45,10 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1760px;
+  width: 95vw;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 32px;
 }
 
 /* ---------------- Navbar ---------------- */
@@ -1709,4 +1710,19 @@ mark.highlight-mark {
   max-width: 650px;
   margin: 0 auto;
   line-height: 1.6;
+}
+
+/* ─── Draft Workspace 3-Column Layout ───────────────────────────── */
+.draft-workspace-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr 380px;
+  gap: 28px;
+  align-items: start;
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .draft-workspace-grid {
+    grid-template-columns: 1fr;
+  }
 }
