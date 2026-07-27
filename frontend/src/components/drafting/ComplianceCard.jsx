@@ -103,22 +103,22 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                 {defaultChecklist.map((item, idx) => (
                   <div key={idx} style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '8px 12px',
+                    padding: '10px 14px',
                     borderRadius: '6px',
                     background: item.status === 'pass' ? '#f0fdf4' : '#fffbe6',
                     border: item.status === 'pass' ? '1px solid #bbf7d0' : '1px solid #ffe58f'
                   }}>
-                    <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                    <span style={{ fontSize: '15px', fontWeight: '500' }}>
                       {item.status === 'pass' ? '✓' : '⚠'} {item.label}
                     </span>
                     <span style={{
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontWeight: 'bold',
                       color: item.status === 'pass' ? '#166534' : '#854d0e'
                     }}>
@@ -130,13 +130,13 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
 
               {issues.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#444', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#444', marginBottom: '6px' }}>
                     Specific Rule Feedback:
                   </div>
                   {issues.map((iss, i) => (
                     <div key={i} style={{
-                      fontSize: '12px',
-                      padding: '6px 10px',
+                      fontSize: '14px',
+                      padding: '8px 12px',
                       background: '#fff1f0',
                       borderLeft: '3px solid var(--red)',
                       marginBottom: '6px'

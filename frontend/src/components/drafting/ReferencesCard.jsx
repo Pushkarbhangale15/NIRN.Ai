@@ -125,30 +125,30 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
                           GR <span className="mono">{ref.gr_id}</span>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        <div style={{ fontSize: '13.5px', color: '#6b7280' }}>
                           {ref.department} {ref.issued_on ? `· ${ref.issued_on}` : ''}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{
-                          fontSize: '11px',
+                          fontSize: '13px',
                           fontWeight: 'bold',
                           color: 'var(--blue)',
                           background: '#dbeafe',
-                          padding: '2px 6px',
+                          padding: '3px 8px',
                           borderRadius: '4px'
                         }}>
                           {scorePercent}% Similarity
                         </span>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{isExpanded ? '−' : '+'}</span>
+                        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{isExpanded ? '−' : '+'}</span>
                       </div>
                     </div>
 
                     {isExpanded && (
-                      <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb', background: '#fafafa', fontSize: '13px' }}>
+                      <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', background: '#fafafa', fontSize: '15px', lineHeight: '1.5' }}>
                         {ref.title && (
                           <div style={{ fontWeight: 'bold', marginBottom: '6px', color: 'var(--ink)' }}>
                             {ref.title}
@@ -157,7 +157,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
                         <div style={{ marginBottom: '8px', color: '#374151' }}>
                           <strong>Relevant Clause:</strong> "{ref.snippet || ref.text_snippet || 'Clause details retrieved from corpus.'}"
                         </div>
-                        <div style={{ fontSize: '12px', color: '#1f2937', background: '#f3f4f6', padding: '6px 8px', borderRadius: '4px' }}>
+                        <div style={{ fontSize: '14px', color: '#1f2937', background: '#f3f4f6', padding: '8px 10px', borderRadius: '4px' }}>
                           <strong>Reason Referenced:</strong> {ref.reason || 'Utilized for standard preamble and statutory authority alignment.'}
                         </div>
                       </div>

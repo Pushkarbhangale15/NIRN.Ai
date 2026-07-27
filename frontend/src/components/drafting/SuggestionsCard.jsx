@@ -21,10 +21,10 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
       boxShadow: '0 4px 0 var(--ink)',
       marginTop: '16px'
     }}>
-      <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
         ✨ AI Review Suggestions
       </h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {defaultSuggestions.map((item, idx) => {
           const isPass = item.type === 'pass' || (typeof item === 'string' && !item.toLowerCase().includes('add') && !item.toLowerCase().includes('mention'));
           const textStr = typeof item === 'string' ? item : item.text;
@@ -36,17 +36,17 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '8px',
-                fontSize: '13px',
-                padding: '8px 12px',
+                fontSize: '15px',
+                padding: '10px 14px',
                 borderRadius: '6px',
                 background: isPass ? '#f0fdf4' : '#fffbe6',
                 border: isPass ? '1px solid #bbf7d0' : '1px solid #ffe58f'
               }}
             >
-              <span style={{ fontWeight: 'bold', color: isPass ? '#166534' : '#854d0e' }}>
+              <span style={{ fontWeight: 'bold', color: isPass ? '#166534' : '#854d0e', fontSize: '16px' }}>
                 {isPass ? '✓' : '⚠'}
               </span>
-              <span style={{ color: isPass ? '#166534' : '#854d0e', lineHeight: '1.4' }}>
+              <span style={{ color: isPass ? '#166534' : '#854d0e', lineHeight: '1.5' }}>
                 {textStr}
               </span>
             </div>

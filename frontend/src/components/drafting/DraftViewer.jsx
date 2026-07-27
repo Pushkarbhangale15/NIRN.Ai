@@ -250,7 +250,7 @@ export default function DraftViewer({
         </div>
 
         {/* GR Body Content */}
-        <div style={{ whiteSpace: 'pre-wrap', fontSize: '15px', textAlign: 'justify' }}>
+        <div style={{ whiteSpace: 'pre-wrap', fontSize: '17px', textAlign: 'justify', lineHeight: 1.8 }}>
           {draft.body_text}
         </div>
       </div>

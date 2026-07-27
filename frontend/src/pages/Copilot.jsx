@@ -234,6 +234,7 @@ function DraftTab() {
   const [draftResult, setDraftResult] = useState(null);
   const [analysisReport, setAnalysisReport] = useState(null);
   const [error, setError] = useState("");
+  const [activeReviewTab, setActiveReviewTab] = useState("compliance");
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -281,25 +282,25 @@ function DraftTab() {
 
   return (
     <div style={{ width: '100%' }}>
-      {/* 3-Column Workspace Grid */}
-      <div className="draft-workspace-grid">
-        
-        {/* LEFT PANEL: Input & Brief */}
-        <div>
-          <DraftInputCard
-            prompt={prompt}
-            setPrompt={setPrompt}
-            language={language}
-            setLanguage={setLanguage}
-            onGenerate={handleGenerate}
-            loading={loading}
-            onReset={handleReset}
-          />
-        </div>
+      {/* 1. Workflow Stepper at the very top */}
+      <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
 
-        {/* CENTER PANEL: Stepper & Official Document Viewer */}
+      {/* 2. Horizontal Parameter & Brief Header */}
+      <DraftInputCard
+        prompt={prompt}
+        setPrompt={setPrompt}
+        language={language}
+        setLanguage={setLanguage}
+        onGenerate={handleGenerate}
+        loading={loading}
+        onReset={handleReset}
+      />
+
+      {/* 3. 2-Column Side-by-Side Workspace */}
+      <div className="draft-workspace-two-col">
+        
+        {/* Left Column: Official Document Viewer */}
         <div>
-          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
           {error && (
             <div style={{
               background: '#fee2e2',
@@ -321,32 +322,95 @@ function DraftTab() {
           />
         </div>
 
-        {/* RIGHT PANEL: AI Review Dashboard */}
-        <div>
-          <ComplianceCard
-            report={analysisReport}
-            loading={analysisLoading}
-            hasGenerated={Boolean(draftResult)}
-          />
-          <ConflictCard
-            report={analysisReport}
-            loading={analysisLoading}
-            hasGenerated={Boolean(draftResult)}
-          />
-          <ReferencesCard
-            references={analysisReport?.references || draftResult?.references}
-            loading={analysisLoading}
-            hasGenerated={Boolean(draftResult)}
-          />
-          <TerminologyCard
-            terms={analysisReport?.terms}
-            loading={analysisLoading}
-            hasGenerated={Boolean(draftResult)}
-          />
-          <SuggestionsCard
-            suggestions={analysisReport?.suggestions}
-            hasGenerated={Boolean(draftResult)}
-          />
+        {/* Right Column: Legible & Tabbed Compliance/Review Dashboard */}
+        <div style={{
+          background: 'var(--paper)',
+          border: '2px solid var(--ink)',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 4px 0 var(--ink)',
+          minHeight: '550px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Tab Selection Header */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            borderBottom: '2px solid var(--ink)',
+            paddingBottom: '12px',
+            marginBottom: '20px',
+            flexWrap: 'wrap'
+          }}>
+            {[
+              { id: "compliance", label: "📌 MOP Rules" },
+              { id: "conflicts", label: "⚠️ Conflicts" },
+              { id: "references", label: "🔗 References" },
+              { id: "terminology", label: "🔤 Terminology" },
+              { id: "suggestions", label: "💡 Suggestions" }
+            ].map(tab => {
+              const isActive = activeReviewTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveReviewTab(tab.id)}
+                  style={{
+                    background: isActive ? 'var(--blue)' : '#fff',
+                    color: isActive ? '#fff' : 'var(--ink)',
+                    border: '2px solid var(--ink)',
+                    borderRadius: '6px',
+                    padding: '8px 14px',
+                    fontWeight: 'bold',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    boxShadow: isActive ? 'none' : '0 2px 0 var(--ink)',
+                    transform: isActive ? 'translateY(2px)' : 'none',
+                    transition: 'all 0.1s'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Tab Content Section */}
+          <div style={{ flex: 1 }}>
+            {activeReviewTab === "compliance" && (
+              <ComplianceCard
+                report={analysisReport}
+                loading={analysisLoading}
+                hasGenerated={Boolean(draftResult)}
+              />
+            )}
+            {activeReviewTab === "conflicts" && (
+              <ConflictCard
+                report={analysisReport}
+                loading={analysisLoading}
+                hasGenerated={Boolean(draftResult)}
+              />
+            )}
+            {activeReviewTab === "references" && (
+              <ReferencesCard
+                references={analysisReport?.references || draftResult?.references}
+                loading={analysisLoading}
+                hasGenerated={Boolean(draftResult)}
+              />
+            )}
+            {activeReviewTab === "terminology" && (
+              <TerminologyCard
+                terms={analysisReport?.terms}
+                loading={analysisLoading}
+                hasGenerated={Boolean(draftResult)}
+              />
+            )}
+            {activeReviewTab === "suggestions" && (
+              <SuggestionsCard
+                suggestions={analysisReport?.suggestions}
+                hasGenerated={Boolean(draftResult)}
+              />
+            )}
+          </div>
         </div>
 
       </div>

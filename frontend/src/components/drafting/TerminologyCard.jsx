@@ -102,17 +102,17 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
                   background: '#fff',
                   boxShadow: '0 2px 0 var(--ink)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--ink)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--ink)' }}>
                       {t.english_term}
                     </span>
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>↓ Marathi</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: 'marathi, sans-serif' }}>
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>↓ Marathi</span>
+                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: 'marathi, sans-serif' }}>
                       {t.marathi_term}
                     </span>
                   </div>
                   {t.definition && (
-                    <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '6px', background: '#f9fafb', padding: '6px 8px', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '14px', color: '#4b5563', marginTop: '6px', background: '#f9fafb', padding: '8px 10px', borderRadius: '4px', lineHeight: '1.4' }}>
                       <strong>Definition:</strong> {t.definition}
                     </div>
                   )}

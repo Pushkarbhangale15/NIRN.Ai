@@ -103,39 +103,40 @@ export default function ConflictCard({ report, loading, hasGenerated }) {
                     background: '#fff',
                     boxShadow: '0 2px 0 var(--ink)'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                       <span style={{
-                        fontSize: '11px',
+                        fontSize: '13px',
                         fontWeight: 'bold',
                         background: badgeColor,
                         color: textColor,
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         borderRadius: '4px',
                         border: '1px solid var(--ink)',
                         textTransform: 'uppercase'
                       }}>
                         {item.risk_level || (isHigh ? 'High Risk Conflict' : 'Medium Risk')}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#666', fontWeight: '600' }}>
+                      <span style={{ fontSize: '14px', color: '#666', fontWeight: '600' }}>
                         Existing GR: <span className="mono">{item.gr_id || item.conflicting_gr_id}</span>
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>
                       Department: {item.department || item.conflicting_department || 'Finance Department'} ({item.year || '2024'})
                     </div>
 
-                    <div style={{ fontSize: '13px', color: '#374151', marginBottom: '8px', lineHeight: '1.4' }}>
+                    <div style={{ fontSize: '15.5px', color: '#374151', marginBottom: '10px', lineHeight: '1.5' }}>
                       <strong>Reason:</strong> {item.reason || item.explanation || 'Potential policy clash detected with existing resolution.'}
                     </div>
 
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: '14.5px',
                       background: '#fef3c7',
                       border: '1px solid #f59e0b',
-                      padding: '8px 10px',
+                      padding: '10px 12px',
                       borderRadius: '6px',
-                      color: '#92400e'
+                      color: '#92400e',
+                      lineHeight: '1.4'
                     }}>
                       <strong>💡 Recommendation:</strong> {item.recommendation || 'Revise subsidy amount or explicitly cite superseding department authority.'}
                     </div>

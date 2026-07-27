@@ -198,7 +198,7 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
     Returns (text_response, is_real_llm_response).
     """
     url = f"{settings.OLLAMA_BASE_URL}/api/chat"
-    need_json = "json" in system_prompt.lower()
+    need_json = "json" in system_prompt.lower() and "drafting officer" not in system_prompt.lower()
     payload: dict = {
         "model": settings.OLLAMA_MODEL,
         "messages": [
@@ -268,7 +268,7 @@ def call_model(system_prompt: str, user_message: str) -> str:
         "contents": [{"parts": [{"text": user_message}]}],
         "systemInstruction": {"parts": [{"text": system_prompt}]},
     }
-    if "json" in system_prompt.lower():
+    if "json" in system_prompt.lower() and "drafting officer" not in system_prompt.lower():
         payload["generationConfig"] = {"responseMimeType": "application/json"}
 
     # 3. HTTP call with exponential backoff on retryable errors
