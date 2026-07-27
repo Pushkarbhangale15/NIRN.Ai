@@ -74,6 +74,8 @@ export default function Home() {
   const [foundGr, setFoundGr] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
+  const [promptOfficial, setPromptOfficial] = useState(false);
+  const [pendingGrNumber, setPendingGrNumber] = useState("");
 
   const handleGrLookup = async () => {
     const id = grNumber.trim();
@@ -81,15 +83,19 @@ export default function Home() {
     setLookupLoading(true);
     setLookupError("");
     setFoundGr(null);
+    setPromptOfficial(false);
+    setPendingGrNumber("");
     try {
       const res = await api.getCorpusOcr(id);
       if (res && res.gr_id) {
         setFoundGr(res);
       } else {
-        setLookupError(t('home_gr_number_not_found'));
+        setPendingGrNumber(id);
+        setPromptOfficial(true);
       }
     } catch (err) {
-      setLookupError(t('home_gr_number_not_found'));
+      setPendingGrNumber(id);
+      setPromptOfficial(true);
     } finally {
       setLookupLoading(false);
     }
@@ -233,6 +239,71 @@ export default function Home() {
               ⚠️ {lookupError}
             </div>
           )}
+
+          {promptOfficial && (
+            <div className="gr-card" style={{
+              marginTop: '16px',
+              padding: '20px',
+              border: '2px solid var(--ink)',
+              borderRadius: '12px',
+              background: 'var(--paper)',
+              boxShadow: '0 4px 0 var(--ink)',
+              textAlign: 'left'
+            }}>
+              <p style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>
+                ⚠️ {pendingGrNumber} could not be found locally. Would you like to view the official PDF?
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPromptOfficial(false);
+                    try {
+                      const res = await api.getOfficialGr(pendingGrNumber, "Default");
+                      if (res.status === "found" && res.url) {
+                        window.open(res.url, '_blank');
+                      } else {
+                        window.open(`https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/Marathi/${pendingGrNumber}.pdf`, '_blank');
+                      }
+                    } catch (err) {
+                      window.open(`https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/Marathi/${pendingGrNumber}.pdf`, '_blank');
+                    }
+                  }}
+                  className="chip"
+                  style={{
+                    background: 'var(--blue)',
+                    color: '#fff',
+                    border: '2px solid var(--ink)',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 0 var(--ink)'
+                  }}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromptOfficial(false)}
+                  className="chip"
+                  style={{
+                    background: '#e0e0e0',
+                    color: 'var(--ink)',
+                    border: '2px solid var(--ink)',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 0 var(--ink)'
+                  }}
+                >
+                  No
+                </button>
+              </div>
+            </div>
+          )}
+
 
           {foundGr && (
             <div className="gr-card" style={{
