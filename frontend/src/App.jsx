@@ -69,6 +69,31 @@ function Navbar() {
   );
 }
 
+function Footer() {
+  const { siteLanguage } = useLanguage();
+  return (
+    <footer className={`footer ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
+      <div className="container footer-content">
+        <div className="footer-left">
+          <div className="footer-brand">NIRN.Ai</div>
+          <p className="footer-text">brought to you by</p>
+          <h4 className="footer-institute">Veermata Jijabai Technological Institute</h4>
+          <p className="footer-branch">Branch - Master of Computer Application (MCA)</p>
+        </div>
+        <div className="footer-right">
+          <h4 className="footer-team-title">By Team (SYMCA)</h4>
+          <ul className="footer-team-list">
+            <li>Pushkar Bhangale <span className="leader-tag">[Leader]</span></li>
+            <li>Kumar Tambe</li>
+            <li>Tanmay Shinde</li>
+            <li>Prasad Aher</li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export default function App() {
   const location = useLocation();
   const { siteLanguage } = useLanguage();
@@ -116,6 +141,8 @@ export default function App() {
           />
         </Routes>
       </AnimatePresence>
+
+      <Footer />
     </>
   );
 }

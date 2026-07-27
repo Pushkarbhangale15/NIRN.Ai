@@ -1591,3 +1591,83 @@ mark.highlight-mark {
 .source-menu button:hover {
   background-color: var(--cream);
 }
+
+/* ---------------- Footer ---------------- */
+.footer {
+  background: var(--ink);
+  color: #fff;
+  padding: 48px 0;
+  margin-top: 80px;
+  border-top: 4px solid var(--ink);
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.footer-left {
+  flex: 1;
+  min-width: 280px;
+}
+
+.footer-brand {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+
+.footer-text {
+  font-size: 14px;
+  color: #a09a8f;
+  margin: 0 0 4px 0;
+}
+
+.footer-institute {
+  font-size: 18px;
+  margin: 0 0 4px 0;
+  font-weight: bold;
+}
+
+.footer-branch {
+  font-size: 14px;
+  color: #a09a8f;
+  margin: 0;
+}
+
+.footer-right {
+  min-width: 200px;
+}
+
+.footer-team-title {
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: #a09a8f;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.footer-team-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer-team-list li {
+  font-size: 15px;
+  color: #fff;
+}
+
+.footer-team-list .leader-tag {
+  color: var(--yellow);
+  font-weight: bold;
+  font-size: 13px;
+  margin-left: 6px;
+}
