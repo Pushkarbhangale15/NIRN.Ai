@@ -53,16 +53,30 @@ const REVIEW_TABS = [
 
 export default function Draft() {
   const { t, siteLanguage } = useLanguage();
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(() => localStorage.getItem("nirn_draft_prompt") || "");
   const [language, setLanguage] = useState(siteLanguage === 'mr' ? 'Marathi' : 'English');
-  const [department, setDepartment] = useState("");
+  const [department, setDepartment] = useState(() => localStorage.getItem("nirn_draft_dept") || "");
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [currentStage, setCurrentStage] = useState(0);
-  const [draftResult, setDraftResult] = useState(null);
-  const [analysisReport, setAnalysisReport] = useState(null);
+  const [currentStage, setCurrentStage] = useState(() => parseInt(localStorage.getItem("nirn_draft_stage") || "0", 10));
+  const [draftResult, setDraftResult] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nirn_draft_result") || "null"); } catch { return null; }
+  });
+  const [analysisReport, setAnalysisReport] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nirn_draft_analysis") || "null"); } catch { return null; }
+  });
   const [error, setError] = useState("");
   const [activeReviewTab, setActiveReviewTab] = useState("compliance");
+
+  useEffect(() => {
+    localStorage.setItem("nirn_draft_prompt", prompt);
+    localStorage.setItem("nirn_draft_dept", department);
+    localStorage.setItem("nirn_draft_stage", currentStage.toString());
+    if (draftResult) localStorage.setItem("nirn_draft_result", JSON.stringify(draftResult));
+    else localStorage.removeItem("nirn_draft_result");
+    if (analysisReport) localStorage.setItem("nirn_draft_analysis", JSON.stringify(analysisReport));
+    else localStorage.removeItem("nirn_draft_analysis");
+  }, [prompt, department, draftResult, analysisReport, currentStage]);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || !department) return;
@@ -107,6 +121,11 @@ export default function Draft() {
     setAnalysisReport(null);
     setCurrentStage(0);
     setError("");
+    localStorage.removeItem("nirn_draft_prompt");
+    localStorage.removeItem("nirn_draft_dept");
+    localStorage.removeItem("nirn_draft_result");
+    localStorage.removeItem("nirn_draft_analysis");
+    localStorage.setItem("nirn_draft_stage", "0");
   };
 
   const handleSaveDraft = async (htmlContent, textContent) => {

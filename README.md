@@ -8,11 +8,13 @@ It helps government officers draft new Government Resolutions, retrieve relevant
 
 ## ✨ Features
 
-- 📄 AI-assisted Government Resolution drafting
+- 📄 AI-assisted Government Resolution drafting with **Rich Text Editing (Tiptap)**
 - 🔍 Semantic search across Government Resolutions
-- ⚠ Policy conflict detection
+- ⚠ Policy conflict detection and **Auto-save compliance checks**
 - 📚 Automatic reference suggestions
-- 🌐 Bilingual support (Marathi & English)
+- 🌐 Enhanced Bilingual support (Marathi & English) with optimized font rendering
+- ⚡ Speed optimizations for local LLM execution (Ollama) and dynamic prompt slicing
+- 🎨 Revamped user interface and Language Context management
 
 ---
 
@@ -20,12 +22,12 @@ It helps government officers draft new Government Resolutions, retrieve relevant
 
 | Layer | Technology |
 |--------|------------|
-| Frontend | React |
-| Backend | FastAPI |
-| AI | LangChain |
-| Embeddings | BGE-M3 |
-| Vector Database | Qdrant |
-| LLM | Gemma / GPT |
+| Frontend | React, Vite, Tiptap, Framer Motion |
+| Backend | FastAPI, Uvicorn |
+| AI | LangChain, PyTorch, Transformers |
+| Embeddings | SentenceTransformers (multilingual-e5-base) |
+| Vector Database | FAISS |
+| LLM | Ollama (Gemma 3) / GPT |
 | Dataset | Maharashtra Government Resolution Dataset |
 
 ---
@@ -161,7 +163,3 @@ Detailed documentation is available in the **docs** folder.
 - **Tanmay** — Frontend
 
 ---
-
-## 📄 License
-
-This project is licensed under the MIT License.
