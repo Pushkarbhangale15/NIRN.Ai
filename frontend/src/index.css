@@ -42,7 +42,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-p, span, div, li, td, th, label, input, textarea, select, button {
+p,
+span,
+div,
+li,
+td,
+th,
+label,
+input,
+textarea,
+select,
+button {
   font-size: max(15px, 1em);
 }
 
@@ -52,7 +62,8 @@ p, span, div, li, td, th, label, input, textarea, select, button {
   font-family: var(--font-marathi), var(--font-body);
 }
 
-.lang-mr, .lang-mr * {
+.lang-mr,
+.lang-mr * {
   font-family: var(--font-marathi), "Archivo", sans-serif;
 }
 
@@ -1909,6 +1920,7 @@ mark.highlight-mark {
 }
 
 @media (max-width: 768px) {
+
   .draft-workspace-grid,
   .draft-workspace-two-col,
   .analyze-grid,
