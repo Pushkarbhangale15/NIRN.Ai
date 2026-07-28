@@ -8,10 +8,16 @@ const IconLightbulb = () => (
   </svg>
 );
 
-const EXAMPLE_PROMPTS = [
+const EXAMPLE_PROMPTS_EN = [
   "Policy on remote work and flexible hours for IT department staff",
   "Revised grant allocation for higher education research labs in state universities",
   "Scholarship scheme for economically weaker students pursuing technical degrees"
+];
+
+const EXAMPLE_PROMPTS_MR = [
+  "राज्य विद्यापीठांमधील उच्च शिक्षण संशोधन प्रयोगशाळांसाठी सुधारित अनुदान वाटप",
+  "तांत्रिक पदवी घेणाऱ्या आर्थिकदृष्ट्या दुर्बल घटकातील विद्यार्थ्यांसाठी शिष्यवृत्ती योजना",
+  "माहिती तंत्रज्ञान विभागातील कर्मचाऱ्यांसाठी वर्क फ्रॉम होम व लवचिक कामाच्या तासांचे धोरण"
 ];
 
 const DEPARTMENTS = [
@@ -145,7 +151,7 @@ export default function DraftInputCard({
               {t('draft_try_examples')}
             </label>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              {EXAMPLE_PROMPTS.map((ex, i) => (
+              {((isMr || language?.toLowerCase() === 'marathi') ? EXAMPLE_PROMPTS_MR : EXAMPLE_PROMPTS_EN).map((ex, i) => (
                 <button
                   key={i}
                   type="button"
@@ -159,16 +165,17 @@ export default function DraftInputCard({
                     border: '1px solid #d1d5db',
                     borderRadius: '6px',
                     padding: '16px 20px',
-                    fontSize: isMr ? '17px' : '15px',
+                    fontSize: isMr ? '16px' : '14px',
                     cursor: 'pointer',
                     color: 'var(--ink)',
                     transition: 'background 0.15s',
-                    maxWidth: '32%'
+                    flex: '1 1 30%',
+                    minWidth: '220px'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#f9fafb'}
                 >
-                  <IconLightbulb /> {ex.slice(0, 45)}...
+                  <IconLightbulb /> {ex.slice(0, 48)}...
                 </button>
               ))}
             </div>

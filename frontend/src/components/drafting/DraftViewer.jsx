@@ -1,14 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { Color } from '@tiptap/extension-color';
+
 import { useLanguage } from '../../LanguageContext.jsx';
+import { convertGRToHTML } from '../../utils/grFormat.js';
+import { FontSize } from '../../utils/fontSizeExtension.js';
 
 const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
-const DEFAULT_ESTIMATE_MS = 45000; // upper bound of the ~30-45s default range — "taking longer" fires past this
+const DEFAULT_ESTIMATE_MS = 45000;
 
 const toDevanagariDigits = (value) => String(value).replace(/\d/g, (d) => '०१२३४५६७८९'[d]);
-
 const roundToNearest = (value, step) => Math.max(step, Math.round(value / step) * step);
 
+const IconSave = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+  </svg>
+);
 const IconCopy = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
     <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
@@ -24,9 +37,9 @@ const IconDownload = () => (
     <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
   </svg>
 );
-const IconPdf = () => (
+const IconPrint = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm7 7V3.5L18.5 9zM8 12h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H9v2H8zm2 1H9v2h1a1 1 0 0 0 1-1 1 1 0 0 0-1-1z"/>
+    <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
   </svg>
 );
 const IconDocument = () => (
@@ -35,16 +48,239 @@ const IconDocument = () => (
   </svg>
 );
 
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '30px', '36px'];
+
+/* Custom Tiptap Editor Toolbar Component */
+function TiptapToolbar({ editor }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleUpdate = () => {
+      setTick(tick => tick + 1);
+    };
+
+    editor.on('selectionUpdate', handleUpdate);
+    editor.on('transaction', handleUpdate);
+
+    return () => {
+      editor.off('selectionUpdate', handleUpdate);
+      editor.off('transaction', handleUpdate);
+    };
+  }, [editor]);
+
+  if (!editor) return null;
+
+  const currentFontSize = editor.getAttributes('textStyle').fontSize || '16px';
+
+  const handleFontSizeChange = (e) => {
+    const val = e.target.value;
+    if (val) {
+      editor.chain().focus(null, { scrollIntoView: false }).setFontSize(val).run();
+    } else {
+      editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
+    }
+  };
+
+  return (
+    <div className="tiptap-toolbar">
+      <div className="toolbar-group">
+        {/* Bold */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).toggleBold().run()}
+          className={editor.isActive('bold') ? 'active' : ''}
+          title="Bold"
+        >
+          <strong>B</strong>
+        </button>
+
+        {/* Italic */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).toggleItalic().run()}
+          className={editor.isActive('italic') ? 'active' : ''}
+          title="Italic"
+        >
+          <em>I</em>
+        </button>
+
+        {/* Underline */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).toggleUnderline().run()}
+          className={editor.isActive('underline') ? 'active' : ''}
+          title="Underline"
+        >
+          <u>U</u>
+        </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* Font Size Dropdown */}
+      <div className="toolbar-group">
+        <select
+          className="font-size-select"
+          value={currentFontSize}
+          onChange={handleFontSizeChange}
+          title="Font Size"
+        >
+          {FONT_SIZES.map(size => (
+            <option key={size} value={size}>
+              {size} {size === '16px' ? '(Default)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="toolbar-divider" />
+
+        {/* Headings / Text Sizing */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            if (currentFontSize === '28px') {
+              editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
+            } else {
+              editor.chain().focus(null, { scrollIntoView: false }).setFontSize('28px').run();
+            }
+          }}
+          className={currentFontSize === '28px' ? 'active' : ''}
+          title="Heading 1 (28px - Selected text only)"
+        >
+          H1
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            if (currentFontSize === '22px') {
+              editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
+            } else {
+              editor.chain().focus(null, { scrollIntoView: false }).setFontSize('22px').run();
+            }
+          }}
+          className={currentFontSize === '22px' ? 'active' : ''}
+          title="Heading 2 (22px - Selected text only)"
+        >
+          H2
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().setParagraph().run()}
+          className={(!currentFontSize || currentFontSize === '16px') && !editor.isActive('heading') ? 'active' : ''}
+          title="Normal Text Paragraph (16px)"
+        >
+          Normal
+        </button>
+
+      <div className="toolbar-divider" />
+
+      <div className="toolbar-group">
+        {/* Align Left */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).setTextAlign('left').run()}
+          className={editor.isActive({ textAlign: 'left' }) ? 'active' : ''}
+          title="Align Left"
+        >
+          Left
+        </button>
+        {/* Align Center */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).setTextAlign('center').run()}
+          className={editor.isActive({ textAlign: 'center' }) ? 'active' : ''}
+          title="Align Center"
+        >
+          Center
+        </button>
+        {/* Align Right */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).setTextAlign('right').run()}
+          className={editor.isActive({ textAlign: 'right' }) ? 'active' : ''}
+          title="Align Right"
+        >
+          Right
+        </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <div className="toolbar-group">
+        {/* Lists */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).toggleOrderedList().run()}
+          className={editor.isActive('orderedList') ? 'active' : ''}
+          title="Numbered List"
+        >
+          1. List
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).toggleBulletList().run()}
+          className={editor.isActive('bulletList') ? 'active' : ''}
+          title="Bullet List"
+        >
+          • List
+        </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <div className="toolbar-group">
+        {/* History */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).undo().run()}
+          disabled={!editor.can().undo()}
+          title="Undo"
+        >
+          ↺ Undo
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).redo().run()}
+          disabled={!editor.can().redo()}
+          title="Redo"
+        >
+          ↻ Redo
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DraftViewer({
   draft,
-  loading
+  loading,
+  onSaveDraft
 }) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
-  // Adaptive generation-time estimate: first run shows a default range;
-  // once a generation completes, its actual duration is stored and used
-  // to give a tighter estimate on subsequent runs.
+  // Track draft ID to prevent overwriting user edits on parent state updates
+  const loadedDraftIdRef = useRef(null);
+
+  // Adaptive estimation state
   const [elapsedMs, setElapsedMs] = useState(0);
   const [hasStoredEstimate, setHasStoredEstimate] = useState(() => {
     try { return !!localStorage.getItem(ESTIMATE_STORAGE_KEY); } catch { return false; }
@@ -62,7 +298,7 @@ export default function DraftViewer({
           estimateMsRef.current = parseInt(stored, 10);
           setHasStoredEstimate(true);
         }
-      } catch { /* localStorage unavailable */ }
+      } catch { /* ignore */ }
 
       const interval = setInterval(() => {
         setElapsedMs(Date.now() - (startRef.current || Date.now()));
@@ -77,66 +313,94 @@ export default function DraftViewer({
     }
   }, [loading]);
 
-  const estimateSeconds = Math.round(estimateMsRef.current / 1000);
-  const estimateLowSec = roundToNearest(estimateSeconds * 0.8, 5);
-  const estimateHighSec = roundToNearest(estimateSeconds * 1.25, 5);
-  const isTakingLonger = elapsedMs > estimateMsRef.current;
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      FontFamily,
+      Color,
+      FontSize,
+    ],
+    content: '',
+  });
 
-  const estimateText = hasStoredEstimate
-    ? {
-      mr: `अंदाजे वेळ: ~${toDevanagariDigits(estimateLowSec)}-${toDevanagariDigits(estimateHighSec)} सेकंद`,
-      en: `Estimated time: ~${estimateLowSec}-${estimateHighSec} seconds`,
+  // Only load initial document content when a NEW draft is passed in
+  useEffect(() => {
+    if (!editor || !draft?.body_text) return;
+
+    const currentDraftKey = draft.draft_id || draft.title || draft.body_text.slice(0, 30);
+    if (loadedDraftIdRef.current !== currentDraftKey) {
+      loadedDraftIdRef.current = currentDraftKey;
+      const formattedHtml = convertGRToHTML(draft.body_text, draft.language);
+      editor.commands.setContent(formattedHtml);
     }
-    : {
-      mr: 'अंदाजे वेळ: ~३०-४५ सेकंद',
-      en: 'Estimated time: ~30-45 seconds',
-    };
+  }, [draft, editor]);
+
+  // Explicit Manual Save Click Handler
+  const handleManualSave = async () => {
+    if (!editor || isSaving) return;
+
+    setIsSaving(true);
+    setToast(null);
+
+    const htmlContent = editor.getHTML();
+    const textContent = editor.getText();
+
+    try {
+      if (onSaveDraft) {
+        await onSaveDraft(htmlContent, textContent);
+      }
+      setToast({ message: 'Document saved successfully! ✓', type: 'success' });
+    } catch (err) {
+      console.error("Save error:", err);
+      setToast({ message: 'Failed to save document.', type: 'error' });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const rawEstSeconds = Math.round(estimateMsRef.current / 1000);
+  const estimateSeconds = rawEstSeconds < 20 ? 35 : rawEstSeconds;
+  const estimateLowSec = Math.max(25, roundToNearest(estimateSeconds * 0.8, 5));
+  const estimateHighSec = Math.max(45, roundToNearest(estimateSeconds * 1.25, 5));
+  const isTakingLonger = elapsedMs > Math.max(35000, estimateMsRef.current);
+
+  const estimateText = {
+    mr: `अंदाजे वेळ: ~${toDevanagariDigits(estimateLowSec)}-${toDevanagariDigits(estimateHighSec)} सेकंद (सरासरी अपेक्षित वेळ)`,
+    en: `Estimated time: ~${estimateLowSec}-${estimateHighSec} seconds (average expected time)`,
+  };
 
   const handleCopy = () => {
-    if (!draft || !draft.body_text) return;
-    navigator.clipboard.writeText(draft.body_text).then(() => {
+    if (!editor) return;
+    const text = editor.getText();
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   };
 
   const handleDownloadTxt = () => {
-    if (!draft || !draft.body_text) return;
-    const blob = new Blob([draft.body_text], { type: 'text/plain;charset=utf-8' });
+    if (!editor) return;
+    const text = editor.getText();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `GR_Draft_${draft.gr_id || 'NIRN'}.txt`;
+    a.download = `GR_Draft_${draft?.gr_id || 'NIRN'}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadPdf = () => {
-    if (!draft || !draft.body_text) return;
-    // Simple window print fallback formatted for official GR export
-    const printWin = window.open('', '_blank');
-    printWin.document.write(`
-      <html>
-        <head>
-          <title>${draft.title || 'Government Resolution'}</title>
-          <style>
-            body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; }
-            h1 { text-align: center; font-size: 18pt; text-decoration: underline; margin-bottom: 20px; }
-            .dept { text-align: center; font-weight: bold; font-size: 14pt; margin-bottom: 30px; }
-            .content { font-size: 12pt; white-space: pre-wrap; }
-          </style>
-        </head>
-        <body>
-          <div class="dept">GOVERNMENT OF MAHARASHTRA<br/>${(draft.department || 'Higher and Technical Education Department').toUpperCase()}</div>
-          <h1>GOVERNMENT RESOLUTION</h1>
-          <div class="content">${draft.body_text}</div>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
-    printWin.focus();
-    setTimeout(() => { printWin.print(); }, 500);
+  const handlePrint = () => {
+    window.print();
   };
+
+  const isMarathi = draft?.language?.toLowerCase().includes('marathi') || draft?.language === 'mr';
 
   if (loading) {
     return (
@@ -154,7 +418,6 @@ export default function DraftViewer({
         justifyContent: 'center'
       }}>
         <div className="big"><span className="spinner" /></div>
-
         <div style={{ marginTop: '20px' }}>
           {isTakingLonger ? (
             <>
@@ -176,19 +439,9 @@ export default function DraftViewer({
             </>
           )}
         </div>
-
         <div style={{ marginTop: '10px' }}>
           <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{estimateText.en}</p>
           <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{estimateText.mr}</p>
-        </div>
-
-        <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            Retrieving relevant GRs, enforcing template, and verifying conflicts
-          </p>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            संबंधित शासन निर्णय शोधत आहे, टेम्पलेट लागू करत आहे, संघर्ष तपासत आहे
-          </p>
         </div>
       </div>
     );
@@ -221,131 +474,82 @@ export default function DraftViewer({
   }
 
   return (
-    <div style={{
-      background: 'var(--paper)',
-      border: '2px solid var(--ink)',
-      borderRadius: '12px',
-      boxShadow: '0 4px 0 var(--ink)',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }}>
-      {/* Toolbar Above Document */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 20px',
-        background: '#f3f4f6',
-        borderBottom: '2px solid var(--ink)',
-        flexWrap: 'wrap',
-        gap: '10px'
-      }}>
+    <div className="gr-editor-card">
+      {/* Top Header & Actions Bar */}
+      <div className="gr-editor-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            fontSize: '12px',
-            fontWeight: 'bold',
-            background: 'var(--blue)',
-            color: '#fff',
-            padding: '3px 8px',
-            borderRadius: '4px'
-          }}>
-            {t('draft_official')}
-          </span>
+          <span className="official-badge">{t('draft_official')}</span>
           <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--ink)' }}>
             {draft.department || 'Government of Maharashtra'}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+          {toast && (
+            <span className={toast.type === 'success' ? 'saved-badge' : 'error-badge'}>
+              {toast.message}
+            </span>
+          )}
+
+          {/* EXPLICIT MANUAL SAVE BUTTON */}
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={isSaving}
+            className="action-btn save-btn"
+            title="Save Document"
+          >
+            {isSaving ? (
+              <>
+                <span className="spinner-small" /> Saving...
+              </>
+            ) : (
+              <>
+                <IconSave /> Save
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="action-btn print-btn"
+            title="Print Document"
+          >
+            <IconPrint /> Print
+          </button>
+
           <button
             type="button"
             onClick={handleCopy}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className="action-btn"
           >
             {copied ? <><IconCheck /> {t('draft_copied')}</> : <><IconCopy /> {t('draft_copy')}</>}
           </button>
+
           <button
             type="button"
             onClick={handleDownloadTxt}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className="action-btn"
           >
             <IconDownload /> {t('draft_download_txt')}
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: 'var(--red)',
-              color: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            <IconPdf /> {t('draft_download_pdf')}
           </button>
         </div>
       </div>
 
-      {/* Official Government Resolution Scrollable Viewer */}
-      <div style={{
-        padding: '32px 40px',
-        maxHeight: '680px',
-        overflowY: 'auto',
-        background: '#fff',
-        fontFamily: "'Georgia', 'Times New Roman', serif",
-        color: '#111827',
-        lineHeight: 1.7
-      }}>
-        {/* GR Header Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px double #111827', paddingBottom: '16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px', color: '#4b5563', textTransform: 'uppercase' }}>
-            Government of Maharashtra
-          </div>
-          <div style={{ fontSize: '15px', fontWeight: 'bold', margin: '4px 0', textTransform: 'uppercase' }}>
-            {draft.department || 'Higher and Technical Education Department'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-            Mantralaya, Mumbai - 400 032 | Resolution No: {draft.gr_id || 'NIRN/2026/DRAFT-01'}
-          </div>
-        </div>
+      {/* Custom Tiptap Editor Toolbar */}
+      <TiptapToolbar editor={editor} />
 
-        {/* GR Body Content */}
-        <div style={{ whiteSpace: 'pre-wrap', fontSize: '17px', textAlign: 'justify', lineHeight: 1.8 }}>
-          {draft.body_text}
+      {/* Editor Printable Paper Sheet Area */}
+      <div className={`a4-paper-wrapper ${isMarathi ? 'lang-marathi' : 'lang-english'}`}>
+        <div className="ProseMirror-print-wrapper">
+          <EditorContent editor={editor} />
         </div>
+      </div>
+
+      {/* Footer for print layout */}
+      <div className="print-only-footer">
+        Generated by NIRN.Ai | VJTI Mumbai
       </div>
     </div>
   );

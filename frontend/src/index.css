@@ -20,7 +20,7 @@
 
   --font-display: "Archivo Black", "Archivo", sans-serif;
   --font-body: "Archivo", sans-serif;
-  --font-marathi: "Noto Sans Devanagari", "Mangal", sans-serif;
+  --font-marathi: "Tiro Devanagari Marathi", "Noto Sans Devanagari", serif;
 
   --radius: 10px;
   --shadow: 0 2px 0 var(--ink);
@@ -57,14 +57,26 @@ button {
 }
 
 .lang-mr {
-  --font-display: "Archivo Black", "Noto Sans Devanagari", "Tiro Devanagari Marathi", sans-serif;
-  --font-body: "Noto Sans Devanagari", "Mangal", "Archivo", sans-serif;
+  --font-display: "Tiro Devanagari Marathi", "Archivo Black", serif;
+  --font-body: "Tiro Devanagari Marathi", serif;
   font-family: var(--font-marathi), var(--font-body);
 }
 
 .lang-mr,
 .lang-mr * {
-  font-family: var(--font-marathi), "Archivo", sans-serif;
+  font-family: var(--font-marathi), "Tiro Devanagari Marathi", serif;
+}
+
+.tiro-devanagari-marathi-regular {
+  font-family: "Tiro Devanagari Marathi", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tiro-devanagari-marathi-regular-italic {
+  font-family: "Tiro Devanagari Marathi", serif;
+  font-weight: 400;
+  font-style: italic;
 }
 
 /* Marathi text runs ~2px larger than the English equivalent for legibility */
@@ -1933,5 +1945,330 @@ mark.highlight-mark {
   .container {
     width: 100%;
     padding: 0 16px;
+  }
+}
+
+/* ==========================================================================
+   Tiptap Rich Text Editor & A4 Official GR Formatting
+   ========================================================================== */
+
+.gr-editor-card {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gr-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #f3f4f6;
+  border-bottom: 2px solid var(--ink);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.official-badge {
+  font-size: 12px;
+  font-weight: bold;
+  background: var(--blue);
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: #f9fafb;
+  transform: translateY(-1px);
+}
+
+.save-btn {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #059669;
+  color: #ffffff;
+}
+
+.print-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.print-btn:hover {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.saved-badge {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25);
+  animation: fadeInOut 0.3s ease-in-out;
+}
+
+.error-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.25);
+  animation: fadeInOut 0.3s ease-in-out;
+}
+
+.font-size-select {
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 26px 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: #f9fafb url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231d1c1a'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e") no-repeat right 6px center / 16px 16px;
+  color: #1d1c1a;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.1s ease;
+}
+
+.font-size-select:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.font-size-select:focus {
+  border-color: #2b4bc8;
+  box-shadow: 0 0 0 2px rgba(43, 75, 200, 0.15);
+}
+
+.spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: rotation 1s linear infinite;
+}
+
+@keyframes fadeInOut {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Tiptap Toolbar Styling */
+.tiptap-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #e5e7eb;
+  margin: 0 4px;
+}
+
+.tiptap-toolbar button {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f9fafb;
+  color: #1d1c1a;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease;
+}
+
+.tiptap-toolbar button:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.tiptap-toolbar button.active {
+  background: #2b4bc8;
+  color: #ffffff;
+  border-color: #2b4bc8;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tiptap-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* A4 Paper Document Wrapper */
+.a4-paper-wrapper {
+  background: #f3f4f6;
+  padding: 32px 16px;
+  display: flex;
+  justify-content: center;
+  max-height: 720px;
+  overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ProseMirror-print-wrapper {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.ProseMirror {
+  background: #ffffff;
+  min-height: 680px;
+  width: 100% !important;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 48px 56px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
+  border: 1px solid #e5e7eb;
+  border-radius: 2px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.lang-marathi .ProseMirror {
+  font-family: 'Tiro Devanagari Marathi', 'Noto Sans Devanagari', serif;
+  font-size: 17px;
+  line-height: 1.8;
+  color: #111827;
+}
+
+.lang-english .ProseMirror {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #111827;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  font-weight: bold;
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.ProseMirror p {
+  margin-bottom: 8px;
+}
+
+.ProseMirror ol,
+.ProseMirror ul {
+  padding-left: 28px;
+  margin-bottom: 12px;
+}
+
+.ProseMirror strong,
+.ProseMirror b,
+.ProseMirror [style*="font-weight: bold"],
+.ProseMirror [style*="font-weight:700"],
+.ProseMirror [style*="font-weight: 700"] {
+  font-weight: 700 !important;
+}
+
+.ProseMirror u {
+  text-decoration: underline !important;
+}
+
+/* Print CSS */
+.print-only-footer {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .ProseMirror-print-wrapper,
+  .ProseMirror-print-wrapper * {
+    visibility: visible !important;
+  }
+  .ProseMirror-print-wrapper {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+  .ProseMirror {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 24px 32px !important;
+    max-width: 100% !important;
+  }
+  .print-only-footer {
+    display: block !important;
+    visibility: visible !important;
+    position: fixed !important;
+    bottom: 10px !important;
+    left: 0 !important;
+    right: 0 !important;
+    text-align: center !important;
+    font-size: 11px !important;
+    color: #4b5563 !important;
+    border-top: 1px solid #d1d5db !important;
+    padding-top: 6px !important;
   }
 }

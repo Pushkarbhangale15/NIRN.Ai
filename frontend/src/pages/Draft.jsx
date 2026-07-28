@@ -109,6 +109,19 @@ export default function Draft() {
     setError("");
   };
 
+  const handleSaveDraft = async (htmlContent, textContent) => {
+    setDraftResult(prev => prev ? { ...prev, body_text: textContent } : prev);
+    if (draftResult && draftResult.draft_id) {
+      try {
+        await api.updateDraft(draftResult.draft_id, textContent);
+        const updatedTemplateIssues = await api.runTemplateCheck(draftResult.draft_id);
+        setAnalysisReport(prev => prev ? { ...prev, template_issues: updatedTemplateIssues } : prev);
+      } catch (err) {
+        console.warn("Auto-save sync warning:", err);
+      }
+    }
+  };
+
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
   const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
@@ -173,6 +186,7 @@ export default function Draft() {
               <DraftViewer
                 draft={draftResult}
                 loading={loading}
+                onSaveDraft={handleSaveDraft}
               />
             </div>
 

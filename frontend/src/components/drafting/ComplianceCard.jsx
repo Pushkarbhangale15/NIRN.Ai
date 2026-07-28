@@ -91,14 +91,6 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '13px', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase' }}>
-              Compliance Score
-            </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--ink)' }}>
-              <CountUp start={0} end={score} duration={1.5} suffix="%" />
-            </div>
-          </div>
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{isOpen ? '▲' : '▼'}</span>
         </div>
       </div>
