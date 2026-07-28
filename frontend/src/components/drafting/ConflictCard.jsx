@@ -1,16 +1,66 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
+import { generateConflictPDF } from '../../utils/pdfExport.js';
 
 const IconWarningTriangle = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
     <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
   </svg>
 );
+const IconDownload = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
+  </svg>
+);
 
-export default function ConflictCard({ conflicts = [], loading, hasGenerated }) {
+export default function ConflictCard({
+  conflicts = [],
+  loading,
+  hasGenerated,
+  draftText = '',
+  metadata = {},
+  templateIssues = [],
+  references = [],
+  summary = null,
+}) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
+  const [generatingFull, setGeneratingFull] = useState(false);
+  const [generatingIdx, setGeneratingIdx] = useState(null);
+
+  const handleDownloadFullReport = async () => {
+    if (generatingFull) return;
+    setGeneratingFull(true);
+    try {
+      await generateConflictPDF(draftText, conflicts, {
+        ...metadata,
+        reportType: 'full',
+        templateIssues,
+        references,
+        summary,
+      });
+    } catch (err) {
+      console.error('Full conflict report PDF generation failed:', err);
+    } finally {
+      setGeneratingFull(false);
+    }
+  };
+
+  const handleDownloadOneReport = async (conflict, idx) => {
+    if (generatingIdx !== null) return;
+    setGeneratingIdx(idx);
+    try {
+      await generateConflictPDF(draftText, conflict, {
+        ...metadata,
+        reportType: 'individual',
+      });
+    } catch (err) {
+      console.error('Conflict report PDF generation failed:', err);
+    } finally {
+      setGeneratingIdx(null);
+    }
+  };
 
   if (!hasGenerated) {
     return (
@@ -103,6 +153,33 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <button
+                type="button"
+                onClick={handleDownloadFullReport}
+                disabled={generatingFull}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '14px 18px',
+                  minHeight: '48px',
+                  fontSize: isMr ? '16px' : '15px',
+                  fontWeight: 'bold',
+                  background: 'var(--blue)',
+                  color: '#fff',
+                  border: '2px solid var(--ink)',
+                  borderRadius: '8px',
+                  boxShadow: '0 3px 0 var(--ink)',
+                  cursor: generatingFull ? 'wait' : 'pointer',
+                  opacity: generatingFull ? 0.85 : 1
+                }}
+              >
+                <IconDownload />
+                {generatingFull ? t('draft_generating_pdf') : t('draft_download_full_conflict_report')}
+              </button>
+
               {conflicts.map((item, idx) => {
                 const isHigh = item.severity === 'Critical' || item.severity === 'High' || item.confidence >= 0.8;
                 const isMed = item.severity === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
@@ -186,9 +263,36 @@ export default function ConflictCard({ conflicts = [], loading, hasGenerated }) 
                       padding: '10px 12px',
                       borderRadius: '6px',
                       color: '#92400e',
-                      lineHeight: '1.4'
+                      lineHeight: '1.4',
+                      marginBottom: '12px'
                     }}>
                       <strong>Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadOneReport(item, idx)}
+                        disabled={generatingIdx === idx}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 12px',
+                          minHeight: '32px',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          background: '#fff',
+                          color: 'var(--ink)',
+                          border: '1.5px solid var(--ink)',
+                          borderRadius: '6px',
+                          cursor: generatingIdx === idx ? 'wait' : 'pointer',
+                          opacity: generatingIdx === idx ? 0.7 : 1
+                        }}
+                      >
+                        <IconDownload />
+                        {generatingIdx === idx ? t('draft_generating_pdf') : t('draft_download_conflict_report')}
+                      </button>
                     </div>
                   </div>
                 );

@@ -148,6 +148,12 @@ const translations = {
     draft_copied: "Copied",
     draft_download_txt: ".txt",
     draft_download_pdf: "PDF Print",
+    draft_loading_taking_longer: "Taking longer than expected, please wait...",
+    draft_loading_generating: "Generating Government Resolution...",
+    draft_loading_retrieving: "Retrieving relevant GRs, enforcing template, and verifying conflicts",
+    draft_download_conflict_report: "Download Conflict Report",
+    draft_download_full_conflict_report: "Download Full Conflict Report PDF",
+    draft_generating_pdf: "Generating PDF...",
 
     // Chat page
     chat_eyebrow: "Ask anything",
@@ -306,6 +312,12 @@ const translations = {
     draft_copied: "कॉपी झाले",
     draft_download_txt: ".txt डाउनलोड",
     draft_download_pdf: "पीडीएफ प्रिंट",
+    draft_loading_taking_longer: "अपेक्षेपेक्षा जास्त वेळ लागत आहे, कृपया प्रतीक्षा करा...",
+    draft_loading_generating: "शासन निर्णय तयार करत आहे...",
+    draft_loading_retrieving: "संबंधित शासन निर्णय शोधत आहे, टेम्पलेट लागू करत आहे, संघर्ष तपासत आहे",
+    draft_download_conflict_report: "संघर्ष अहवाल डाउनलोड करा",
+    draft_download_full_conflict_report: "संपूर्ण संघर्ष अहवाल PDF डाउनलोड करा",
+    draft_generating_pdf: "पीडीएफ तयार करत आहे...",
 
     // Chat page
     chat_eyebrow: "काहीही विचारा",

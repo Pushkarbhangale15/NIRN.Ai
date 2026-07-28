@@ -274,6 +274,16 @@ export default function Draft() {
                     conflicts={allConflicts}
                     loading={analysisLoading}
                     hasGenerated={Boolean(draftResult)}
+                    draftText={draftResult?.body_text}
+                    metadata={{
+                      title: draftResult?.title,
+                      department: draftResult?.department || department,
+                      language,
+                      grId: draftResult?.draft_id,
+                    }}
+                    templateIssues={analysisReport?.template_issues}
+                    references={analysisReport?.references}
+                    summary={analysisReport?.summary}
                   />
                 )}
                 {activeReviewTab === "references" && (
