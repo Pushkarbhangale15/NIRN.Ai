@@ -39,7 +39,8 @@ export default function DraftViewer({
   draft,
   loading
 }) {
-  const { t } = useLanguage();
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
   const [copied, setCopied] = useState(false);
 
   // Adaptive generation-time estimate: first run shows a default range;
@@ -157,37 +158,23 @@ export default function DraftViewer({
 
         <div style={{ marginTop: '20px' }}>
           {isTakingLonger ? (
-            <>
-              <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--red)' }}>
-                Taking longer than expected, please wait...
-              </h4>
-              <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--red)', marginTop: '2px' }}>
-                अपेक्षेपेक्षा जास्त वेळ लागत आहे, कृपया प्रतीक्षा करा...
-              </h4>
-            </>
+            <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--red)' }}>
+              {t('draft_loading_taking_longer')}
+            </h4>
           ) : (
-            <>
-              <h4 style={{ fontSize: '18px', fontWeight: 700 }}>
-                Generating Government Resolution...
-              </h4>
-              <h4 style={{ fontSize: '18px', fontWeight: 700, marginTop: '2px' }}>
-                शासन निर्णय तयार करत आहे...
-              </h4>
-            </>
+            <h4 style={{ fontSize: '18px', fontWeight: 700 }}>
+              {t('draft_loading_generating')}
+            </h4>
           )}
         </div>
 
         <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{estimateText.en}</p>
-          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{estimateText.mr}</p>
+          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{isMr ? estimateText.mr : estimateText.en}</p>
         </div>
 
         <div style={{ marginTop: '10px' }}>
           <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            Retrieving relevant GRs, enforcing template, and verifying conflicts
-          </p>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            संबंधित शासन निर्णय शोधत आहे, टेम्पलेट लागू करत आहे, संघर्ष तपासत आहे
+            {t('draft_loading_retrieving')}
           </p>
         </div>
       </div>
