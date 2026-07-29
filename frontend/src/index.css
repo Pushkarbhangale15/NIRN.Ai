@@ -2442,7 +2442,9 @@ mark.highlight-mark {
   .container {
     width: 100%;
     padding: 0 16px;
+  }
 }
+
 
 /* ==========================================================================
 
@@ -2899,6 +2901,5 @@ mark.highlight-mark {
   .chat-widget-fab {
     bottom: 16px;
     right: 16px;
->>>>>>> origin/frontend-changes
   }
 }
