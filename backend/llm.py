@@ -232,11 +232,32 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
         return get_mock_response(system_prompt, user_message), False
 
 
+# Regex matching CJK / Chinese / Japanese / Korean / Cyrillic scripts
+_FOREIGN_SCRIPT_PATTERN = re.compile(
+    r'[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u0400-\u04FF\u0500-\u052F\u2C00-\u2C5F\uA640-\uA69F]+'
+)
+
+
+def sanitize_llm_text(text: str) -> str:
+    """
+    Ensure only English (Latin), Marathi (Devanagari), and standard legal punctuation
+    are allowed in LLM generated responses. Completely strips Chinese, CJK, and Cyrillic noise.
+    """
+    if not text or not isinstance(text, str):
+        return ""
+    # Strip Chinese / CJK / Cyrillic characters
+    cleaned = _FOREIGN_SCRIPT_PATTERN.sub("", text)
+    # Strip markdown bold asterisks
+    cleaned = cleaned.replace("**", "")
+    return cleaned
+
+
 def call_model(system_prompt: str, user_message: str) -> str:
     raw = _call_model_raw(system_prompt, user_message)
     if raw:
-        return raw.replace("**", "")
+        return sanitize_llm_text(raw)
     return raw
+
 
 
 def _call_model_raw(system_prompt: str, user_message: str) -> str:
@@ -599,16 +620,20 @@ def detect_conflicts(
 
 def map_terminology(text: str, language: Language) -> List[TermMapping]:
     """
-    Extract legal terms and map them to their approved equivalents.
+    Extract legal terms and map them to their approved equivalents using the KnowledgeService.
     """
-    system_prompt = prompts.TERMINOLOGY_MAPPING
+    from knowledge import get_knowledge_service
+    ks = get_knowledge_service()
+    kb_terms = ks.get_all_glossary_terms()
+
+    # Dynamically build authoritative glossary dict from Knowledge Base
     glossary = {
-        "sanctioned intake": "मंजूर प्रवेश क्षमता",
-        "probation period": "परिविक्षाधीन कालावधी",
-        "departmental inquiry": "विभागीय चौकशी",
-        "administrative approval": "प्रशासकीय मान्यता",
-        "financial sanction": "वित्तीय मंजुरी",
+        t["english"]: t["marathi"]
+        for t in kb_terms
+        if t.get("english") and t.get("marathi")
     }
+
+    system_prompt = prompts.TERMINOLOGY_MAPPING
     user_msg = prompts.build_terminology_message(text, glossary)
 
     raw_reply = call_model(system_prompt, user_msg)
@@ -618,31 +643,70 @@ def map_terminology(text: str, language: Language) -> List[TermMapping]:
     if parsed and isinstance(parsed, list):
         for item in parsed:
             try:
+                src_term = item.get("source_term", "")
+                src_lang = Language(item.get("source_language", "en"))
+                tgt_term = item.get("target_term", "")
+                note_str = item.get("note", "")
+
+                en_t = src_term if src_lang == Language.ENGLISH else tgt_term
+                mr_t = tgt_term if src_lang == Language.ENGLISH else src_term
+
                 results.append(
                     TermMapping(
-                        source_term=item.get("source_term", ""),
-                        source_language=Language(item.get("source_language", "en")),
-                        target_term=item.get("target_term", ""),
+                        source_term=src_term,
+                        source_language=src_lang,
+                        target_term=tgt_term,
                         consistent_with_corpus=bool(item.get("consistent_with_corpus", True)),
-                        note=item.get("note", ""),
+                        note=note_str,
+                        english_term=en_t,
+                        marathi_term=mr_t,
+                        definition=note_str,
                     )
                 )
             except Exception as exc:
                 logger.warning("Error parsing term item: %s", exc)
 
     if not results:
-        for en_term, mr_term in glossary.items():
-            if en_term in text.lower():
+        # Fallback to direct Knowledge Base lookup across the full corpus glossary
+        text_lower = text.lower()
+        for term in kb_terms:
+            en_term = term.get("english", "")
+            mr_term = term.get("marathi", "")
+
+            if en_term and en_term.lower() in text_lower:
+                idx = text_lower.find(en_term.lower())
+                exact_doc_term = text[idx:idx + len(en_term)]
                 results.append(
                     TermMapping(
-                        source_term=en_term,
+                        source_term=exact_doc_term,
                         source_language=Language.ENGLISH,
                         target_term=mr_term,
                         consistent_with_corpus=True,
-                        note="Verified from standard corpus glossary.",
+                        note="Verified from Government Knowledge Base.",
+                        english_term=en_term,
+                        marathi_term=mr_term,
+                        definition="Verified from Government Knowledge Base.",
+                    )
+                )
+            elif mr_term and mr_term in text:
+                idx = text.find(mr_term)
+                exact_doc_term = text[idx:idx + len(mr_term)]
+                results.append(
+                    TermMapping(
+                        source_term=exact_doc_term,
+                        source_language=Language.MARATHI,
+                        target_term=en_term,
+                        consistent_with_corpus=True,
+                        note="Verified from Government Knowledge Base.",
+                        english_term=en_term,
+                        marathi_term=mr_term,
+                        definition="Verified from Government Knowledge Base.",
                     )
                 )
     return results
+
+
+
 
 
 # =====================================================================

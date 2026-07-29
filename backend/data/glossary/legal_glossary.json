@@ -1,0 +1,312 @@
+{
+  "generated_at": "2026-07-29T19:43:13",
+  "generator": "NIRN.Ai Glossary Generator v1.0",
+  "total": 13,
+  "entries": [
+    {
+      "id": "230422b3-6e0c-5445-9767-ddbeebbe7cdd",
+      "english": "Government Resolution",
+      "marathi": "शासन निर्णय",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 172133,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803171122508601.pdf",
+        "201803171459354501.pdf",
+        "201803161624182101.pdf",
+        "201803201457446601.pdf",
+        "201803211108323201.pdf",
+        "201803201505120901.pdf",
+        "201803211655416001.pdf",
+        "201803211324179201.pdf",
+        "201803191805280401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Reference:- 1) Government Resolution, Finance Department, No.Asank-1004/ Q.No.12/ (Part-II)/ 2004/ Financial Reforms-1D."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "129c66a3-9ca0-56aa-b5c3-b48844fb0f99",
+      "english": "Government Circular",
+      "marathi": "शासन परिपत्रक",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 69631,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803201505120901.pdf",
+        "201803221725477701.pdf",
+        "201803231718025501.pdf",
+        "201803221224584601.pdf",
+        "201803221743328801.pdf",
+        "201803271138528401.pdf",
+        "201803261513173201.pdf",
+        "201803271203544501.pdf",
+        "201803271236398001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Reference:- 1) Government Circular, Finance Department No.Finance-2017/ No."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "ed16ea4d-75cd-5792-85ef-53452323850b",
+      "english": "Government Notification",
+      "marathi": "शासन अधिसूचना",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 6500,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201805211704396601.pdf",
+        "201805281719546301.pdf",
+        "201805312230478901.pdf",
+        "201806181639388801.pdf",
+        "201807131225033701.pdf",
+        "201812141451126601.pdf",
+        "201812141456569501.pdf",
+        "201812141500356101.pdf",
+        "201812281215310401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Government Notification General Administration Department SRV-2015/ PR.C."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1af3096f-e5d2-5a77-a589-5d70a2f53368",
+      "english": "Government Order",
+      "marathi": "शासन आदेश",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 60564,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803311526554301.pdf",
+        "201803311750373801.pdf",
+        "201803311759206101.pdf",
+        "201803311854186701.pdf",
+        "201803311736147301.pdf",
+        "201803311940494301.pdf",
+        "201804031745530601.pdf",
+        "201803311948494601.pdf",
+        "201803312011338401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The grants sanctioned to the Universities shall be spent within the prescribed limits as per the provisions of the Maharashtra Agricultural Universiti"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "cabed786-80da-592c-b197-04e1072b65e6",
+      "english": "Preamble",
+      "marathi": "प्रस्तावना",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bc9e614c-4b58-51a7-af62-5742a376f909",
+      "english": "Reference",
+      "marathi": "संदर्भ",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6fe42522-28a3-5ab1-a03f-05ec395a1716",
+      "english": "Read",
+      "marathi": "वाचा",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "f332bf7c-1b9f-5141-86b7-aaa7d790e88d",
+      "english": "Copy to",
+      "marathi": "प्रति",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e46842d4-a35f-5732-97bf-8825927e32dc",
+      "english": "With immediate effect",
+      "marathi": "तात्काळ प्रभावाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 4227,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201804031745530601.pdf",
+        "201804101357570001.pdf",
+        "201805241502233401.pdf",
+        "201806041507448001.pdf",
+        "201806081658568801.pdf",
+        "201806191308241401.pdf",
+        "201807261136522501.pdf",
+        "201807301111030401.pdf",
+        "201807301111405701.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Ram Khare has been relieved from the post of Vice-Chairman of Maharashtra Council of Agricultural Education and Research with immediate effect as the "
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "7406eb2f-9512-5038-8af3-271300470e08",
+      "english": "Competent Authority",
+      "marathi": "सक्षम प्राधिकारी",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 19464,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803221224584601.pdf",
+        "201803311526554301.pdf",
+        "201803281708324001.pdf",
+        "201803311854186701.pdf",
+        "201804131252429301.pdf",
+        "201804191650330101.pdf",
+        "201804211241486601.pdf",
+        "201805161145131701.pdf",
+        "201805281750519101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "the competent authority in accordance with the provisions of the Act and the orders of the Government."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b5051dd3-d761-571f-8d50-6fff26049bfb",
+      "english": "Legislative Assembly",
+      "marathi": "विधानसभा",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 608,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "fe600847-f73e-5cd8-987c-a15a46ea9af6",
+      "english": "Legislative Council",
+      "marathi": "विधानपरिषद",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 200,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201804201459458201.pdf",
+        "201806041507448001.pdf",
+        "201807211244566901.pdf",
+        "201811021518239601.pdf",
+        "201811161748233401.pdf",
+        "201901241543272601.pdf",
+        "201902151330420001.pdf",
+        "201905131541249101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Introduction: In the Budget Session of the Legislative Council 2018, Starred Questions No."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6c0b926f-9b2b-5cf7-b73e-d8ed4974ada5",
+      "english": "By order and in the name of the Governor",
+      "marathi": "राज्यपालांच्या नावे व आदेशाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    }
+  ]
+}

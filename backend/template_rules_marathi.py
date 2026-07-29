@@ -71,6 +71,16 @@ def _check_mr002_department_line(text: str) -> Optional[TemplateIssue]:
         re.search(r"विभाग", first_lines, re.UNICODE)
         or re.search(r"department", first_lines, re.IGNORECASE)
     )
+
+    if has_dept:
+        from knowledge import get_knowledge_service
+        ks = get_knowledge_service()
+        for dept in ks.get_all_departments():
+            mr_name = dept.get("marathi", "")
+            en_name = dept.get("english", "").lower()
+            if (mr_name and mr_name in first_lines) or (en_name and en_name in first_lines.lower()):
+                return None
+
     if not has_dept:
         return TemplateIssue(
             rule_id="MOP-MR-002",
@@ -80,6 +90,7 @@ def _check_mr002_department_line(text: str) -> Optional[TemplateIssue]:
             suggestion="Add the issuing department name containing 'विभाग' (e.g. 'महसूल व वन विभाग' or 'उच्च व तंत्र शिक्षण विभाग').",
         )
     return None
+
 
 
 def _check_mr003_gr_number(text: str) -> Optional[TemplateIssue]:

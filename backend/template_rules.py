@@ -54,10 +54,24 @@ def _check_mop001_header_govt(text: str) -> Optional[TemplateIssue]:
 def _check_mop002_department_line(text: str) -> Optional[TemplateIssue]:
     """MOP §2.2 — Department name must appear in the header block."""
     first_lines = text.strip()[:600]
+    
+    # 1. Broad structural check
     has_dept = bool(
         re.search(r"department", first_lines, re.IGNORECASE)
         or re.search(r"विभाग", first_lines, re.UNICODE)
     )
+
+    # 2. Refined Knowledge Base verification
+    if has_dept:
+        from knowledge import get_knowledge_service
+        ks = get_knowledge_service()
+        # Verify if any official department from knowledge base matches
+        for dept in ks.get_all_departments():
+            en_name = dept.get("english", "").lower()
+            mr_name = dept.get("marathi", "")
+            if (en_name and en_name in first_lines.lower()) or (mr_name and mr_name in first_lines):
+                return None
+
     if not has_dept:
         return TemplateIssue(
             rule_id="MOP-002",
@@ -70,6 +84,7 @@ def _check_mop002_department_line(text: str) -> Optional[TemplateIssue]:
             ),
         )
     return None
+
 
 
 def _check_mop003_gr_number(text: str) -> Optional[TemplateIssue]:

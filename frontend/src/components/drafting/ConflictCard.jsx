@@ -3,6 +3,8 @@ import { useLanguage } from '../../LanguageContext.jsx';
 import { generateConflictPDF } from '../../utils/pdfExport.js';
 
 const IconWarningTriangle = () => (
+
+
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
     <path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2Zm0-4h-2v-4h2Z" />
   </svg>
@@ -303,4 +305,6 @@ export default function ConflictCard({
       )}
     </div>
   );
+
+
 }

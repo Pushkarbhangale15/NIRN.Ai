@@ -176,7 +176,8 @@ COPILOT_DRAFT = (
     "• Address for Marathi: हुतात्मा राजगुरु चौक, मादाम कामा मार्ग, मंत्रालय मुंबई-३२\n"
     "• Address for English: Hutatma Rajguru Chowk, Madam Cama Road, Mantralaya Mumbai-32\n"
     "• Use today's date for 'दिनांक:' / 'Dated:'\n"
-    "• CRITICAL: Do NOT output any Cyrillic, Russian, Bulgarian, or non-Marathi/non-English characters.\n\n"
+    "• CRITICAL: Generate text ONLY using English (Latin script) or Marathi (Devanagari script). Absolutely NEVER output Chinese, Japanese, Korean, Cyrillic, or any foreign scripts.\n\n"
+
 
     "═══════════════════════════════════════════════════\n"
     "MARATHI STYLE REQUIREMENTS\n"

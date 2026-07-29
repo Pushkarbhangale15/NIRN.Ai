@@ -184,7 +184,23 @@ export default function Draft() {
                       }}
                     >
                       <Icon /> {t(tab.labelKey)}
+                      {tab.id === "conflicts" && allConflicts.length > 0 && (
+                        <span style={{
+                          background: '#dc2626',
+                          color: '#ffffff',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          borderRadius: '12px',
+                          padding: '2px 8px',
+                          marginLeft: '4px',
+                          border: '1px solid var(--ink)',
+                          boxShadow: '0 1px 0 var(--ink)'
+                        }}>
+                          {allConflicts.length}
+                        </span>
+                      )}
                     </button>
+
                   );
                 })}
               </div>

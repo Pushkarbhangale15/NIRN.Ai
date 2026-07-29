@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 import llm
 import retrieval
 from config import settings
+from knowledge import get_knowledge_service
 from routes import router
 from schemas import HealthResponse
 
@@ -29,6 +30,17 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s %(message)s",
 )
 logger = logging.getLogger(settings.APP_NAME)
+
+# Load Knowledge Base singleton on app startup
+try:
+    _ks = get_knowledge_service()
+    _ks_stats = _ks.get_summary_stats()
+    logger.info(
+        "Government Knowledge Base initialized | %d terms, %d departments, %d designations",
+        _ks_stats["total_terms"], _ks_stats["total_departments"], _ks_stats["total_designations"]
+    )
+except Exception as _exc:
+    logger.error("Failed to load Knowledge Base: %s", _exc)
 
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
@@ -90,6 +102,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
-logger.info("%s v%s | vector DB: %s | LLM: %s",
+logger.info("%s v%s | vector DB: %s | LLM: %s | KB Terms: %d",
             settings.APP_NAME, settings.VERSION,
-            retrieval.is_connected(), llm.is_configured())
+            retrieval.is_connected(), llm.is_configured(),
+            get_knowledge_service().get_summary_stats().get("total_terms", 0))
+

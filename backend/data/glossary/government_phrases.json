@@ -1,0 +1,347 @@
+{
+  "generated_at": "2026-07-29T19:43:13",
+  "generator": "NIRN.Ai Glossary Generator v1.0",
+  "total": 20,
+  "entries": [
+    {
+      "id": "ab537e9f-477d-51f8-99f5-1143454c3cf5",
+      "english": "It is hereby directed that",
+      "marathi": "याद्वारे आदेश देण्यात येतो की",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "3c621fe4-823a-52e3-955b-20a1ef493c07",
+      "english": "The Government is pleased to sanction",
+      "marathi": "शासन खालीलप्रमाणे मंजुरी देण्यास प्रसन्न आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e46842d4-a35f-5732-97bf-8825927e32dc",
+      "english": "With immediate effect",
+      "marathi": "तात्काळ प्रभावाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "dd1ef8c3-5d3e-56e8-ba45-ae78204d7311",
+      "english": "With effect from the date of issue",
+      "marathi": "आदेश निर्गमित तारखेपासून अंमलात येईल",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "18c16b56-9961-537e-b789-ad865f09f010",
+      "english": "Accordingly, the Government hereby orders",
+      "marathi": "त्यानुसार शासन आदेश देत आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b38c2f5e-b6ca-591b-82f6-08a2a0ec1305",
+      "english": "Subject to the terms and conditions",
+      "marathi": "अटी व शर्तींच्या अधीन",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "0214c815-e456-54bc-8f8d-b188f7ee78a1",
+      "english": "By order and in the name of the Governor of Maharashtra",
+      "marathi": "राज्यपालांच्या नावे व आदेशाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "295d3d11-94ee-5634-ba8a-213f928df648",
+      "english": "The following orders are issued",
+      "marathi": "खालील आदेश निर्गमित केले जात आहेत",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "19bc98ab-df44-5006-bf8d-581015e0427d",
+      "english": "This issues with the concurrence of the Finance Department",
+      "marathi": "हे वित्त विभागाच्या सहमतीने निर्गमित होत आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "179931ba-f9db-5527-a719-05e84296d3b7",
+      "english": "As per the provisions of the Act",
+      "marathi": "अधिनियमातील तरतुदींनुसार",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "0b1c32df-457f-5fc0-901a-9a0b89dd9e29",
+      "english": "In supersession of all previous orders",
+      "marathi": "मागील सर्व आदेशांच्या अधिक्रमणाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "03ec253c-68f8-531d-8702-88cc829ff34d",
+      "english": "In modification of Government Resolution",
+      "marathi": "शासन निर्णयात बदल करुन",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "28263033-f170-5610-8f7a-c0c8b8bfd864",
+      "english": "No objection is raised to the above proposal",
+      "marathi": "वरील प्रस्तावास आक्षेप नाही",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "8d34c8f2-c93d-52a6-92ac-935be258fd14",
+      "english": "The expenditure is to be met from the Consolidated Fund",
+      "marathi": "एकत्रित निधीतून खर्च भागविण्यात यावा",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "c839583e-a7d8-5813-9a4f-1e6162c51d17",
+      "english": "Administrative approval is hereby accorded",
+      "marathi": "प्रशासकीय मान्यता प्रदान करण्यात येत आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6aefc2e5-1c96-5ef0-941a-48c70e209cba",
+      "english": "Financial sanction is hereby accorded",
+      "marathi": "वित्तीय मंजुरी प्रदान करण्यात येत आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "751a1ac0-666f-5f3a-a046-50e534a2b3a9",
+      "english": "The amount is to be debited to",
+      "marathi": "रक्कम खात्यावर नावे टाकण्यात यावी",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bb5261d0-6967-5104-9715-aac3d5c52539",
+      "english": "Provision has been made in the Budget",
+      "marathi": "अर्थसंकल्पात तरतूद करण्यात आलेली आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "21c54968-4f4a-5271-b721-c4da800b450c",
+      "english": "The matter was under consideration of the Government",
+      "marathi": "बाब शासनाच्या विचाराधीन होती",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "492514dc-aa92-5dfe-8bdc-429f3580c6cb",
+      "english": "The Government has decided as follows",
+      "marathi": "शासनाने खालीलप्रमाणे निर्णय घेतला आहे",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 999,
+      "confidence": 1.0,
+      "sources": [
+        "curated"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    }
+  ]
+}

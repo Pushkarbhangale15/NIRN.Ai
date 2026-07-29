@@ -122,6 +122,10 @@ class TermMapping(BaseModel):
     target_term: str
     consistent_with_corpus: bool = True
     note: Optional[str] = None
+    english_term: Optional[str] = None
+    marathi_term: Optional[str] = None
+    definition: Optional[str] = None
+
 
 
 class AnalysisSummary(BaseModel):

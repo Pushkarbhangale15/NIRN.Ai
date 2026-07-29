@@ -87,4 +87,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ clause_text: clauseText, language }),
     }),
+
+  searchKnowledge: (query, limit = 10) =>
+    request(`/api/knowledge/search?q=${encodeURIComponent(query)}&limit=${limit}`),
 };
+

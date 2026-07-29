@@ -1,0 +1,1826 @@
+{
+  "generated_at": "2026-07-29T19:43:13",
+  "generator": "NIRN.Ai Glossary Generator v1.0",
+  "total": 83,
+  "entries": [
+    {
+      "id": "230422b3-6e0c-5445-9767-ddbeebbe7cdd",
+      "english": "Government Resolution",
+      "marathi": "शासन निर्णय",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 172133,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803171122508601.pdf",
+        "201803171459354501.pdf",
+        "201803161624182101.pdf",
+        "201803201457446601.pdf",
+        "201803211108323201.pdf",
+        "201803201505120901.pdf",
+        "201803211655416001.pdf",
+        "201803211324179201.pdf",
+        "201803191805280401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Reference:- 1) Government Resolution, Finance Department, No.Asank-1004/ Q.No.12/ (Part-II)/ 2004/ Financial Reforms-1D."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bb2e4b3a-0be5-55b2-88fe-e8f69091c21b",
+      "english": "Government of Maharashtra",
+      "marathi": "महाराष्ट्र शासन",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 167010,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803171122508601.pdf",
+        "201803171459354501.pdf",
+        "201803161624182101.pdf",
+        "201803201457446601.pdf",
+        "201803211108323201.pdf",
+        "201803201505120901.pdf",
+        "201803211655416001.pdf",
+        "201803211324179201.pdf",
+        "201803191805280401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The Government of Maharashtra"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "07e09999-ba83-5214-bf67-0546e74c94af",
+      "english": "Finance Department",
+      "marathi": "वित्त विभाग",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 165683,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803171122508601.pdf",
+        "201803171459354501.pdf",
+        "201803201505120901.pdf",
+        "201803221725477701.pdf",
+        "201803231718025501.pdf",
+        "201803221224584601.pdf",
+        "201803271203544501.pdf",
+        "201803271502242601.pdf",
+        "201803281250150701.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Reference:- 1) Government Resolution, Finance Department, No.Asank-1004/ Q.No.12/ (Part-II)/ 2004/ Financial Reforms-1D."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "50724964-2c2a-5a4c-b0c5-0cf45fd74c36",
+      "english": "Administrative Approval",
+      "marathi": "प्रशासकीय मान्यता",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 106278,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211108323201.pdf",
+        "201803211655416001.pdf",
+        "201803191805280401.pdf",
+        "201803261458428501.pdf",
+        "201803221743328801.pdf",
+        "201803281159429301.pdf",
+        "201803281259225001.pdf",
+        "201803311750373801.pdf",
+        "201803311759206101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The administrative approval has been accorded vide Government Resolution dated 17.10.2012."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "3d7cd38f-4fce-52d6-b170-5997a02f5eb0",
+      "english": "Mantralaya, Mumbai",
+      "marathi": "मंत्रालय, मुंबई",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 72184,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803171122508601.pdf",
+        "201803171459354501.pdf",
+        "201803211108323201.pdf",
+        "201803221729412701.pdf",
+        "201803281524076601.pdf",
+        "201803281708324001.pdf",
+        "201803311736147301.pdf",
+        "201803311936209701.pdf",
+        "201803311940494301.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Mantralaya, Mumbai- 400 032"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "129c66a3-9ca0-56aa-b5c3-b48844fb0f99",
+      "english": "Government Circular",
+      "marathi": "शासन परिपत्रक",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 69631,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803201505120901.pdf",
+        "201803221725477701.pdf",
+        "201803231718025501.pdf",
+        "201803221224584601.pdf",
+        "201803221743328801.pdf",
+        "201803271138528401.pdf",
+        "201803261513173201.pdf",
+        "201803271203544501.pdf",
+        "201803271236398001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Reference:- 1) Government Circular, Finance Department No.Finance-2017/ No."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1af3096f-e5d2-5a77-a589-5d70a2f53368",
+      "english": "Government Order",
+      "marathi": "शासन आदेश",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 60564,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803311526554301.pdf",
+        "201803311750373801.pdf",
+        "201803311759206101.pdf",
+        "201803311854186701.pdf",
+        "201803311736147301.pdf",
+        "201803311940494301.pdf",
+        "201804031745530601.pdf",
+        "201803311948494601.pdf",
+        "201803312011338401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The grants sanctioned to the Universities shall be spent within the prescribed limits as per the provisions of the Maharashtra Agricultural Universiti"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bc1c0045-83d0-5fcd-a3b7-87a29b64e845",
+      "english": "General Administration Department",
+      "marathi": "सामान्य प्रशासन विभाग",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 52691,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201803261513173201.pdf",
+        "201803271203544501.pdf",
+        "201803271648223101.pdf",
+        "201803281708324001.pdf",
+        "201804161320220601.pdf",
+        "201804191537280301.pdf",
+        "201804171314098701.pdf",
+        "201804231509523001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "A one-member inquiry committee headed by Mukesh Khullar, Additional Chief Secretary (Services), General Administration Department, has been constitute"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "c3442cce-2ecb-5a2b-ae50-ccf44fb298bb",
+      "english": "Planning Department",
+      "marathi": "नियोजन विभाग",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 27395,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281524076601.pdf",
+        "201803281708324001.pdf",
+        "201803311736147301.pdf",
+        "201804051351356701.pdf",
+        "201804171314098701.pdf",
+        "201806191806201501.pdf",
+        "201807171437170201.pdf",
+        "201810231551570301.pdf",
+        "201812141642253401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "This decision is being issued with the consent of the Planning Department and the Finance Department."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6e344c47-d732-5291-a0a2-f4abc7861ece",
+      "english": "Municipal Corporation",
+      "marathi": "महानगरपालिका",
+      "category": "Urban Development",
+      "aliases": [],
+      "frequency": 22333,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803161624182101.pdf",
+        "201804101357570001.pdf",
+        "201807231517031101.pdf",
+        "201810011301234901.pdf",
+        "201810171533108801.pdf",
+        "201812121704240201.pdf",
+        "201902151330420001.pdf",
+        "201905071233597501.pdf",
+        "201909111135509201.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "area to Brihanmumbai Municipal Corporation for construction of service road."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "7406eb2f-9512-5038-8af3-271300470e08",
+      "english": "Competent Authority",
+      "marathi": "सक्षम प्राधिकारी",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 19464,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803221224584601.pdf",
+        "201803311526554301.pdf",
+        "201803281708324001.pdf",
+        "201803311854186701.pdf",
+        "201804131252429301.pdf",
+        "201804191650330101.pdf",
+        "201804211241486601.pdf",
+        "201805161145131701.pdf",
+        "201805281750519101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "the competent authority in accordance with the provisions of the Act and the orders of the Government."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "560c1f95-0c06-58ef-9207-69eebfecd736",
+      "english": "Revenue and Forest Department",
+      "marathi": "महसूल व वन विभाग",
+      "category": "Revenue",
+      "aliases": [],
+      "frequency": 14907,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803161624182101.pdf",
+        "201803281626545301.pdf",
+        "201810061214358201.pdf",
+        "201811031156534001.pdf",
+        "201811061555534701.pdf",
+        "201811151308078401.pdf",
+        "201812121704240201.pdf",
+        "201812201501061701.pdf",
+        "201901021259429501.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "89 was received by the Revenue and Forest Department."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "c589b425-5065-5dd7-9505-ddbfae1377f4",
+      "english": "Scheduled Castes",
+      "marathi": "अनुसूचित जाती",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 14627,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271102101901.pdf",
+        "201803281159429301.pdf",
+        "201803311750373801.pdf",
+        "201803311759206101.pdf",
+        "201803311940494301.pdf",
+        "201803311948494601.pdf",
+        "201803312011338401.pdf",
+        "201805091210044601.pdf",
+        "201805231503193801.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The Corporation has been entrusted with the task of disbursing funds under the Centrally Sponsored Scheme of Seeds and Plantation Material Sub Mission"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "68896d23-b1da-581c-be57-ed08f249f0cc",
+      "english": "Deputy Secretary",
+      "marathi": "उप सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 13552,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201805291149514101.pdf",
+        "201806141647106601.pdf",
+        "201808091217557701.pdf",
+        "201808241533102001.pdf",
+        "201809291729316901.pdf",
+        "201811021606221701.pdf",
+        "201812141642253401.pdf",
+        "201812181223535201.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "3a6002f0-a7ea-5cbd-a5b9-6140333a4c86",
+      "english": "Other Backward Classes",
+      "marathi": "इतर मागासवर्ग",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 12177,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "f785f49d-8a22-5ebe-b5a2-8cb994ddb3e2",
+      "english": "Academic Year",
+      "marathi": "शैक्षणिक वर्ष",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 10978,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201804111538012401.pdf",
+        "201805311523560801.pdf",
+        "201808291451141001.pdf",
+        "201810081729571101.pdf",
+        "201901111536454701.pdf",
+        "201906211242373001.pdf",
+        "201907101135002701.pdf",
+        "201909091704235501.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Accordingly, the Cabinet in its meeting held on 21/11/2017 has decided to delete the Central and State Government sponsored scholarship/ freeship sche"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a9c5512f-bb53-5e3f-9ff8-6bf73d4ffdc7",
+      "english": "Additional Chief Secretary",
+      "marathi": "अतिरिक्त मुख्य सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 9539,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201806021500286601.pdf",
+        "201807241506235401.pdf",
+        "201807241303261001.pdf",
+        "201808241533102001.pdf",
+        "201809121634341101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "A one-member inquiry committee headed by Mukesh Khullar, Additional Chief Secretary (Services), General Administration Department, has been constitute"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "847dc292-ea85-5c51-b27a-e9e2fb914aa0",
+      "english": "Scheduled Tribes",
+      "marathi": "अनुसूचित जमाती",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 9490,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803191805280401.pdf",
+        "201803221743328801.pdf",
+        "201803281159429301.pdf",
+        "201803311750373801.pdf",
+        "201803311759206101.pdf",
+        "201805091210044601.pdf",
+        "201805231503193801.pdf",
+        "201806061650553801.pdf",
+        "201806181729289001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The name of the scheme the Scheduled Tribes Category"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "9d308fd7-eb26-51b5-99cb-02680998a337",
+      "english": "Joint Secretary",
+      "marathi": "संयुक्त सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 8868,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201806021500286601.pdf",
+        "201808091217557701.pdf",
+        "201808241533102001.pdf",
+        "201811021606221701.pdf",
+        "201812141642253401.pdf",
+        "201901241543272601.pdf",
+        "201903081800267601.pdf",
+        "201905021229199901.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "ce5544e2-2ec3-54a4-b606-eca66c16a1e1",
+      "english": "Accountant General",
+      "marathi": "महालेखापाल",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 7538,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201812141642253401.pdf",
+        "201901241543272601.pdf",
+        "201903301105589701.pdf",
+        "201908131725215401.pdf",
+        "201908201532349201.pdf",
+        "201909161615373601.pdf",
+        "201912121634322001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Accountant General Maharashtra 1/2 (Audit)/ (Accounting), Mumbai/ Nagpur."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "58c9e6a2-a24b-5450-b332-3082187283af",
+      "english": "Governor of Maharashtra",
+      "marathi": "महाराष्ट्राचे राज्यपाल",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 7482,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201803311736147301.pdf",
+        "201804071211406501.pdf",
+        "201804171314098701.pdf",
+        "201806021500286601.pdf",
+        "201811021518239601.pdf",
+        "201812141642253401.pdf",
+        "201901241543272601.pdf",
+        "201903071725198701.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "By order and in the name of the Governor of Maharashtra."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "36740ab4-a837-50c9-a7fa-15039f8ece76",
+      "english": "Detailed Project Report",
+      "marathi": "सविस्तर प्रकल्प अहवाल",
+      "category": "Infrastructure",
+      "aliases": [],
+      "frequency": 7105,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "ed16ea4d-75cd-5792-85ef-53452323850b",
+      "english": "Government Notification",
+      "marathi": "शासन अधिसूचना",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 6500,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201805211704396601.pdf",
+        "201805281719546301.pdf",
+        "201805312230478901.pdf",
+        "201806181639388801.pdf",
+        "201807131225033701.pdf",
+        "201812141451126601.pdf",
+        "201812141456569501.pdf",
+        "201812141500356101.pdf",
+        "201812281215310401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Government Notification General Administration Department SRV-2015/ PR.C."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e46842d4-a35f-5732-97bf-8825927e32dc",
+      "english": "With immediate effect",
+      "marathi": "तात्काळ प्रभावाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 4227,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201804031745530601.pdf",
+        "201804101357570001.pdf",
+        "201805241502233401.pdf",
+        "201806041507448001.pdf",
+        "201806081658568801.pdf",
+        "201806191308241401.pdf",
+        "201807261136522501.pdf",
+        "201807301111030401.pdf",
+        "201807301111405701.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Ram Khare has been relieved from the post of Vice-Chairman of Maharashtra Council of Agricultural Education and Research with immediate effect as the "
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "86d75298-154a-5f12-af67-94b90bb81113",
+      "english": "Probation Period",
+      "marathi": "परिविक्षाधीन कालावधी",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 3268,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271203544501.pdf",
+        "201805211704396601.pdf",
+        "201807131225033701.pdf",
+        "201809011003157201.pdf",
+        "201901101716305101.pdf",
+        "201908291551337501.pdf",
+        "201909191159372001.pdf",
+        "202002171702511901.pdf",
+        "202104301613578401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The probation period of Ms."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "0719f144-6c09-5799-85ea-9ceeb87e38ce",
+      "english": "Divisional Commissioner",
+      "marathi": "विभागीय आयुक्त",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 2992,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "eca29036-7a33-5928-bd93-beefff665846",
+      "english": "Pay Commission",
+      "marathi": "वेतन आयोग",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 2976,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "4d167db4-2929-5bce-8f43-13e71f0767b3",
+      "english": "Departmental Inquiry",
+      "marathi": "विभागीय चौकशी",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 2196,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271138528401.pdf",
+        "201804061522305301.pdf",
+        "201805281502282801.pdf",
+        "201809011003157201.pdf",
+        "201812131659510101.pdf",
+        "201901301303037801.pdf",
+        "201906291539426101.pdf",
+        "201906291536222501.pdf",
+        "201911071251144301.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Departmental Inquiry cases received by the Government from the Office of the Commissioner (Agriculture) and general instructions regarding the respons"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1ee44ec5-9c0b-5c0f-8c0f-0cd6d6df287c",
+      "english": "Technical Sanction",
+      "marathi": "तांत्रिक मान्यता",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 2047,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a081f7eb-4eed-5f71-aaff-2d1ea7f032b3",
+      "english": "Work Order",
+      "marathi": "कार्यादेश",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 2029,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "68d7e01d-a49d-5ea2-9b96-628e60ebc974",
+      "english": "Financial Sanction",
+      "marathi": "वित्तीय मंजुरी",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 1663,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271236398001.pdf",
+        "201803311759206101.pdf",
+        "201803311844420701.pdf",
+        "201803311940494301.pdf",
+        "201803311948494601.pdf",
+        "201803312011338401.pdf",
+        "201805101142176301.pdf",
+        "201806181729289001.pdf",
+        "201807051227589801.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Accordingly, the Government is giving financial sanction to spend the said amount for the purpose of rent and tax (14)."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "29b31a6c-5320-540a-be29-edee2732120f",
+      "english": "District Collector",
+      "marathi": "जिल्हाधिकारी",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1659,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1e86012e-4755-52c2-b17b-af9acc2ae4ea",
+      "english": "Public Interest",
+      "marathi": "सार्वजनिक हित",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1610,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201804101357570001.pdf",
+        "201805181528110701.pdf",
+        "201805221248435501.pdf",
+        "201907031714356101.pdf",
+        "201908081126435201.pdf",
+        "201908271221227301.pdf",
+        "202003111649162501.pdf",
+        "202010261510483701.pdf",
+        "202011121651302201.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Public Interest Litigation in the High Court of Bombay No."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "8dbb4719-06f7-515a-8da8-7dd0baf7f6ae",
+      "english": "Chief Secretary",
+      "marathi": "मुख्य सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1573,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201806021500286601.pdf",
+        "201807241506235401.pdf",
+        "201807241303261001.pdf",
+        "201808241533102001.pdf",
+        "201809011717476401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "A one-member inquiry committee headed by Mukesh Khullar, Additional Chief Secretary (Services), General Administration Department, has been constitute"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a4c5168e-9b56-5a2e-b39f-c5107aa165a8",
+      "english": "Principal Secretary",
+      "marathi": "प्रधान सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1546,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201805041453456101.pdf",
+        "201808241533102001.pdf",
+        "201809171559103101.pdf",
+        "201811261248520901.pdf",
+        "201811221257427201.pdf",
+        "201812141642253401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Principal Secretary to the Chief Minister, Ministry, Mumbai."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1d8308a8-b683-580c-b031-3fcbdbc3bef3",
+      "english": "Zilla Parishad",
+      "marathi": "जिल्हा परिषद",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1409,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b4066907-dc63-5155-b1d9-1e5b1252b5f4",
+      "english": "Dearness Allowance",
+      "marathi": "महागाई भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1217,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "348693b4-f312-5cdf-a6f3-27c7557047f9",
+      "english": "Consolidated Fund",
+      "marathi": "एकत्रित निधी",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 1086,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201805181528110701.pdf",
+        "201807131642599001.pdf",
+        "201807181457223601.pdf",
+        "201811011640427901.pdf",
+        "202106171837507301.pdf",
+        "202110121715447901.pdf",
+        "202112301245055601.pdf",
+        "202203241046382901.pdf",
+        "202205191325400801.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "4 lakh from the Consolidated Fund of Rs."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "09263efb-63e0-5bbd-9b95-0f91da4ab3c6",
+      "english": "Gram Panchayat",
+      "marathi": "ग्रामपंचायत",
+      "category": "Rural Development",
+      "aliases": [],
+      "frequency": 947,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "4de0c430-7804-599e-bde1-a04c351e0b0a",
+      "english": "Under Secretary",
+      "marathi": "अवर सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 798,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201804171314098701.pdf",
+        "201805291149514101.pdf",
+        "201808091217557701.pdf",
+        "201811021518239601.pdf",
+        "201901111639289201.pdf",
+        "201901191701476001.pdf",
+        "201902201251335701.pdf",
+        "201905021229199901.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "ed3085bd-64c2-5be7-bdbf-f34203bf4508",
+      "english": "Revised Estimate",
+      "marathi": "सुधारित अंदाज",
+      "category": "Budget",
+      "aliases": [],
+      "frequency": 772,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b5051dd3-d761-571f-8d50-6fff26049bfb",
+      "english": "Legislative Assembly",
+      "marathi": "विधानसभा",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 608,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "729d589d-6194-5e07-a6bd-f6aecf0aa50d",
+      "english": "Budget Estimate",
+      "marathi": "अर्थसंकल्पीय अंदाज",
+      "category": "Budget",
+      "aliases": [],
+      "frequency": 562,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201804071211406501.pdf",
+        "201805281611378001.pdf",
+        "201810251546016701.pdf",
+        "201903021424382701.pdf",
+        "201903141516070301.pdf",
+        "201904031509346201.pdf",
+        "201904231702006801.pdf",
+        "201906031504200001.pdf",
+        "201907121431250001.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The Budget Estimates have been approved under D-2, D-3, D-7 and D-11."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "eba8b078-9e1d-5cd8-b186-048a1130be2b",
+      "english": "State Cabinet",
+      "marathi": "राज्य मंत्रिमंडळ",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 525,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201804111450389801.pdf",
+        "201805311523560801.pdf",
+        "201806151611540501.pdf",
+        "201807211244566901.pdf",
+        "201808131152475601.pdf",
+        "201811281259231101.pdf",
+        "201811281309371201.pdf",
+        "201812201501061701.pdf",
+        "201909111249085201.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Decision of the State Cabinet on 20th March, 2018"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "68c7f402-f9d1-5c57-abe2-16bad6941ed7",
+      "english": "Sanctioned Intake",
+      "marathi": "मंजूर प्रवेश क्षमता",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 343,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6c06f914-8fe2-5ff0-b1b7-5e6c49724159",
+      "english": "General Transfer",
+      "marathi": "सामान्य बदली",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 342,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "01b952ac-67d9-513b-ab93-b4456443a908",
+      "english": "Travelling Allowance",
+      "marathi": "प्रवास भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 325,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "88803e68-c799-58a7-a59a-6a99ef5da1c8",
+      "english": "Earned Leave",
+      "marathi": "अर्जित रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 249,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "54b9be6a-8c0e-5446-b48f-0abc074ddd89",
+      "english": "Plan Expenditure",
+      "marathi": "नियोजन खर्च",
+      "category": "Budget",
+      "aliases": [],
+      "frequency": 248,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "30375036-b4c4-53f5-bc3d-96507dd1cec1",
+      "english": "Contingency Fund",
+      "marathi": "आकस्मिक निधी",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 246,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b6dcfa25-e435-5a0f-a902-1617baf4a9bb",
+      "english": "Section Officer",
+      "marathi": "कक्ष अधिकारी",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 214,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "fe600847-f73e-5cd8-987c-a15a46ea9af6",
+      "english": "Legislative Council",
+      "marathi": "विधानपरिषद",
+      "category": "Legal",
+      "aliases": [],
+      "frequency": 200,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201804201459458201.pdf",
+        "201806041507448001.pdf",
+        "201807211244566901.pdf",
+        "201811021518239601.pdf",
+        "201811161748233401.pdf",
+        "201901241543272601.pdf",
+        "201902151330420001.pdf",
+        "201905131541249101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Introduction: In the Budget Session of the Legislative Council 2018, Starred Questions No."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "5c88cda0-a4aa-56c7-ae18-47bf8750aefb",
+      "english": "House Rent Allowance",
+      "marathi": "घरभाडे भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 181,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "518a304f-eba7-517e-88d3-e97587a5cc38",
+      "english": "Economically Weaker Section",
+      "marathi": "आर्थिकदृष्ट्या दुर्बल घटक",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 180,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201804111538012401.pdf",
+        "201804171314098701.pdf",
+        "201901151153360101.pdf",
+        "201907081654373301.pdf",
+        "201907121258041601.pdf",
+        "201907111320470901.pdf",
+        "202003051610555901.pdf",
+        "202008211630056801.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "MAPAMVIVI/ KUSKARYA/ 5827/ 2018, dated 27th February, 2018 Preamble- Students belonging to Economically Weaker Sections (EBC) studying in professional"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "22ce2711-6802-5c3c-8856-0a1d85a95c16",
+      "english": "School Education Department",
+      "marathi": "शालेय शिक्षण विभाग",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 158,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "44b30374-d9c7-5242-b31e-f83712c94157",
+      "english": "Sanctioned Post",
+      "marathi": "मंजूर पद",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 142,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e009b36e-c9b4-5e92-935f-351279d9098f",
+      "english": "Casual Leave",
+      "marathi": "आकस्मिक रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 136,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "85c088a6-04ee-5d6f-83ab-ec29c3badd7f",
+      "english": "Medical Reimbursement",
+      "marathi": "वैद्यकीय परतावा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 110,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "51c0f508-d864-5a6d-bb74-69b4fcae1c81",
+      "english": "Non-Plan Expenditure",
+      "marathi": "बिगर नियोजन खर्च",
+      "category": "Budget",
+      "aliases": [],
+      "frequency": 82,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "9e7f1b31-b73c-579c-9de0-fad0d46be690",
+      "english": "Maternity Leave",
+      "marathi": "प्रसूती रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 62,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "eb182e38-5b4e-5b67-919a-d62abe7fab82",
+      "english": "Transfer Policy",
+      "marathi": "बदली धोरण",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 29,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a40c35b8-6ad8-5a3c-b0db-57a470b3b617",
+      "english": "Gross Enrolment Ratio",
+      "marathi": "सकल नोंदणी प्रमाण",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 25,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "09f7ae57-a7ff-5c05-82a2-38638a891e97",
+      "english": "Affiliated College",
+      "marathi": "संलग्नित महाविद्यालय",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 18,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "3ce4e8ba-ba07-5135-abc9-1571bf258221",
+      "english": "Medical Education Department",
+      "marathi": "वैद्यकीय शिक्षण विभाग",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 17,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "dfa2eccd-c13e-5ee2-89ff-92067c3d5844",
+      "english": "Higher and Technical Education Department",
+      "marathi": "उच्च व तंत्र शिक्षण विभाग",
+      "category": "Education",
+      "aliases": [],
+      "frequency": 14,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "92bfa2c7-8798-56c9-b251-97b64afc05b3",
+      "english": "Annual Confidential Report",
+      "marathi": "वार्षिक गोपनीय अहवाल",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 13,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "d7a39594-1223-585d-a37b-c74551005a9f",
+      "english": "Leave Without Pay",
+      "marathi": "वेतनाशिवाय रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 10,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "863c34d7-8980-5773-9fd3-04bbb8bd20cf",
+      "english": "Expenditure Sanction",
+      "marathi": "खर्चाची मंजुरी",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 6,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "cabed786-80da-592c-b197-04e1072b65e6",
+      "english": "Preamble",
+      "marathi": "प्रस्तावना",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bc9e614c-4b58-51a7-af62-5742a376f909",
+      "english": "Reference",
+      "marathi": "संदर्भ",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6fe42522-28a3-5ab1-a03f-05ec395a1716",
+      "english": "Read",
+      "marathi": "वाचा",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "f332bf7c-1b9f-5141-86b7-aaa7d790e88d",
+      "english": "Copy to",
+      "marathi": "प्रति",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e8e9f883-34ad-5dec-b210-659c640bd275",
+      "english": "Implementation",
+      "marathi": "अंमलबजावणी",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "2198cfbe-5e5a-5023-acbb-be066cc81f87",
+      "english": "Grant-in-Aid",
+      "marathi": "अनुदान सहाय्य",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "864587c7-7319-5f1c-8886-291acf41905b",
+      "english": "Treasury",
+      "marathi": "कोषागार",
+      "category": "Finance",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a33e4d8e-0faa-507e-90e0-e2385b687058",
+      "english": "Seniority",
+      "marathi": "ज्येष्ठता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "76e747a2-6dce-55a0-b3e2-0c57b28e915f",
+      "english": "Promotion",
+      "marathi": "पदोन्नती",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a2e963e5-3df5-57aa-98ed-0d3d67efe570",
+      "english": "Appointment",
+      "marathi": "नियुक्ती",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1b70ad0a-1104-592f-99f5-d6f46f522934",
+      "english": "Commissioner",
+      "marathi": "आयुक्त",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "bc62c83a-414a-5caa-bc22-0c82e49d0466",
+      "english": "Tehsildar",
+      "marathi": "तहसीलदार",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6c0b926f-9b2b-5cf7-b73e-d8ed4974ada5",
+      "english": "By order and in the name of the Governor",
+      "marathi": "राज्यपालांच्या नावे व आदेशाने",
+      "category": "Office Procedure",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "1140f91d-2b83-5f01-b432-f8190f90fcd2",
+      "english": "Nagar Parishad",
+      "marathi": "नगरपरिषद",
+      "category": "Urban Development",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "85cfb534-937c-5e8e-9855-d5a972f18b6c",
+      "english": "E-tendering",
+      "marathi": "e-निविदा",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    }
+  ]
+}

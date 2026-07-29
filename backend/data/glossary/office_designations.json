@@ -1,0 +1,528 @@
+{
+  "generated_at": "2026-07-29T19:43:13",
+  "generator": "NIRN.Ai Glossary Generator v1.0",
+  "total": 25,
+  "entries": [
+    {
+      "id": "44b30374-d9c7-5242-b31e-f83712c94157",
+      "english": "Sanctioned Post",
+      "marathi": "मंजूर पद",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 142,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "86d75298-154a-5f12-af67-94b90bb81113",
+      "english": "Probation Period",
+      "marathi": "परिविक्षाधीन कालावधी",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 3268,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271203544501.pdf",
+        "201805211704396601.pdf",
+        "201807131225033701.pdf",
+        "201809011003157201.pdf",
+        "201901101716305101.pdf",
+        "201908291551337501.pdf",
+        "201909191159372001.pdf",
+        "202002171702511901.pdf",
+        "202104301613578401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "The probation period of Ms."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "4d167db4-2929-5bce-8f43-13e71f0767b3",
+      "english": "Departmental Inquiry",
+      "marathi": "विभागीय चौकशी",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 2196,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803271138528401.pdf",
+        "201804061522305301.pdf",
+        "201805281502282801.pdf",
+        "201809011003157201.pdf",
+        "201812131659510101.pdf",
+        "201901301303037801.pdf",
+        "201906291539426101.pdf",
+        "201906291536222501.pdf",
+        "201911071251144301.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Departmental Inquiry cases received by the Government from the Office of the Commissioner (Agriculture) and general instructions regarding the respons"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "eca29036-7a33-5928-bd93-beefff665846",
+      "english": "Pay Commission",
+      "marathi": "वेतन आयोग",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 2976,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b4066907-dc63-5155-b1d9-1e5b1252b5f4",
+      "english": "Dearness Allowance",
+      "marathi": "महागाई भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1217,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "5c88cda0-a4aa-56c7-ae18-47bf8750aefb",
+      "english": "House Rent Allowance",
+      "marathi": "घरभाडे भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 181,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "01b952ac-67d9-513b-ab93-b4456443a908",
+      "english": "Travelling Allowance",
+      "marathi": "प्रवास भत्ता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 325,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "85c088a6-04ee-5d6f-83ab-ec29c3badd7f",
+      "english": "Medical Reimbursement",
+      "marathi": "वैद्यकीय परतावा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 110,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "88803e68-c799-58a7-a59a-6a99ef5da1c8",
+      "english": "Earned Leave",
+      "marathi": "अर्जित रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 249,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "e009b36e-c9b4-5e92-935f-351279d9098f",
+      "english": "Casual Leave",
+      "marathi": "आकस्मिक रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 136,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "9e7f1b31-b73c-579c-9de0-fad0d46be690",
+      "english": "Maternity Leave",
+      "marathi": "प्रसूती रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 62,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "d7a39594-1223-585d-a37b-c74551005a9f",
+      "english": "Leave Without Pay",
+      "marathi": "वेतनाशिवाय रजा",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 10,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "eb182e38-5b4e-5b67-919a-d62abe7fab82",
+      "english": "Transfer Policy",
+      "marathi": "बदली धोरण",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 29,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "6c06f914-8fe2-5ff0-b1b7-5e6c49724159",
+      "english": "General Transfer",
+      "marathi": "सामान्य बदली",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 342,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "92bfa2c7-8798-56c9-b251-97b64afc05b3",
+      "english": "Annual Confidential Report",
+      "marathi": "वार्षिक गोपनीय अहवाल",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 13,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a33e4d8e-0faa-507e-90e0-e2385b687058",
+      "english": "Seniority",
+      "marathi": "ज्येष्ठता",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "76e747a2-6dce-55a0-b3e2-0c57b28e915f",
+      "english": "Promotion",
+      "marathi": "पदोन्नती",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a2e963e5-3df5-57aa-98ed-0d3d67efe570",
+      "english": "Appointment",
+      "marathi": "नियुक्ती",
+      "category": "Personnel",
+      "aliases": [],
+      "frequency": 1,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a4c5168e-9b56-5a2e-b39f-c5107aa165a8",
+      "english": "Principal Secretary",
+      "marathi": "प्रधान सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1546,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201805041453456101.pdf",
+        "201808241533102001.pdf",
+        "201809171559103101.pdf",
+        "201811261248520901.pdf",
+        "201811221257427201.pdf",
+        "201812141642253401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Principal Secretary to the Chief Minister, Ministry, Mumbai."
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "a9c5512f-bb53-5e3f-9ff8-6bf73d4ffdc7",
+      "english": "Additional Chief Secretary",
+      "marathi": "अतिरिक्त मुख्य सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 9539,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201806021500286601.pdf",
+        "201807241506235401.pdf",
+        "201807241303261001.pdf",
+        "201808241533102001.pdf",
+        "201809121634341101.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "A one-member inquiry committee headed by Mukesh Khullar, Additional Chief Secretary (Services), General Administration Department, has been constitute"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "8dbb4719-06f7-515a-8da8-7dd0baf7f6ae",
+      "english": "Chief Secretary",
+      "marathi": "मुख्य सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 1573,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803211324179201.pdf",
+        "201803281708324001.pdf",
+        "201804171314098701.pdf",
+        "201804201459458201.pdf",
+        "201806021500286601.pdf",
+        "201807241506235401.pdf",
+        "201807241303261001.pdf",
+        "201808241533102001.pdf",
+        "201809011717476401.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "A one-member inquiry committee headed by Mukesh Khullar, Additional Chief Secretary (Services), General Administration Department, has been constitute"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "9d308fd7-eb26-51b5-99cb-02680998a337",
+      "english": "Joint Secretary",
+      "marathi": "संयुक्त सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 8868,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201806021500286601.pdf",
+        "201808091217557701.pdf",
+        "201808241533102001.pdf",
+        "201811021606221701.pdf",
+        "201812141642253401.pdf",
+        "201901241543272601.pdf",
+        "201903081800267601.pdf",
+        "201905021229199901.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "68896d23-b1da-581c-be57-ed08f249f0cc",
+      "english": "Deputy Secretary",
+      "marathi": "उप सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 13552,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201805291149514101.pdf",
+        "201806141647106601.pdf",
+        "201808091217557701.pdf",
+        "201808241533102001.pdf",
+        "201809291729316901.pdf",
+        "201811021606221701.pdf",
+        "201812141642253401.pdf",
+        "201812181223535201.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "4de0c430-7804-599e-bde1-a04c351e0b0a",
+      "english": "Under Secretary",
+      "marathi": "अवर सचिव",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 798,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary",
+        "201803261513173201.pdf",
+        "201804171314098701.pdf",
+        "201805291149514101.pdf",
+        "201808091217557701.pdf",
+        "201811021518239601.pdf",
+        "201901111639289201.pdf",
+        "201901191701476001.pdf",
+        "201902201251335701.pdf",
+        "201905021229199901.pdf"
+      ],
+      "example_usage": [
+        {
+          "language": "en",
+          "text": "Under 15.12.2017, Joint Secretary/ Deputy Secretary, who controls the Group-A and Group-B (Gazetted) officers of the concerned service for recording p"
+        },
+        null
+      ],
+      "related_terms": []
+    },
+    {
+      "id": "b6dcfa25-e435-5a0f-a902-1617baf4a9bb",
+      "english": "Section Officer",
+      "marathi": "कक्ष अधिकारी",
+      "category": "Administration",
+      "aliases": [],
+      "frequency": 214,
+      "confidence": 1.0,
+      "sources": [
+        "seed_dictionary"
+      ],
+      "example_usage": [
+        null,
+        null
+      ],
+      "related_terms": []
+    }
+  ]
+}

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
 
 const IconTranslate = () => (
+
+
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
     <path d="M12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 8.36 6H10v2H7.75l-.09.34a15.3 15.3 0 0 1-2.1 4.06 12.34 12.34 0 0 0 3.8-2.13Zm5.63-1.53H16l-4.5 12h1.75l1.13-3h5.24l1.13 3H22ZM14.9 15h4.2L17 10.35Z" />
     <path d="M11 4H2v2h2.5v1H2v2h2.5A9.5 9.5 0 0 0 2 14h2c.15-.63.36-1.24.63-1.8A11 11 0 0 0 6 14h2a10 10 0 0 1-1.9-2.4A8.4 8.4 0 0 0 6.5 9H11Z" />
@@ -104,34 +106,66 @@ export default function TerminologyCard({ terms = [], loading, hasGenerated }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {displayTerms.map((t, idx) => (
-                <div key={idx} style={{
-                  border: '1px solid var(--ink)',
-                  borderRadius: '8px',
-                  padding: '12px 14px',
-                  background: '#fff',
-                  boxShadow: '0 2px 0 var(--ink)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--ink)' }}>
-                      {t.english_term}
-                    </span>
-                    <span style={{ fontSize: '13px', color: '#6b7280' }}>↓ Marathi</span>
-                    <span style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: "'Noto Sans Devanagari', 'Mangal', sans-serif" }}>
-                      {t.marathi_term}
-                    </span>
-                  </div>
-                  {t.definition && (
-                    <div style={{ fontSize: '14px', color: '#4b5563', marginTop: '6px', background: '#f9fafb', padding: '8px 10px', borderRadius: '4px', lineHeight: '1.4' }}>
-                      <strong>Definition:</strong> {t.definition}
+              {displayTerms.map((t, idx) => {
+                const isMrSource = t.source_language === 'mr' || (t.source_language?.value === 'mr');
+                const docWord = t.source_term || (isMrSource ? t.marathi_term : t.english_term) || t.english_term || '';
+                const equivWord = t.target_term || (isMrSource ? t.english_term : t.marathi_term) || t.marathi_term || '';
+                const noteText = t.note || t.definition || '';
+
+                const srcLangLabel = isMrSource ? 'Marathi' : 'English';
+                const tgtLangLabel = isMrSource ? 'English' : 'Marathi';
+
+                return (
+                  <div key={idx} style={{
+                    border: '1px solid var(--ink)',
+                    borderRadius: '8px',
+                    padding: '14px 16px',
+                    background: '#fff',
+                    boxShadow: '0 2px 0 var(--ink)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      {/* Left: Word in Document */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                          Word in Document ({srcLangLabel})
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--ink)' }}>
+                          {docWord}
+                        </div>
+                      </div>
+
+                      {/* Middle Arrow */}
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#9ca3af', padding: '0 6px' }}>
+                        →
+                      </div>
+
+                      {/* Right: Approved Translation */}
+                      <div style={{ flex: 1, textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                          Approved Equivalent ({tgtLangLabel})
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--blue)', fontFamily: "'Noto Sans Devanagari', 'Mangal', sans-serif" }}>
+                          {equivWord}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {noteText && (
+                      <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '10px', background: '#f9fafb', padding: '6px 10px', borderRadius: '4px', borderLeft: '3px solid var(--blue)' }}>
+                        <strong>Note:</strong> {noteText}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+
             </div>
           )}
         </div>
       )}
     </div>
   );
+
+
 }

@@ -38,3 +38,9 @@ backend/data/*.faiss
 backend/data/*.pkl
 backend/data/metadata.json
 
+# Glossary Generator temporary & large review files
+glossary_generator/logs/
+glossary_generator/checkpoint.json
+backend/data/glossary/review_candidates.json
+
+
