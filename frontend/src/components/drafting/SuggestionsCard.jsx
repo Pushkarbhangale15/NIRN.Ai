@@ -37,9 +37,9 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
       boxShadow: '0 4px 0 var(--ink)',
       marginTop: '16px'
     }}>
-      <h4 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <h3 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <IconLightbulb /> AI Review Suggestions
-      </h4>
+      </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {defaultSuggestions.map((item, idx) => {
           const isPass = item.type === 'pass' || (typeof item === 'string' && !item.toLowerCase().includes('add') && !item.toLowerCase().includes('mention'));

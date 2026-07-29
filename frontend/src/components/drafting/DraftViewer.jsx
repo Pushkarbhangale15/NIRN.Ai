@@ -1,13 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../../LanguageContext.jsx';
-
-const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
-const DEFAULT_ESTIMATE_MS = 45000; // upper bound of the ~30-45s default range — "taking longer" fires past this
-
-const toDevanagariDigits = (value) => String(value).replace(/\d/g, (d) => '०१२३४५६७८९'[d]);
-
-const roundToNearest = (value, step) => Math.max(step, Math.round(value / step) * step);
+import StatusVerb from '../StatusVerb.jsx';
 
 const IconCopy = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
@@ -39,59 +33,8 @@ export default function DraftViewer({
   draft,
   loading
 }) {
-  const { t, siteLanguage } = useLanguage();
-  const isMr = siteLanguage === 'mr';
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
-
-  // Adaptive generation-time estimate: first run shows a default range;
-  // once a generation completes, its actual duration is stored and used
-  // to give a tighter estimate on subsequent runs.
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [hasStoredEstimate, setHasStoredEstimate] = useState(() => {
-    try { return !!localStorage.getItem(ESTIMATE_STORAGE_KEY); } catch { return false; }
-  });
-  const startRef = useRef(null);
-  const estimateMsRef = useRef(DEFAULT_ESTIMATE_MS);
-
-  useEffect(() => {
-    if (loading) {
-      startRef.current = Date.now();
-      setElapsedMs(0);
-      try {
-        const stored = localStorage.getItem(ESTIMATE_STORAGE_KEY);
-        if (stored) {
-          estimateMsRef.current = parseInt(stored, 10);
-          setHasStoredEstimate(true);
-        }
-      } catch { /* localStorage unavailable */ }
-
-      const interval = setInterval(() => {
-        setElapsedMs(Date.now() - (startRef.current || Date.now()));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-
-    if (startRef.current) {
-      const duration = Date.now() - startRef.current;
-      startRef.current = null;
-      try { localStorage.setItem(ESTIMATE_STORAGE_KEY, String(duration)); } catch { /* ignore */ }
-    }
-  }, [loading]);
-
-  const estimateSeconds = Math.round(estimateMsRef.current / 1000);
-  const estimateLowSec = roundToNearest(estimateSeconds * 0.8, 5);
-  const estimateHighSec = roundToNearest(estimateSeconds * 1.25, 5);
-  const isTakingLonger = elapsedMs > estimateMsRef.current;
-
-  const estimateText = hasStoredEstimate
-    ? {
-      mr: `अंदाजे वेळ: ~${toDevanagariDigits(estimateLowSec)}-${toDevanagariDigits(estimateHighSec)} सेकंद`,
-      en: `Estimated time: ~${estimateLowSec}-${estimateHighSec} seconds`,
-    }
-    : {
-      mr: 'अंदाजे वेळ: ~३०-४५ सेकंद',
-      en: 'Estimated time: ~30-45 seconds',
-    };
 
   const handleCopy = () => {
     if (!draft || !draft.body_text) return;
@@ -157,24 +100,12 @@ export default function DraftViewer({
         <div className="big"><span className="spinner" /></div>
 
         <div style={{ marginTop: '20px' }}>
-          {isTakingLonger ? (
-            <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--red)' }}>
-              {t('draft_loading_taking_longer')}
-            </h4>
-          ) : (
-            <h4 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {t('draft_loading_generating')}
-            </h4>
-          )}
+          <h3>{t('draft_loading_generating')}</h3>
         </div>
 
         <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{isMr ? estimateText.mr : estimateText.en}</p>
-        </div>
-
-        <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            {t('draft_loading_retrieving')}
+          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>
+            <StatusVerb stage="drafting" />
           </p>
         </div>
       </div>
@@ -197,7 +128,7 @@ export default function DraftViewer({
         color: '#6b7280'
       }}>
         <div style={{ marginBottom: '16px', color: 'var(--ink-soft)' }}><IconDocument /></div>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--ink)' }}>
+        <h3 style={{ margin: '0 0 8px 0' }}>
           {t('draft_viewer_empty_title')}
         </h3>
         <p style={{ margin: 0, fontSize: '14px', maxWidth: '420px' }}>
@@ -248,58 +179,21 @@ export default function DraftViewer({
           <button
             type="button"
             onClick={handleCopy}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className="btn btn-sm btn-secondary"
           >
             {copied ? <><IconCheck /> {t('draft_copied')}</> : <><IconCopy /> {t('draft_copy')}</>}
           </button>
           <button
             type="button"
             onClick={handleDownloadTxt}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className="btn btn-sm btn-secondary"
           >
             <IconDownload /> {t('draft_download_txt')}
           </button>
           <button
             type="button"
             onClick={handleDownloadPdf}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              minHeight: '36px',
-              fontSize: '13px',
-              fontWeight: 600,
-              background: 'var(--red)',
-              color: '#fff',
-              border: '1px solid var(--ink)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
+            className="btn btn-sm btn-red"
           >
             <IconPdf /> {t('draft_download_pdf')}
           </button>

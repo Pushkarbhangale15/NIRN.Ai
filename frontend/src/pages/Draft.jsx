@@ -133,10 +133,7 @@ export default function Draft() {
 
       <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
         <div style={{ width: '100%' }}>
-          {/* 1. Workflow Stepper at the very top */}
-          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
-
-          {/* 2. Horizontal Parameter & Brief Header */}
+          {/* 1. Horizontal Parameter & Brief Header */}
           <DraftInputCard
             prompt={prompt}
             setPrompt={setPrompt}
@@ -148,6 +145,9 @@ export default function Draft() {
             loading={loading}
             onReset={handleReset}
           />
+
+          {/* 2. Workflow Stepper directly under the Generate Draft block */}
+          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
 
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">
@@ -188,14 +188,7 @@ export default function Draft() {
               flexDirection: 'column'
             }}>
               {/* Tab Selection Header */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                borderBottom: '2px solid var(--ink)',
-                paddingBottom: '16px',
-                marginBottom: '24px',
-                flexWrap: 'wrap'
-              }}>
+              <div className="draft-review-tabs">
                 {REVIEW_TABS.map(tab => {
                   const isActive = activeReviewTab === tab.id;
                   const Icon = tab.Icon;
@@ -203,23 +196,7 @@ export default function Draft() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveReviewTab(tab.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: isActive ? 'var(--blue)' : '#fff',
-                        color: isActive ? '#fff' : 'var(--ink)',
-                        border: '2px solid var(--ink)',
-                        borderRadius: '6px',
-                        padding: '10px 18px',
-                        minHeight: '44px',
-                        fontWeight: 'bold',
-                        fontSize: siteLanguage === 'mr' ? '17px' : '15px',
-                        cursor: 'pointer',
-                        boxShadow: isActive ? 'none' : '0 2px 0 var(--ink)',
-                        transform: isActive ? 'translateY(2px)' : 'none',
-                        transition: 'all 0.1s'
-                      }}
+                      className={`draft-review-tab${isActive ? ' draft-review-tab--active' : ''}`}
                     >
                       <Icon /> {t(tab.labelKey)}
                     </button>

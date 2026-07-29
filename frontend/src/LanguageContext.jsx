@@ -12,6 +12,8 @@ const translations = {
     nav_analyze: "Analyze",
     nav_copilot: "NIRN.Ai Chat",
     nav_ai_copilot: "NIRN.Ai Chat →",
+    nav_open_menu: "Open menu",
+    nav_close_menu: "Close menu",
 
     // Home
     home_headline: "Draft, Analyze, and Search",
@@ -25,7 +27,7 @@ const translations = {
     home_try_label: "Try asking:",
     home_title_1: "NIRN.Ai for ",
     home_title_2: "for Governance",
-    home_title_line1: "NIRN.AI for",
+    home_title_line1: "NIRN.Ai for",
     home_title_line2: "GOVERNANCE",
     home_gr_lookup_label: "Look up by GR ID",
     home_gr_lookup_tooltip: "Enter a GR ID to look up a specific resolution directly.",
@@ -133,6 +135,8 @@ const translations = {
     draft_stage_conflict: "Conflict Detection",
     draft_stage_reference: "Reference Tracking",
     draft_stage_ready: "Ready for Review",
+    draft_stage_mobile_prefix: "Step",
+    draft_stage_mobile_of: "of",
     draft_tab_mop: "MOP Rules",
     draft_tab_conflicts: "Policy Conflicts",
     draft_tab_references: "References",
@@ -148,12 +152,24 @@ const translations = {
     draft_copied: "Copied",
     draft_download_txt: ".txt",
     draft_download_pdf: "PDF Print",
-    draft_loading_taking_longer: "Taking longer than expected, please wait...",
     draft_loading_generating: "Generating Government Resolution...",
-    draft_loading_retrieving: "Retrieving relevant GRs, enforcing template, and verifying conflicts",
     draft_download_conflict_report: "Download Conflict Report",
     draft_download_full_conflict_report: "Download Full Conflict Report PDF",
     draft_generating_pdf: "Generating PDF...",
+
+    // Status verbs (rotating stage indicators) — kept short so they never
+    // wrap inside the narrow chat-widget bubble.
+    status_verb_searching_corpus: "Searching",
+    status_verb_retrieving_precedents: "Retrieving",
+    status_verb_scanning_records: "Scanning GRs",
+    status_verb_thinking: "Thinking",
+    status_verb_drafting: "Drafting",
+    status_verb_composing: "Composing",
+    status_verb_validating: "Validating",
+    status_verb_checking_compliance: "Checking rules",
+    status_verb_contemplating: "Contemplating",
+    status_verb_cross_referencing: "Cross-referencing",
+    status_verb_extracting_references: "Extracting refs",
 
     // Chat page
     chat_eyebrow: "Ask anything",
@@ -165,6 +181,11 @@ const translations = {
     chat_starter_2: "Summarise the rules for government employee leave.",
     chat_starter_3: "Which department handles scholarship grievances?",
     chat_sources_used: "Sources used:",
+
+    // Floating chat widget
+    chat_widget_tooltip: "Ask NIRN.Ai",
+    chat_widget_title: "NIRN.Ai",
+    chat_widget_close: "Close chat",
   },
   mr: {
     // Navbar
@@ -176,6 +197,8 @@ const translations = {
     nav_analyze: "विश्लेषण",
     nav_copilot: "निर्णि.आय चॅट",
     nav_ai_copilot: "निर्णि.आय चॅट →",
+    nav_open_menu: "मेनू उघडा",
+    nav_close_menu: "मेनू बंद करा",
 
     // Home
     home_headline: "मसुदा तयार करा, विश्लेषण करा आणि शोधा",
@@ -189,7 +212,7 @@ const translations = {
     home_try_label: "विचारण्याचा प्रयत्न करा:",
     home_title_1: "सुशासनासाठी ",
     home_title_2: "सुशासनासाठी",
-    home_title_line1: "NIRN.AI —",
+    home_title_line1: "NIRN.Ai —",
     home_title_line2: "सुशासनासाठी",
     home_gr_lookup_label: "शासन निर्णय क्रमांकाने शोधा",
     home_gr_lookup_tooltip: "विशिष्ट शासन निर्णय थेट शोधण्यासाठी त्याचा आयडी प्रविष्ट करा.",
@@ -297,6 +320,8 @@ const translations = {
     draft_stage_conflict: "संघर्ष शोध",
     draft_stage_reference: "संदर्भ मागोवा",
     draft_stage_ready: "पुनरावलोकनासाठी तयार",
+    draft_stage_mobile_prefix: "पायरी",
+    draft_stage_mobile_of: "पैकी",
     draft_tab_mop: "कार्यपद्धती नियम",
     draft_tab_conflicts: "धोरण संघर्ष",
     draft_tab_references: "संदर्भ",
@@ -312,12 +337,24 @@ const translations = {
     draft_copied: "कॉपी झाले",
     draft_download_txt: ".txt डाउनलोड",
     draft_download_pdf: "पीडीएफ प्रिंट",
-    draft_loading_taking_longer: "अपेक्षेपेक्षा जास्त वेळ लागत आहे, कृपया प्रतीक्षा करा...",
     draft_loading_generating: "शासन निर्णय तयार करत आहे...",
-    draft_loading_retrieving: "संबंधित शासन निर्णय शोधत आहे, टेम्पलेट लागू करत आहे, संघर्ष तपासत आहे",
     draft_download_conflict_report: "संघर्ष अहवाल डाउनलोड करा",
     draft_download_full_conflict_report: "संपूर्ण संघर्ष अहवाल PDF डाउनलोड करा",
     draft_generating_pdf: "पीडीएफ तयार करत आहे...",
+
+    // Status verbs (rotating stage indicators) — kept short so they never
+    // wrap inside the narrow chat-widget bubble.
+    status_verb_searching_corpus: "शोधत आहे",
+    status_verb_retrieving_precedents: "मिळवत आहे",
+    status_verb_scanning_records: "नोंदी तपासत आहे",
+    status_verb_thinking: "विचार करत आहे",
+    status_verb_drafting: "मसुदा तयार करत आहे",
+    status_verb_composing: "रचना करत आहे",
+    status_verb_validating: "पडताळणी करत आहे",
+    status_verb_checking_compliance: "नियम तपासत आहे",
+    status_verb_contemplating: "विचारमंथन करत आहे",
+    status_verb_cross_referencing: "परस्परसंदर्भ तपासत आहे",
+    status_verb_extracting_references: "संदर्भ काढत आहे",
 
     // Chat page
     chat_eyebrow: "काहीही विचारा",
@@ -329,6 +366,11 @@ const translations = {
     chat_starter_2: "शासकीय कर्मचाऱ्यांच्या रजेच्या नियमांचा सारांश द्या.",
     chat_starter_3: "शिष्यवृत्ती तक्रारी कोणता विभाग हाताळतो?",
     chat_sources_used: "वापरलेले स्रोत:",
+
+    // Floating chat widget
+    chat_widget_tooltip: "NIRN.Ai ला विचारा",
+    chat_widget_title: "NIRN.Ai",
+    chat_widget_close: "चॅट बंद करा",
   }
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
+import StatusVerb from '../StatusVerb.jsx';
 
 const IconLink = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
@@ -24,7 +25,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         marginBottom: '16px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
             <IconLink /> Card 3 — References Used
           </span>
           <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
@@ -80,7 +81,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
             <IconLink /> Card 3 — References Used
           </span>
           <span style={{
@@ -103,7 +104,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Resolving GR citations...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}><StatusVerb stage="references" /></span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

@@ -6,8 +6,20 @@ import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
 import Chat from "./pages/Chat.jsx";
+import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+const IconMenu = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+  </svg>
+);
+const IconClose = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.41 1.41 6.3-6.3 6.29 6.3 1.41-1.41-6.3-6.29 6.3-6.3z" />
+  </svg>
+);
 
 
 function PageWrapper({ children }) {
@@ -27,6 +39,12 @@ function PageWrapper({ children }) {
 
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className={`container ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
@@ -39,7 +57,7 @@ function Navbar() {
           </span>
         </NavLink>
 
-        <div className="nav-links">
+        <div className="nav-links nav-links-desktop">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_home')}
           </NavLink>
@@ -48,7 +66,7 @@ function Navbar() {
           </NavLink>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div className="nav-actions-desktop">
           <button
             onClick={toggleLanguage}
             className="nav-lang-toggle"
@@ -59,7 +77,34 @@ function Navbar() {
             {t('nav_ai_copilot')}
           </NavLink>
         </div>
+
+        <button
+          type="button"
+          className="nav-hamburger"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          aria-label={mobileOpen ? t('nav_close_menu') : t('nav_open_menu')}
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen ? <IconClose /> : <IconMenu />}
+        </button>
       </nav>
+
+      {mobileOpen && (
+        <div className="nav-mobile-panel">
+          <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+            {t('nav_home')}
+          </NavLink>
+          <NavLink to="/draft" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+            {t('nav_draft')}
+          </NavLink>
+          <NavLink to="/chat" className="nav-mobile-link nav-mobile-link--cta">
+            {t('nav_ai_copilot')}
+          </NavLink>
+          <button onClick={toggleLanguage} className="nav-lang-toggle nav-mobile-lang">
+            {siteLanguage === 'en' ? 'मराठी' : 'English'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -96,7 +141,7 @@ function Footer() {
         <hr className="footer-divider" />
 
         <div className="footer-bottom">
-          <p className="footer-copy">© 2026 NIRN.AI | Developed for the Government of Maharashtra Hackathon</p>
+          <p className="footer-copy">© 2026 NIRN.Ai | Developed for the Government of Maharashtra Hackathon</p>
           <p className="footer-disclaimer">
             This project is an academic prototype developed at VJTI for research and
             demonstration purposes. It is not an official Government of Maharashtra service.
@@ -156,6 +201,7 @@ export default function App() {
       </AnimatePresence>
 
       <Footer />
+      <ChatWidget />
     </>
   );
 }
