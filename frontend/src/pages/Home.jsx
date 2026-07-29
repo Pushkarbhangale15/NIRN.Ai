@@ -323,14 +323,14 @@ export default function Home() {
                 onSubmit={(e) => { e.preventDefault(); handleGrLookup(); }}
                 style={{ marginTop: 0, flex: '1', minWidth: '280px' }}
               >
-                <span className="lead" style={{ backgroundColor: 'var(--ink)' }}>#</span>
+                <span className="lead lead--ink">#</span>
                 <input
                   value={grNumber}
                   onChange={(e) => setGrNumber(e.target.value)}
                   placeholder={t('home_gr_number_placeholder')}
                   aria-label={t('home_gr_number_placeholder')}
                 />
-                <button className="go" type="submit" style={{ backgroundColor: 'var(--ink)' }} aria-label="Find GR">
+                <button className="go" type="submit" aria-label="Find GR">
                   {lookupLoading ? '...' : '→'}
                 </button>
               </form>
@@ -339,22 +339,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={openOfficialPdfForFoundGr}
-                  className="chip"
-                  style={{
-                    height: '42px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'var(--red)',
-                    color: '#fff',
-                    border: '2px solid var(--ink)',
-                    borderRadius: '12px',
-                    padding: '0 16px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 3px 0 var(--ink)',
-                    transition: 'transform 0.1s'
-                  }}
+                  className="btn btn-sm btn-red"
                 >
                   <IconGlobe /> View Official GR ↗
                 </button>
@@ -397,34 +382,14 @@ export default function Home() {
                       window.open(`https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/Marathi/${pendingGrNumber}.pdf`, '_blank');
                     }
                   }}
-                  className="chip"
-                  style={{
-                    background: 'var(--blue)',
-                    color: '#fff',
-                    border: '2px solid var(--ink)',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 0 var(--ink)'
-                  }}
+                  className="btn btn-sm btn-primary"
                 >
                   Yes
                 </button>
                 <button
                   type="button"
                   onClick={() => setPromptOfficial(false)}
-                  className="chip"
-                  style={{
-                    background: '#e0e0e0',
-                    color: 'var(--ink)',
-                    border: '2px solid var(--ink)',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 0 var(--ink)'
-                  }}
+                  className="btn btn-sm btn-secondary"
                 >
                   No
                 </button>
@@ -470,7 +435,7 @@ export default function Home() {
               }}>
                 {t('home_gr_number_result_title')}
               </span>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', textAlign: 'left' }}>{foundGr.title}</h3>
+              <h2 style={{ margin: '0 0 8px 0', textAlign: 'left' }}>{foundGr.title}</h2>
               <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '14px', textAlign: 'left' }}>
                 <strong>Department:</strong> {foundGr.department.replace(/_/g, ' ')} | <strong>ID:</strong> {foundGr.gr_id}
               </p>
@@ -633,7 +598,7 @@ export default function Home() {
               <div className="ocr-sidepanel" style={{ zIndex: 1000 }}>
                 <div className="ocr-sidepanel-header">
                   <div>
-                    <h2 style={{ fontSize: '20px', margin: '0 0 8px 0', textAlign: 'left' }}>{selectedGr.title}</h2>
+                    <h2 style={{ margin: '0 0 8px 0', textAlign: 'left' }}>{selectedGr.title}</h2>
                     <div className="ocr-sidepanel-meta" style={{ fontSize: '13px', color: '#666', textAlign: 'left' }}>
                       {selectedGr.department} · <span className="mono">{selectedGr.gr_id}</span>
                       {selectedGr.issued_on ? ` · ${selectedGr.issued_on}` : ""}

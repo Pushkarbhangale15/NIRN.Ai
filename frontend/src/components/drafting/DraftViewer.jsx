@@ -10,6 +10,7 @@ import { Color } from '@tiptap/extension-color';
 import { useLanguage } from '../../LanguageContext.jsx';
 import { convertGRToHTML } from '../../utils/grFormat.js';
 import { FontSize } from '../../utils/fontSizeExtension.js';
+import StatusVerb from '../StatusVerb.jsx';
 
 const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
 const DEFAULT_ESTIMATE_MS = 45000;
@@ -272,8 +273,7 @@ export default function DraftViewer({
   loading,
   onSaveDraft
 }) {
-  const { t, siteLanguage } = useLanguage();
-  const isMr = siteLanguage === 'mr';
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -283,9 +283,6 @@ export default function DraftViewer({
 
   // Adaptive estimation state
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [hasStoredEstimate, setHasStoredEstimate] = useState(() => {
-    try { return !!localStorage.getItem(ESTIMATE_STORAGE_KEY); } catch { return false; }
-  });
   const startRef = useRef(null);
   const estimateMsRef = useRef(DEFAULT_ESTIMATE_MS);
 
@@ -297,7 +294,6 @@ export default function DraftViewer({
         const stored = localStorage.getItem(ESTIMATE_STORAGE_KEY);
         if (stored) {
           estimateMsRef.current = parseInt(stored, 10);
-          setHasStoredEstimate(true);
         }
       } catch { /* ignore */ }
 
@@ -365,17 +361,6 @@ export default function DraftViewer({
     }
   };
 
-  const rawEstSeconds = Math.round(estimateMsRef.current / 1000);
-  const estimateSeconds = rawEstSeconds < 20 ? 35 : rawEstSeconds;
-  const estimateLowSec = Math.max(25, roundToNearest(estimateSeconds * 0.8, 5));
-  const estimateHighSec = Math.max(45, roundToNearest(estimateSeconds * 1.25, 5));
-  const isTakingLonger = elapsedMs > Math.max(35000, estimateMsRef.current);
-
-  const estimateText = {
-    mr: `अंदाजे वेळ: ~${toDevanagariDigits(estimateLowSec)}-${toDevanagariDigits(estimateHighSec)} सेकंद (सरासरी अपेक्षित वेळ)`,
-    en: `Estimated time: ~${estimateLowSec}-${estimateHighSec} seconds (average expected time)`,
-  };
-
   const handleCopy = () => {
     if (!editor) return;
     const text = editor.getText();
@@ -420,23 +405,11 @@ export default function DraftViewer({
       }}>
         <div className="big"><span className="spinner" /></div>
         <div style={{ marginTop: '20px' }}>
-          {isTakingLonger ? (
-            <h4 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--red)' }}>
-              {t('draft_loading_taking_longer')}
-            </h4>
-          ) : (
-            <h4 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {t('draft_loading_generating')}
-            </h4>
-          )}
+          <h3>{t('draft_loading_generating')}</h3>
         </div>
         <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>{isMr ? estimateText.mr : estimateText.en}</p>
-        </div>
-
-        <div style={{ marginTop: '10px' }}>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', maxWidth: '440px' }}>
-            {t('draft_loading_retrieving')}
+          <p style={{ color: '#666', fontSize: '16px', maxWidth: '440px' }}>
+            <StatusVerb stage="drafting" />
           </p>
         </div>
       </div>
@@ -459,7 +432,7 @@ export default function DraftViewer({
         color: '#6b7280'
       }}>
         <div style={{ marginBottom: '16px', color: 'var(--ink-soft)' }}><IconDocument /></div>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--ink)' }}>
+        <h3 style={{ margin: '0 0 8px 0' }}>
           {t('draft_viewer_empty_title')}
         </h3>
         <p style={{ margin: 0, fontSize: '14px', maxWidth: '420px' }}>

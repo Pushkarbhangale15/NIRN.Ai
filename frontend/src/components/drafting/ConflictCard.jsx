@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
 import { generateConflictPDF } from '../../utils/pdfExport.js';
+import StatusVerb from '../StatusVerb.jsx';
 
 const IconWarningTriangle = () => (
 
@@ -75,7 +76,7 @@ export default function ConflictCard({
         marginBottom: '16px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
             <IconWarningTriangle /> Policy Conflicts
           </span>
           <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
@@ -109,7 +110,7 @@ export default function ConflictCard({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: 'var(--ink)' }}>
             <IconWarningTriangle /> Policy Conflicts
           </span>
           <span style={{
@@ -132,7 +133,7 @@ export default function ConflictCard({
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Cross-referencing 98,950+ GRs across departments...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}><StatusVerb stage="conflict" /></span>
             </div>
           ) : conflicts.length === 0 ? (
             <div style={{

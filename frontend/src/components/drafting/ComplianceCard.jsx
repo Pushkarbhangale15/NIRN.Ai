@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CountUp from 'react-countup';
 import { useLanguage } from '../../LanguageContext.jsx';
+import StatusVerb from '../StatusVerb.jsx';
 
 const IconChecklist = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
@@ -24,7 +25,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         marginBottom: '16px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px', color: '#4b5563' }}>
             <IconChecklist /> Card 1 — Template Compliance
           </span>
           <span style={{ fontSize: isMr ? '16px' : '14px', fontWeight: 700, background: '#374151', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}>
@@ -74,7 +75,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: isMr ? '17px' : '15px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', minWidth: 0, fontWeight: 'bold', fontSize: isMr ? '17px' : '15px' }}>
             <IconChecklist /> Card 1 — Template Compliance
           </span>
           <span style={{
@@ -100,7 +101,7 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Evaluating MoOP rules...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}><StatusVerb stage="validation" /></span>
             </div>
           ) : (
             <>
