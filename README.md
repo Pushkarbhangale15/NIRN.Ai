@@ -27,7 +27,7 @@ It helps government officers draft new Government Resolutions, retrieve relevant
 | AI | LangChain, PyTorch, Transformers |
 | Embeddings | SentenceTransformers (multilingual-e5-base) |
 | Vector Database | FAISS |
-| LLM | Ollama (Gemma 3) / GPT |
+| LLM | Ollama (Gemma 3:4b) / GPT |
 | Dataset | Maharashtra Government Resolution Dataset |
 
 ---

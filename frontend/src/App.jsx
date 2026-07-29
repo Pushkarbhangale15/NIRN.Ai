@@ -7,6 +7,7 @@ import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
 import Chat from "./pages/Chat.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
+import { DraftProvider } from "./DraftContext.jsx";
 import { useEffect } from "react";
 
 
@@ -29,37 +30,39 @@ function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
 
   return (
-    <div className={`container ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
-      <nav className="nav">
-        <NavLink to="/" className="brand">
-          <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
-          <span className="brand-marathi">
-            <span className="brand-maha">महाराष्ट्र</span>
-            <span className="brand-shasan">शासन</span>
-          </span>
-        </NavLink>
+    <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'color-mix(in srgb, var(--cream) 82%, transparent)', backdropFilter: 'blur(6px)', borderBottom: '1px solid var(--line)' }} className={siteLanguage === 'mr' ? 'lang-mr' : ''}>
+      <div className="container">
+        <nav className="nav" style={{ borderBottom: 'none', background: 'transparent', backdropFilter: 'none', top: 'auto', position: 'static' }}>
+          <NavLink to="/" className="brand">
+            <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
+            <span className="brand-marathi">
+              <span className="brand-maha">महाराष्ट्र</span>
+              <span className="brand-shasan">शासन</span>
+            </span>
+          </NavLink>
 
-        <div className="nav-links">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_home')}
-          </NavLink>
-          <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
-            {t('nav_draft')}
-          </NavLink>
-        </div>
+          <div className="nav-links">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_home')}
+            </NavLink>
+            <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_draft')}
+            </NavLink>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <button
-            onClick={toggleLanguage}
-            className="nav-lang-toggle"
-          >
-            {siteLanguage === 'en' ? 'मराठी' : 'English'}
-          </button>
-          <NavLink to="/chat" className="nav-cta-primary">
-            {t('nav_ai_copilot')}
-          </NavLink>
-        </div>
-      </nav>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <button
+              onClick={toggleLanguage}
+              className="nav-lang-toggle"
+            >
+              {siteLanguage === 'en' ? 'मराठी' : 'English'}
+            </button>
+            <NavLink to="/chat" className="nav-cta-primary">
+              {t('nav_ai_copilot')}
+            </NavLink>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }
@@ -112,7 +115,7 @@ export default function App() {
   const { siteLanguage } = useLanguage();
 
   return (
-    <>
+    <DraftProvider>
       <Navbar />
 
       <AnimatePresence mode="wait">
@@ -156,6 +159,6 @@ export default function App() {
       </AnimatePresence>
 
       <Footer />
-    </>
+    </DraftProvider>
   );
 }

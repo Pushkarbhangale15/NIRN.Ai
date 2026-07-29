@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
+import { useDraft } from "../DraftContext.jsx";
 
 import WorkflowStepper from "../components/drafting/WorkflowStepper.jsx";
 import DraftInputCard from "../components/drafting/DraftInputCard.jsx";
@@ -53,93 +54,21 @@ const REVIEW_TABS = [
 
 export default function Draft() {
   const { t, siteLanguage } = useLanguage();
-  const [prompt, setPrompt] = useState(() => localStorage.getItem("nirn_draft_prompt") || "");
-  const [language, setLanguage] = useState(siteLanguage === 'mr' ? 'Marathi' : 'English');
-  const [department, setDepartment] = useState(() => localStorage.getItem("nirn_draft_dept") || "");
-  const [loading, setLoading] = useState(false);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [currentStage, setCurrentStage] = useState(() => parseInt(localStorage.getItem("nirn_draft_stage") || "0", 10));
-  const [draftResult, setDraftResult] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nirn_draft_result") || "null"); } catch { return null; }
-  });
-  const [analysisReport, setAnalysisReport] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nirn_draft_analysis") || "null"); } catch { return null; }
-  });
-  const [error, setError] = useState("");
-  const [activeReviewTab, setActiveReviewTab] = useState("compliance");
-
-  useEffect(() => {
-    localStorage.setItem("nirn_draft_prompt", prompt);
-    localStorage.setItem("nirn_draft_dept", department);
-    localStorage.setItem("nirn_draft_stage", currentStage.toString());
-    if (draftResult) localStorage.setItem("nirn_draft_result", JSON.stringify(draftResult));
-    else localStorage.removeItem("nirn_draft_result");
-    if (analysisReport) localStorage.setItem("nirn_draft_analysis", JSON.stringify(analysisReport));
-    else localStorage.removeItem("nirn_draft_analysis");
-  }, [prompt, department, draftResult, analysisReport, currentStage]);
-
-  const handleGenerate = async () => {
-    if (!prompt.trim() || !department) return;
-    setLoading(true);
-    setError("");
-    setDraftResult(null);
-    setAnalysisReport(null);
-    setCurrentStage(1);
-
-    try {
-      // Step 1: LLM Draft Generation
-      const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
-      setDraftResult(res);
-      setCurrentStage(2);
-
-      // Step 2: AI Review & Conflict Analysis
-      setAnalysisLoading(true);
-      if (res && res.draft_id) {
-        try {
-          setCurrentStage(3);
-          const report = await api.runFullAnalysis(res.draft_id);
-          setCurrentStage(4);
-          setAnalysisReport(report);
-        } catch (err) {
-          console.warn("Analysis call warning:", err);
-        }
-      }
-      setCurrentStage(5);
-    } catch (err) {
-      setError(err.message || "Draft generation failed.");
-      setCurrentStage(0);
-    } finally {
-      setLoading(false);
-      setAnalysisLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    setPrompt("");
-    setDepartment("");
-    setDraftResult(null);
-    setAnalysisReport(null);
-    setCurrentStage(0);
-    setError("");
-    localStorage.removeItem("nirn_draft_prompt");
-    localStorage.removeItem("nirn_draft_dept");
-    localStorage.removeItem("nirn_draft_result");
-    localStorage.removeItem("nirn_draft_analysis");
-    localStorage.setItem("nirn_draft_stage", "0");
-  };
-
-  const handleSaveDraft = async (htmlContent, textContent) => {
-    setDraftResult(prev => prev ? { ...prev, body_text: textContent } : prev);
-    if (draftResult && draftResult.draft_id) {
-      try {
-        await api.updateDraft(draftResult.draft_id, textContent);
-        const updatedTemplateIssues = await api.runTemplateCheck(draftResult.draft_id);
-        setAnalysisReport(prev => prev ? { ...prev, template_issues: updatedTemplateIssues } : prev);
-      } catch (err) {
-        console.warn("Auto-save sync warning:", err);
-      }
-    }
-  };
+  const {
+    prompt, setPrompt,
+    language, setLanguage,
+    department, setDepartment,
+    loading,
+    analysisLoading,
+    currentStage,
+    draftResult,
+    analysisReport,
+    error,
+    activeReviewTab, setActiveReviewTab,
+    handleGenerate,
+    handleReset,
+    handleSaveDraft
+  } = useDraft();
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];

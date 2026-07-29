@@ -73,10 +73,18 @@ export default function Chat() {
   });
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     try { localStorage.setItem("nirn_chat_messages", JSON.stringify(messages)); } catch {}
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Only auto-scroll when new messages arrive or loading state changes during active chat
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, loading]);
 
   useEffect(() => {
