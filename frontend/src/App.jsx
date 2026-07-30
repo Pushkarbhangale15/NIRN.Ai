@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 //import { NavLink, Route, Routes } from "react-router-dom";
@@ -6,9 +6,45 @@ import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
 import Chat from "./pages/Chat.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import Admin from "./pages/Admin.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
+import { useAuth } from "./AuthContext.jsx";
 import { useEffect, useState } from "react";
+
+// Gate for pages that need a signed-in officer (e.g. drafting a GR).
+// Browsing/search stays open to anyone — only shown when a logged-out
+// visitor actually tries to reach a protected page.
+function RequireAuth({ children }) {
+  const { officer } = useAuth();
+
+  if (!officer) {
+    return (
+      <main className="container" style={{ maxWidth: 560, marginTop: 80, marginBottom: 80 }}>
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">Sign in required</span>
+          </div>
+          <div className="panel-body" style={{ textAlign: "center" }}>
+            <p style={{ marginBottom: 20 }}>
+              Drafting a Government Resolution requires an officer account.
+              Sign in or register to continue — searching and browsing GRs
+              stays free for everyone.
+            </p>
+            <div className="btn-row" style={{ justifyContent: "center", gap: 12 }}>
+              <Link to="/login" className="btn btn-primary">Sign in</Link>
+              <Link to="/register" className="btn btn-secondary">Register</Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return children;
+}
 
 const IconMenu = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 24 24">
@@ -39,6 +75,7 @@ function PageWrapper({ children }) {
 
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
+  const { officer, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -46,9 +83,11 @@ function Navbar() {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  const isAdmin = officer?.role === "admin";
+
   return (
-    <div className={`container ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
-      <nav className="nav">
+    <nav className={`nav ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
+      <div className="container nav-inner">
         <NavLink to="/" className="brand">
           <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
           <span className="brand-marathi">
@@ -64,6 +103,11 @@ function Navbar() {
           <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_draft')}
           </NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_admin')}
+            </NavLink>
+          )}
         </div>
 
         <div className="nav-actions-desktop">
@@ -73,9 +117,20 @@ function Navbar() {
           >
             {siteLanguage === 'en' ? 'मराठी' : 'English'}
           </button>
-          <NavLink to="/chat" className="nav-cta-primary">
-            {t('nav_ai_copilot')}
-          </NavLink>
+          {officer ? (
+            <button
+              type="button"
+              onClick={logout}
+              className="nav-lang-toggle"
+              title={`Signed in as ${officer.name}`}
+            >
+              Sign out
+            </button>
+          ) : (
+            <NavLink to="/login" className="nav-cta-primary">
+              Login / Register
+            </NavLink>
+          )}
         </div>
 
         <button
@@ -87,25 +142,43 @@ function Navbar() {
         >
           {mobileOpen ? <IconClose /> : <IconMenu />}
         </button>
-      </nav>
+      </div>
 
       {mobileOpen && (
-        <div className="nav-mobile-panel">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
-            {t('nav_home')}
-          </NavLink>
-          <NavLink to="/draft" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
-            {t('nav_draft')}
-          </NavLink>
-          <NavLink to="/chat" className="nav-mobile-link nav-mobile-link--cta">
-            {t('nav_ai_copilot')}
-          </NavLink>
-          <button onClick={toggleLanguage} className="nav-lang-toggle nav-mobile-lang">
-            {siteLanguage === 'en' ? 'मराठी' : 'English'}
-          </button>
+        <div className="container">
+          <div className="nav-mobile-panel">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+              {t('nav_home')}
+            </NavLink>
+            <NavLink to="/draft" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+              {t('nav_draft')}
+            </NavLink>
+            {isAdmin && (
+              <NavLink to="/admin" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+                {t('nav_admin')}
+              </NavLink>
+            )}
+            {officer ? (
+              <button
+                type="button"
+                onClick={logout}
+                className="nav-mobile-link"
+                style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
+              >
+                Sign out
+              </button>
+            ) : (
+              <NavLink to="/login" className="nav-mobile-link nav-mobile-link--cta">
+                Login / Register
+              </NavLink>
+            )}
+            <button onClick={toggleLanguage} className="nav-lang-toggle nav-mobile-lang">
+              {siteLanguage === 'en' ? 'मराठी' : 'English'}
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </nav>
   );
 }
 
@@ -155,6 +228,15 @@ function Footer() {
 export default function App() {
   const location = useLocation();
   const { siteLanguage } = useLanguage();
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="container" style={{ marginTop: 120, textAlign: "center" }}>
+        Loading…
+      </main>
+    );
+  }
 
   return (
     <>
@@ -175,7 +257,27 @@ export default function App() {
             path="/draft"
             element={
               <PageWrapper>
-                <Draft />
+                <RequireAuth>
+                  <Draft />
+                </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/login"
+            element={
+              <PageWrapper>
+                <Login />
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/register"
+            element={
+              <PageWrapper>
+                <Register />
               </PageWrapper>
             }
           />
@@ -194,6 +296,15 @@ export default function App() {
             element={
               <PageWrapper>
                 <Chat />
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <PageWrapper>
+                <Admin />
               </PageWrapper>
             }
           />

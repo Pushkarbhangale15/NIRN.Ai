@@ -12,6 +12,7 @@ const translations = {
     nav_analyze: "Analyze",
     nav_copilot: "NIRN.Ai Chat",
     nav_ai_copilot: "NIRN.Ai Chat →",
+    nav_admin: "Admin",
     nav_open_menu: "Open menu",
     nav_close_menu: "Close menu",
 
@@ -186,6 +187,7 @@ const translations = {
     chat_widget_tooltip: "Ask NIRN.Ai",
     chat_widget_title: "NIRN.Ai",
     chat_widget_close: "Close chat",
+    chat_widget_expand: "Open full chat page",
   },
   mr: {
     // Navbar
@@ -197,6 +199,7 @@ const translations = {
     nav_analyze: "विश्लेषण",
     nav_copilot: "निर्णि.आय चॅट",
     nav_ai_copilot: "निर्णि.आय चॅट →",
+    nav_admin: "प्रशासन",
     nav_open_menu: "मेनू उघडा",
     nav_close_menu: "मेनू बंद करा",
 
@@ -371,6 +374,7 @@ const translations = {
     chat_widget_tooltip: "NIRN.Ai ला विचारा",
     chat_widget_title: "NIRN.Ai",
     chat_widget_close: "चॅट बंद करा",
+    chat_widget_expand: "पूर्ण चॅट पृष्ठ उघडा",
   }
 };
 

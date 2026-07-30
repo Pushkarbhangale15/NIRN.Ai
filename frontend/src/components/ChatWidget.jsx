@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "../LanguageContext.jsx";
 import { useCopilotChat } from "../hooks/useCopilotChat.js";
 import StatusVerb from "./StatusVerb.jsx";
@@ -29,6 +29,11 @@ const IconUser = () => (
     <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12m0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8" />
   </svg>
 );
+const IconExpand = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+  </svg>
+);
 
 // Routes that already provide the full copilot chat experience — no need
 // for a redundant floating bubble on top of it.
@@ -37,6 +42,7 @@ const HIDDEN_ON = ["/chat", "/copilot"];
 export default function ChatWidget() {
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { messages, input, setInput, loading, error, send } = useCopilotChat();
   const bottomRef = useRef(null);
@@ -76,14 +82,25 @@ export default function ChatWidget() {
         <div className="chat-widget-panel" ref={panelRef} role="dialog" aria-label={t('chat_widget_title')}>
           <div className="chat-widget-header">
             <span className="chat-widget-header-title">{t('chat_widget_title')}</span>
-            <button
-              type="button"
-              className="chat-widget-close"
-              onClick={() => setOpen(false)}
-              aria-label={t('chat_widget_close')}
-            >
-              <IconClose />
-            </button>
+            <div className="chat-widget-header-actions">
+              <button
+                type="button"
+                className="chat-widget-expand"
+                onClick={() => { setOpen(false); navigate("/chat"); }}
+                aria-label={t('chat_widget_expand')}
+                title={t('chat_widget_expand')}
+              >
+                <IconExpand />
+              </button>
+              <button
+                type="button"
+                className="chat-widget-close"
+                onClick={() => setOpen(false)}
+                aria-label={t('chat_widget_close')}
+              >
+                <IconClose />
+              </button>
+            </div>
           </div>
 
           <div className="chat-widget-messages">

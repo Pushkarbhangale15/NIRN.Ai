@@ -11,3 +11,6 @@ class ConflictReportItem(BaseModel):
     confidence: float = Field(..., description="Confidence score between 0.0 and 1.0.")
     reason: str = Field(..., description="Detailed explanation of the contradiction.")
     recommendation: str = Field(..., description="Actionable recommendation to resolve the conflict.")
+    detected_by: Optional[str] = Field(
+        default=None, description="'rule_engine' or 'llm_verifier' — which stage found this."
+    )

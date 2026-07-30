@@ -135,19 +135,28 @@ h4 {
   padding: 0 var(--page-padding);
 }
 
-/* ---------------- Navbar ---------------- */
+/* ---------------- Navbar ----------------
+   .nav is the full-bleed sticky bar; .nav-inner (class="container nav-inner")
+   is the max-width row of actual nav content. Sticky positioning is scoped
+   to the DIRECT PARENT of the sticky element, so the background/border/
+   position:sticky must live on a full-height bar, not on an inner box that
+   collapses to the nav's own height — otherwise the "sticky" element scrolls
+   out of view as soon as that tiny parent box scrolls past the viewport top. */
 .nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 72px;
-  padding: 12px 0;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--cream) 82%, transparent);
   backdrop-filter: blur(6px);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 40;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 12px 0;
 }
 
 .brand {
@@ -2523,7 +2532,14 @@ mark.highlight-mark {
   text-transform: uppercase;
 }
 
-.chat-widget-close {
+.chat-widget-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-widget-close,
+.chat-widget-expand {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2536,7 +2552,8 @@ mark.highlight-mark {
   border-radius: 6px;
 }
 
-.chat-widget-close:hover {
+.chat-widget-close:hover,
+.chat-widget-expand:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
@@ -2607,5 +2624,91 @@ mark.highlight-mark {
   .chat-widget-fab {
     bottom: 16px;
     right: 16px;
+  }
+}
+
+/* ================================================================
+   Admin page
+   ================================================================ */
+.admin-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.admin-table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.2fr 0.8fr 0.8fr 0.9fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.admin-table-row:last-child {
+  border-bottom: none;
+}
+
+.admin-table-head {
+  background: var(--cream);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-table-row select {
+  font-size: 13px;
+  padding: 4px 6px;
+}
+
+.admin-table--drafts .admin-table-row {
+  grid-template-columns: 2fr 1.4fr 0.9fr 0.6fr 0.9fr;
+}
+
+.admin-table-row--detail {
+  display: block;
+  background: var(--cream);
+  padding: 16px;
+}
+
+.admin-inline-form {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--cream);
+}
+
+.admin-draft-detail ul {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.admin-conflict-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .admin-table-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .admin-table-head {
+    display: none;
+  }
+
+  .admin-table-row {
+    padding: 12px 14px;
+    border-bottom: 2px solid var(--line);
   }
 }

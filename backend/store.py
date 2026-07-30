@@ -1,18 +1,29 @@
 """
-store.py — persistent SQLite store for drafts and chat sessions.
+store.py — persistence entry point used by routes.py.
 
-Replaces the temporary in-memory dictionary with a lightweight SQLite database
-stored at backend/data/nirn_store.db. Surges survival across backend restarts.
+Two backends live here side by side:
+
+  * GR drafts, conflicts and references now live in Postgres (see
+    backend/db/models.py + backend/db/repositories/). The functions
+    below are thin async wrappers around those repositories — routes.py
+    calls store.create_draft(...) etc. instead of touching SQLAlchemy
+    directly, keeping the repository pattern's "no queries outside
+    db/repositories/" rule intact.
+
+  * Chat sessions and the official-source URL cache are unrelated to
+    officer/draft persistence and stay on the lightweight SQLite store
+    at backend/data/nirn_store.db.
 """
 
-import json
 import os
 import sqlite3
-import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Iterable, List, Optional
+from uuid import UUID
 
-from schemas import Draft, DraftCreate
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db.repositories import drafts as drafts_repo
 
 _DB_PATH = os.path.join(os.path.dirname(__file__), "data", "nirn_store.db")
 
@@ -26,16 +37,6 @@ def _get_conn():
 
 def _init_db():
     with _get_conn() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS drafts (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                department TEXT NOT NULL,
-                body_text TEXT NOT NULL,
-                language TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,80 +62,115 @@ def _init_db():
 _init_db()
 
 
-def create_draft(payload: DraftCreate) -> Draft:
-    """Store a new draft in SQLite and return it with an id and timestamp."""
-    draft_id = uuid.uuid4().hex[:12]
-    now_iso = datetime.now(timezone.utc).isoformat()
-    
-    with _get_conn() as conn:
-        conn.execute(
-            "INSERT INTO drafts (id, title, department, body_text, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (draft_id, payload.title, payload.department, payload.body_text, payload.language.value, now_iso)
-        )
-        conn.commit()
+# ---------------------------------------------------------------------
+# GR drafts (Postgres) — thin wrappers around db/repositories/drafts.py
+# ---------------------------------------------------------------------
 
-    return Draft(
-        id=draft_id,
-        created_at=datetime.fromisoformat(now_iso),
-        **payload.model_dump()
+async def create_draft(
+    session: AsyncSession,
+    *,
+    title: str,
+    language: str,
+    drafted_by: UUID,
+    content: str,
+    department: str,
+    content_plain: Optional[str] = None,
+    brief: Optional[str] = None,
+    gr_number: Optional[str] = None,
+    template_score: Optional[float] = None,
+):
+    return await drafts_repo.create_draft(
+        session,
+        title=title,
+        language=language,
+        drafted_by=drafted_by,
+        content=content,
+        department=department,
+        content_plain=content_plain,
+        brief=brief,
+        gr_number=gr_number,
+        template_score=template_score,
     )
 
 
-def get_draft(draft_id: str) -> Optional[Draft]:
-    """Return the draft from SQLite, or None if it does not exist."""
-    with _get_conn() as conn:
-        row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
-        if not row:
-            return None
-        return Draft(
-            id=row["id"],
-            title=row["title"],
-            department=row["department"],
-            body_text=row["body_text"],
-            language=row["language"],
-            created_at=datetime.fromisoformat(row["created_at"])
-        )
+async def get_draft(
+    session: AsyncSession,
+    draft_id: UUID,
+    *,
+    officer_id: UUID,
+    privileged: bool,
+    with_children: bool = True,
+):
+    return await drafts_repo.get_draft(
+        session, draft_id, officer_id=officer_id, privileged=privileged, with_children=with_children
+    )
 
 
-def list_drafts() -> List[Draft]:
-    """All drafts, newest first."""
-    with _get_conn() as conn:
-        rows = conn.execute("SELECT * FROM drafts ORDER BY created_at DESC").fetchall()
-        return [
-            Draft(
-                id=r["id"],
-                title=r["title"],
-                department=r["department"],
-                body_text=r["body_text"],
-                language=r["language"],
-                created_at=datetime.fromisoformat(r["created_at"])
-            )
-            for r in rows
-        ]
+async def list_drafts(
+    session: AsyncSession,
+    *,
+    officer_id: UUID,
+    privileged: bool,
+    department: Optional[str] = None,
+    status: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+    limit: int = 20,
+    offset: int = 0,
+):
+    return await drafts_repo.list_drafts(
+        session,
+        officer_id=officer_id,
+        privileged=privileged,
+        department=department,
+        status=status,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        limit=limit,
+        offset=offset,
+    )
 
 
-def update_draft(draft_id: str, body_text: str) -> Optional[Draft]:
-    """Update the body_text of an existing draft. Returns the updated Draft or None if not found."""
-    with _get_conn() as conn:
-        cur = conn.execute(
-            "UPDATE drafts SET body_text = ? WHERE id = ?",
-            (body_text, draft_id)
-        )
-        conn.commit()
-        if cur.rowcount == 0:
-            return None
-    return get_draft(draft_id)
+async def update_draft_content(
+    session: AsyncSession,
+    draft_id: UUID,
+    *,
+    officer_id: UUID,
+    privileged: bool,
+    new_content: str,
+    edited_by: UUID,
+    change_note: Optional[str] = None,
+    new_content_plain: Optional[str] = None,
+):
+    return await drafts_repo.update_content(
+        session,
+        draft_id,
+        officer_id=officer_id,
+        privileged=privileged,
+        new_content=new_content,
+        edited_by=edited_by,
+        change_note=change_note,
+        new_content_plain=new_content_plain,
+    )
 
 
-def delete_draft(draft_id: str) -> bool:
-    """Returns True if something was deleted, False if the id was unknown."""
-    with _get_conn() as conn:
-        cur = conn.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
-        conn.commit()
-        return cur.rowcount > 0
+async def archive_draft(session: AsyncSession, draft_id: UUID, *, officer_id: UUID, privileged: bool) -> bool:
+    return await drafts_repo.archive_draft(session, draft_id, officer_id=officer_id, privileged=privileged)
 
 
-def get_session(session_id: str) -> List[dict]:
+async def add_conflicts(session: AsyncSession, draft_id: UUID, conflicts: Iterable[dict]):
+    return await drafts_repo.add_conflicts(session, draft_id, conflicts)
+
+
+async def add_references(session: AsyncSession, draft_id: UUID, references: Iterable[dict]):
+    return await drafts_repo.add_references(session, draft_id, references)
+
+
+# ---------------------------------------------------------------------
+# Chat sessions (SQLite)
+# ---------------------------------------------------------------------
+
+def get_session_history(session_id: str) -> List[dict]:
     """Get all messages for a chat session from SQLite."""
     with _get_conn() as conn:
         rows = conn.execute(
@@ -154,12 +190,14 @@ def add_message(session_id: str, message: dict):
         )
         conn.commit()
 
+
 def get_cached_official_url(gr_number: str) -> Optional[dict]:
     with _get_conn() as conn:
         row = conn.execute("SELECT * FROM official_url_cache WHERE gr_number = ?", (gr_number,)).fetchone()
         if not row:
             return None
         return dict(row)
+
 
 def set_cached_official_url(gr_number: str, department: str, official_url: str, status: str = "verified"):
     now_iso = datetime.now(timezone.utc).isoformat()
