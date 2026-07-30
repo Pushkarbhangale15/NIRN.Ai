@@ -52,9 +52,9 @@ export default function Analyze() {
     setLoading(true);
     try {
       const draft = await api.createDraft({
-        title, department, body_text: bodyText, language,
+        title, department, content: bodyText, language,
       });
-      const result = await api.analyze(draft.id);
+      const result = await api.analyze(draft.generated_draft_id);
       setReport(result);
     } catch (err) {
       setError(err.message);

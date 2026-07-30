@@ -17,11 +17,15 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 import llm
 import retrieval
 from config import settings
 from knowledge import get_knowledge_service
+from rate_limit import limiter
 from routes import router
 from schemas import HealthResponse
 
@@ -60,6 +64,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting (PART 3): 5 login attempts per minute per IP, enforced
+# with @limiter.limit(...) on the login route in routes.py.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(router)
 

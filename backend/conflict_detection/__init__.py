@@ -38,9 +38,10 @@ def detect_cross_department_conflicts(body_text: str) -> List[ConflictReportItem
             )
             
             if det_conflict:
+                det_conflict.detected_by = "rule_engine"
                 conflicts.append(det_conflict)
                 continue
-                
+
             # Stage 2: LLM Verification for semantic ambiguity
             llm_conflict = verify_conflict_with_llm(
                 draft_clause=clause,
@@ -48,8 +49,9 @@ def detect_cross_department_conflicts(body_text: str) -> List[ConflictReportItem
                 matched_gr_title=hit.title,
                 matched_clause=hit.snippet
             )
-            
+
             if llm_conflict:
+                llm_conflict.detected_by = "llm_verifier"
                 conflicts.append(llm_conflict)
                 
     return conflicts

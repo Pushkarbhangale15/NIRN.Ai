@@ -85,6 +85,20 @@ class Settings(BaseSettings):
     CHUNK_CHARS: int = 500
     CHUNK_OVERLAP: int = 100
 
+    # ---- Postgres (SQLAlchemy async) ---------------------------------------
+    DATABASE_URL: str = Field(
+        default=os.getenv(
+            "DATABASE_URL",
+            "postgresql+asyncpg://nirn_app:CHANGEME@localhost:5432/nirn_ai",
+        ),
+        alias="DATABASE_URL",
+    )
+
+    # ---- Auth ----------------------------------------------------------------
+    JWT_SECRET: str = Field(default=os.getenv("JWT_SECRET", "CHANGEME"), alias="JWT_SECRET")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 12
+
     class Config:
         # Look for a .env file one level above backend/ (i.e. at the project root).
         env_file = os.path.join(os.path.dirname(__file__), "..", ".env")

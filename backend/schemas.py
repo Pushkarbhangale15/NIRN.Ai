@@ -12,11 +12,12 @@ field here breaks someone else's work, so change deliberately and tell
 the team.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
 
 
 # ---------------------------------------------------------------------
@@ -48,6 +49,42 @@ class GRStatus(str, Enum):
     SUPERSEDED = "superseded"
     WITHDRAWN = "withdrawn"
     UNKNOWN = "unknown"
+
+
+class OfficerRole(str, Enum):
+    OFFICER = "officer"
+    REVIEWER = "reviewer"
+    ADMIN = "admin"
+
+
+class PersistedDraftStatus(str, Enum):
+    DRAFT = "draft"
+    UNDER_REVIEW = "under_review"
+    FINALISED = "finalised"
+    ARCHIVED = "archived"
+
+
+class ConflictSeverity(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ConflictDetectedBy(str, Enum):
+    RULE_ENGINE = "rule_engine"
+    LLM_VERIFIER = "llm_verifier"
+
+
+class ReferenceScript(str, Enum):
+    LATIN = "latin"
+    DEVANAGARI = "devanagari"
+
+
+# A login_id may only contain letters, digits, dots, underscores and
+# hyphens — this alone rejects payloads like "admin' OR '1'='1" with a
+# 422 before it ever reaches a query.
+LoginId = constr(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+Password = constr(min_length=10, max_length=128)
 
 
 # ---------------------------------------------------------------------
@@ -226,6 +263,144 @@ class ClauseExplanationRequest(BaseModel):
 
 class ClauseExplanationResponse(BaseModel):
     explanation: str
+
+
+# ---------------------------------------------------------------------
+# Officers / Auth
+# ---------------------------------------------------------------------
+
+class OfficerCreate(BaseModel):
+    """POST /api/auth/register — accepts a plaintext password, which is
+    hashed before it ever touches the database. Never stored, never
+    logged, never echoed back."""
+    name: str = Field(..., min_length=2, max_length=120)
+    login_id: LoginId
+    password: Password
+    department: Optional[str] = Field(default=None, max_length=160)
+    designation: Optional[str] = Field(default=None, max_length=120)
+    role: OfficerRole = OfficerRole.OFFICER
+
+
+class OfficerOut(BaseModel):
+    """Never includes password_hash or any password field."""
+    officer_id: UUID
+    name: str
+    login_id: str
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    role: OfficerRole
+    is_active: bool
+    last_login_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    login_id: LoginId
+    password: constr(min_length=1, max_length=128)
+
+
+class OfficerUpdate(BaseModel):
+    """PATCH /api/admin/officers/{id} — admin-only. Both fields optional;
+    only the ones provided are changed."""
+    is_active: Optional[bool] = None
+    role: Optional[OfficerRole] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    officer: OfficerOut
+
+
+# ---------------------------------------------------------------------
+# Persisted GR drafts (Postgres-backed) + conflicts + references
+# ---------------------------------------------------------------------
+
+MAX_DRAFT_CONTENT_LEN = 200_000
+
+class PersistedDraftCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=400)
+    language: Language = Language.ENGLISH
+    content: str = Field(..., min_length=1, max_length=MAX_DRAFT_CONTENT_LEN)
+    content_plain: Optional[str] = Field(default=None, max_length=MAX_DRAFT_CONTENT_LEN)
+    department: str = Field(..., min_length=2, max_length=160)
+    brief: Optional[str] = Field(default=None, max_length=MAX_DRAFT_CONTENT_LEN)
+    gr_number: Optional[str] = Field(default=None, max_length=64)
+    template_score: Optional[float] = Field(default=None, ge=0, le=100)
+
+
+class PersistedDraftUpdate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=MAX_DRAFT_CONTENT_LEN)
+    content_plain: Optional[str] = Field(default=None, max_length=MAX_DRAFT_CONTENT_LEN)
+    change_note: Optional[str] = Field(default=None, max_length=400)
+
+
+class DraftConflictOut(BaseModel):
+    conflict_id: UUID
+    source_of_conflict: str
+    conflicting_text: str
+    draft_excerpt: Optional[str] = None
+    conflicting_gr_id: Optional[str] = None
+    severity: ConflictSeverity
+    justification: str
+    detected_by: ConflictDetectedBy
+    is_dismissed: bool
+    dismissed_reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DraftReferenceOut(BaseModel):
+    reference_id: UUID
+    reference_text: str
+    extracted_gr_number: Optional[str] = None
+    reference_date: Optional[date] = None
+    script: ReferenceScript
+    resolved: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PersistedDraftOut(BaseModel):
+    generated_draft_id: UUID
+    title: str
+    language: Language
+    drafted_by: UUID
+    content: str
+    department: str
+    brief: Optional[str] = None
+    gr_number: Optional[str] = None
+    status: PersistedDraftStatus
+    version: int
+    template_score: Optional[float] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PersistedDraftDetail(PersistedDraftOut):
+    conflicts: List[DraftConflictOut] = []
+    references: List[DraftReferenceOut] = []
+
+
+class PaginatedDrafts(BaseModel):
+    items: List[PersistedDraftOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class DismissConflictRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 
 # ---------------------------------------------------------------------

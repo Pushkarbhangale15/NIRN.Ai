@@ -24,7 +24,6 @@ vector_db/*.pkl
 # Frontend
 frontend/node_modules/
 frontend/dist/
-.env.example
 
 data/embeddings.npy
 frontend/.vite/

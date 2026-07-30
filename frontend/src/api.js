@@ -6,9 +6,24 @@
  * and no hardcoded URLs.
  */
 
+const TOKEN_STORAGE_KEY = "nirn_access_token";
+
+export function getStoredToken() {
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function setStoredToken(token) {
+  if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  else localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
 async function request(path, options = {}) {
+  const token = getStoredToken();
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
   if (!res.ok) {
@@ -21,6 +36,7 @@ async function request(path, options = {}) {
           : "Validation error — check every field is filled in.";
       }
     } catch { /* keep default detail */ }
+    if (res.status === 401) setStoredToken(null);
     throw new Error(detail);
   }
   if (res.status === 204) return null;
@@ -30,10 +46,58 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request("/health"),
 
+  // ── Auth ─────────────────────────────────────────────────────
+  login: (loginId, password) =>
+    request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ login_id: loginId, password }),
+    }),
+
+  register: (payload) =>
+    request("/api/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+
+  me: () => request("/api/officers/me"),
+
   createDraft: (draft) =>
     request("/api/drafts", { method: "POST", body: JSON.stringify(draft) }),
 
-  listDrafts: () => request("/api/drafts"),
+  // Paginated: { items, total, limit, offset }. Admins/reviewers see every
+  // officer's drafts; plain officers only see their own (enforced server-side).
+  listDrafts: ({ department, status, sortBy, sortDir, limit = 20, offset = 0 } = {}) => {
+    const params = new URLSearchParams({ limit, offset });
+    if (department) params.set("department", department);
+    if (status) params.set("status", status);
+    if (sortBy) params.set("sort_by", sortBy);
+    if (sortDir) params.set("sort_dir", sortDir);
+    return request(`/api/drafts?${params.toString()}`);
+  },
+
+  getDraft: (draftId) => request(`/api/drafts/${draftId}`),
+
+  // Soft delete — sets status to 'archived', never removes the row.
+  archiveDraft: (draftId) => request(`/api/drafts/${draftId}`, { method: "DELETE" }),
+
+  dismissConflict: (conflictId, reason = null) =>
+    request(`/api/conflicts/${conflictId}/dismiss`, {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    }),
+
+  // ── Admin ────────────────────────────────────────────────────
+  listOfficers: () => request("/api/admin/officers"),
+
+  updateOfficer: (officerId, payload) =>
+    request(`/api/admin/officers/${officerId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  // Unlike api.register(), this lets an admin set the new officer's role
+  // directly (backend only honours `role` here because the caller is
+  // already authenticated as admin — public registration always forces
+  // role=officer).
+  createOfficerAdmin: (payload) =>
+    request("/api/admin/officers", { method: "POST", body: JSON.stringify(payload) }),
 
   updateDraft: (draftId, bodyText) =>
     request(`/api/drafts/${draftId}`, {
