@@ -578,23 +578,6 @@ def search_corpus(
     return CorpusSearchResponse(query=q, hits=hits, took_ms=took_ms)
 
 
-@router.get("/api/knowledge/search", tags=["knowledge"])
-def search_knowledge_terminology(
-    q: str = Query(..., min_length=1, description="Search text in English or Marathi"),
-    limit: int = Query(default=10, ge=1, le=50),
-):
-    """
-    Instant terminology lookup in English or Marathi against the Knowledge Base.
-    """
-    from knowledge import get_knowledge_service
-    ks = get_knowledge_service()
-    results = ks.search(q, limit=limit)
-    return {"query": q, "results": results}
-
-
-
-import uuid
-from schemas import Language
 @router.post("/api/copilot/chat", response_model=ChatResponse, tags=["copilot"])
 def copilot_chat(payload: ChatRequest) -> ChatResponse:
     session_id = payload.session_id or uuid.uuid4().hex[:12]
@@ -699,34 +682,20 @@ async def copilot_draft(
     for idx, hit in enumerate(hits):
         examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
 
-    # 2. Query KnowledgeService for department & standard phrase guidelines
-    from knowledge import get_knowledge_service
-    ks = get_knowledge_service()
-    
-    dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
-    dept_entry = ks.find_department(dept)
-    if dept_entry:
-        dept_display = f"{dept_entry.get('english')} ({dept_entry.get('marathi')})"
-    else:
-        dept_display = dept.replace("_", " ")
-
-    # Select standard phrases from Knowledge Base for mandatory terminology adherence
-    std_phrases = ks.get_all_phrases()[:5]
-    phrase_guidelines = "\n".join(
-        f"  - {p.get('english')} -> {p.get('marathi')}" for p in std_phrases if p.get('english')
-    )
-
-    # 3. LLM drafting call
+    # 2. LLM drafting call
     system_prompt = prompts.COPILOT_DRAFT
+    dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
+    dept_display = dept.replace("_", " ")
+
     user_msg = (
         f"Input:\n"
         f"- User Prompt: {payload.prompt}\n"
         f"- Issuing Department: {dept_display}\n"
         f"- Language: {payload.language}\n"
-        f"- Official Standard Phrases:\n{phrase_guidelines}\n\n"
         f"- Retrieved Context:\n{examples_str}"
     )
     body_text = await run_in_threadpool(llm.call_model, system_prompt, user_msg)
+
     title = f"Draft GR: {payload.prompt[:50]}"
     lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH
 

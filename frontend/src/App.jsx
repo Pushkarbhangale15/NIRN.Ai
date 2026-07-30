@@ -1,7 +1,7 @@
 import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
 
+//import { NavLink, Route, Routes } from "react-router-dom";
 import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
@@ -11,8 +11,8 @@ import Register from "./pages/Register.jsx";
 import Admin from "./pages/Admin.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
-import { DraftProvider } from "./DraftContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
+import { useEffect, useState } from "react";
 
 // Gate for pages that need a signed-in officer (e.g. drafting a GR).
 // Browsing/search stays open to anyone — only shown when a logged-out
@@ -57,6 +57,7 @@ const IconClose = () => (
   </svg>
 );
 
+
 function PageWrapper({ children }) {
   const { siteLanguage } = useLanguage();
   return (
@@ -85,67 +86,62 @@ function Navbar() {
   const isAdmin = officer?.role === "admin";
 
   return (
-    <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'color-mix(in srgb, var(--cream) 82%, transparent)', backdropFilter: 'blur(6px)', borderBottom: '1px solid var(--line)' }} className={siteLanguage === 'mr' ? 'lang-mr' : ''}>
-      <div className="container">
-        <nav className="nav" style={{ borderBottom: 'none', background: 'transparent', backdropFilter: 'none', top: 'auto', position: 'static' }}>
-          <NavLink to="/" className="brand">
-            <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
-            <span className="brand-marathi">
-              <span className="brand-maha">महाराष्ट्र</span>
-              <span className="brand-shasan">शासन</span>
-            </span>
+    <nav className={`nav ${siteLanguage === 'mr' ? 'lang-mr' : ''}`}>
+      <div className="container nav-inner">
+        <NavLink to="/" className="brand">
+          <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
+          <span className="brand-marathi">
+            <span className="brand-maha">महाराष्ट्र</span>
+            <span className="brand-shasan">शासन</span>
+          </span>
+        </NavLink>
+
+        <div className="nav-links nav-links-desktop">
+          <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_home')}
           </NavLink>
-
-          <div className="nav-links nav-links-desktop">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-              {t('nav_home')}
+          <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
+            {t('nav_draft')}
+          </NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_admin')}
             </NavLink>
-            <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
-              {t('nav_draft')}
-            </NavLink>
-            {isAdmin && (
-              <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
-                {t('nav_admin')}
-              </NavLink>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="nav-actions-desktop">
-            <button
-              onClick={toggleLanguage}
-              className="nav-lang-toggle"
-            >
-              {siteLanguage === 'en' ? 'मराठी' : 'English'}
-            </button>
-            <NavLink to="/chat" className="nav-cta-primary">
-              {t('nav_ai_copilot')}
-            </NavLink>
-            {officer ? (
-              <button
-                type="button"
-                onClick={logout}
-                className="nav-lang-toggle"
-                title={`Signed in as ${officer.name}`}
-              >
-                Sign out
-              </button>
-            ) : (
-              <NavLink to="/login" className="nav-cta-primary">
-                Login / Register
-              </NavLink>
-            )}
-          </div>
-
+        <div className="nav-actions-desktop">
           <button
-            type="button"
-            className="nav-hamburger"
-            onClick={() => setMobileOpen((prev) => !prev)}
-            aria-label={mobileOpen ? t('nav_close_menu') : t('nav_open_menu')}
-            aria-expanded={mobileOpen}
+            onClick={toggleLanguage}
+            className="nav-lang-toggle"
           >
-            {mobileOpen ? <IconClose /> : <IconMenu />}
+            {siteLanguage === 'en' ? 'मराठी' : 'English'}
           </button>
-        </nav>
+          {officer ? (
+            <button
+              type="button"
+              onClick={logout}
+              className="nav-lang-toggle"
+              title={`Signed in as ${officer.name}`}
+            >
+              Sign out
+            </button>
+          ) : (
+            <NavLink to="/login" className="nav-cta-primary">
+              Login / Register
+            </NavLink>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="nav-hamburger"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          aria-label={mobileOpen ? t('nav_close_menu') : t('nav_open_menu')}
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen ? <IconClose /> : <IconMenu />}
+        </button>
       </div>
 
       {mobileOpen && (
@@ -182,7 +178,7 @@ function Navbar() {
           </div>
         </div>
       )}
-    </div>
+    </nav>
   );
 }
 
@@ -243,7 +239,7 @@ export default function App() {
   }
 
   return (
-    <DraftProvider>
+    <>
       <Navbar />
 
       <AnimatePresence mode="wait">
@@ -317,6 +313,6 @@ export default function App() {
 
       <Footer />
       <ChatWidget />
-    </DraftProvider>
+    </>
   );
 }
