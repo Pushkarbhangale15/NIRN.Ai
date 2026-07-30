@@ -108,7 +108,7 @@ export default function Draft() {
           />
 
           {/* 2. Workflow Stepper directly under the Generate Draft block */}
-          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
+          <WorkflowStepper currentStage={currentStage} isGenerating={loading || analysisLoading} />
 
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">

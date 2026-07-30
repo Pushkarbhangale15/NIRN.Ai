@@ -44,6 +44,15 @@ export const api = {
   runTemplateCheck: (draftId) =>
     request(`/api/analysis/${draftId}/template`, { method: "POST" }),
 
+  runConflictDetection: (draftId) =>
+    request(`/api/analysis/${draftId}/conflicts`, { method: "POST" }),
+
+  runReferenceTracking: (draftId) =>
+    request(`/api/analysis/${draftId}/references`, { method: "POST" }),
+
+  runTerminology: (draftId) =>
+    request(`/api/analysis/${draftId}/terminology`, { method: "POST" }),
+
   // The full report: template + references + conflicts + terminology
   analyze: (draftId) =>
     request(`/api/analysis/${draftId}`, { method: "POST" }),
