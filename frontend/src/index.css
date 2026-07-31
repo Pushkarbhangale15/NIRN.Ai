@@ -113,14 +113,11 @@ h4 {
 }
 
 .lang-mr {
-  --font-display: "Tiro Devanagari Marathi", "Archivo Black", serif;
-  --font-body: "Tiro Devanagari Marathi", serif;
-  font-family: var(--font-marathi), var(--font-body);
-}
-
-.lang-mr,
-.lang-mr * {
-  font-family: var(--font-marathi), "Tiro Devanagari Marathi", serif;
+  /* Keep the English font stack as the base; Devanagari glyphs are
+     picked up automatically because Archivo/Archivo Black don't contain
+     them, so the browser falls through to the Marathi font. */
+  --font-display: "Archivo Black", "Tiro Devanagari Marathi", "Archivo", sans-serif;
+  --font-body: "Archivo", "Tiro Devanagari Marathi", sans-serif;
 }
 
 .tiro-devanagari-marathi-regular {
@@ -2815,7 +2812,7 @@ mark.highlight-mark {
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   background: var(--blue);
-  color: var(--white);
+  color: #fff;
   border-bottom: var(--border-width) solid var(--ink);
 }
 

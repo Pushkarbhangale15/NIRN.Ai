@@ -64,7 +64,7 @@ def verify_conflict_with_llm(
     )
 
     try:
-        raw_reply = llm.call_model(system_prompt, user_msg)
+        raw_reply = llm.call_model(system_prompt, user_msg, purpose="conflict_detection")
         parsed = llm.parse_json_reply(raw_reply)
         if not parsed or not isinstance(parsed, dict):
             return None

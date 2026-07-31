@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # ---- Debug mode --------------------------------------------------------
     # Set DEBUG=true in .env for verbose logging.
     DEBUG: bool = False
+    
+    # ---- Telemetry ---------------------------------------------------------
+    # When enabled, injects X-NIRN-Metrics and X-Performance-Profile into HTTP responses
+    ENABLE_TELEMETRY: bool = Field(default=True, alias="ENABLE_TELEMETRY")
 
     # ---- CORS --------------------------------------------------------------
     # The React dev server runs on 5173 by default; add 3000 as a fallback.
@@ -80,6 +84,9 @@ class Settings(BaseSettings):
 
     # Minimum confidence for a conflict to be included in the final report.
     CONFLICT_CONFIDENCE_FLOOR: float = 0.45
+
+    # Experimental feature flag for unified conflict detection
+    USE_UNIFIED_CONFLICT_PROMPT: bool = False
 
     # ---- Chunking ----------------------------------------------------------
     CHUNK_CHARS: int = 500

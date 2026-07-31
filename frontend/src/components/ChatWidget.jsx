@@ -44,7 +44,7 @@ export default function ChatWidget() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { messages, input, setInput, loading, error, send } = useCopilotChat();
+  const { messages, input, setInput, loading, error, send, clearChat } = useCopilotChat();
   const bottomRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -83,6 +83,26 @@ export default function ChatWidget() {
           <div className="chat-widget-header">
             <span className="chat-widget-header-title">{t('chat_widget_title')}</span>
             <div className="chat-widget-header-actions">
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearChat}
+                  style={{
+                    fontSize: '11px',
+                    marginRight: '4px',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                  title={t('copilot_clear_chat')}
+                >
+                  {t('copilot_clear_chat')}
+                </button>
+              )}
               <button
                 type="button"
                 className="chat-widget-expand"
@@ -137,7 +157,6 @@ export default function ChatWidget() {
                 <div className="copilot-msg-body">
                   <div className="copilot-typing">
                     <span /><span /><span />
-                    <StatusVerb stage="retrieval" className="copilot-typing-verb" />
                   </div>
                 </div>
               </div>

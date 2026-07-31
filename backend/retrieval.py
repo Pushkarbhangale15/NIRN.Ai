@@ -221,7 +221,7 @@ def search_batch(
         return [[] for _ in queries]
 
     # Single encoder forward pass for all clauses — the expensive part.
-    with perf("SentenceTransformer encode"):
+    with perf("Batch Embedding"):
         with _model_lock:
             all_embeddings = model.encode(
                 ["query: " + q for q in queries],
@@ -232,7 +232,7 @@ def search_batch(
     faiss.normalize_L2(all_embeddings)
 
     # Batch FAISS search: one call instead of N separate calls.
-    with perf("FAISS search"):
+    with perf("FAISS Search"):
         all_distances, all_indices = _index.search(all_embeddings, k=fetch_k)
 
     LANG_BOOST = 0.05
@@ -277,9 +277,18 @@ def search_batch(
                     ),
                 ))
 
-            with perf("Sort hits"):
-                hits.sort(key=lambda h: h.score, reverse=True)
-            output.append(hits[:top_k])
+            # Deduplication by gr_id within each clause’s candidate list.
+            # The same GR can have multiple chunks that all score highly for a
+            # given clause. Sending them to Ollama as separate CANDIDATES means
+            # the model reasons about the same source twice, wasting tokens and
+            # compute. We keep only the highest-scoring chunk per GR.
+            seen_gr: dict = {}
+            for hit in hits:
+                if hit.gr_id not in seen_gr or hit.score > seen_gr[hit.gr_id].score:
+                    seen_gr[hit.gr_id] = hit
+            # Restore score-descending order after deduplication.
+            deduped = sorted(seen_gr.values(), key=lambda h: h.score, reverse=True)
+            output.append(deduped[:top_k])
 
     return output
 

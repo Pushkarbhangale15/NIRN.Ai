@@ -130,7 +130,6 @@ export default function Chat() {
                 <div className="copilot-msg-body">
                   <div className="copilot-typing">
                     <span /><span /><span />
-                    <StatusVerb stage="retrieval" className="copilot-typing-verb" />
                   </div>
                 </div>
               </div>

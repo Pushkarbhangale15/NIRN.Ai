@@ -275,11 +275,8 @@ export default function Home() {
                   scrollSpyOnce
                 />
               </div>
-              <div className="stat-label">Government Resolutions</div>
-              <div className="stat-sub">Across departments. At your fingertips.</div>
-              {/* <div className="stat-number">{t('home_stat_num')}</div>
               <div className="stat-label">{t('home_stat_label')}</div>
-              <div className="stat-sub">{t('home_stat_sub')}</div> */}
+              <div className="stat-sub">{t('home_stat_sub')}</div>
             </div>
           </div>
 
@@ -439,6 +436,60 @@ export default function Home() {
               <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '14px', textAlign: 'left' }}>
                 <strong>Department:</strong> {foundGr.department.replace(/_/g, ' ')} | <strong>ID:</strong> {foundGr.gr_id}
               </p>
+              <div className="source-dropdown" onClick={(e) => e.stopPropagation()} style={{ marginBottom: '16px', position: 'relative', display: 'inline-block' }}>
+                <button 
+                  className="source-dropdown-btn" 
+                  onClick={() => setOpenDropdown(openDropdown === 'lookup' ? null : 'lookup')}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {t('search_view_source')}
+                </button>
+                {openDropdown === 'lookup' && (
+                  <div className="source-menu" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    zIndex: 100,
+                    background: '#fff',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    marginTop: '4px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minWidth: '220px'
+                  }}>
+                    <button 
+                      onClick={(e) => { setOpenDropdown(null); openSource(foundGr, 'mr', e); }}
+                      style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6' }}
+                    >
+                      View Marathi OCR
+                    </button>
+                    <button 
+                      onClick={(e) => { setOpenDropdown(null); openSource(foundGr, 'en', e); }}
+                      style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6' }}
+                    >
+                      View English OCR
+                    </button>
+                    <button 
+                      onClick={(e) => { setOpenDropdown(null); openOfficialPdf(foundGr, e); }}
+                      style={{ padding: '8px 12px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px' }}
+                    >
+                      View Official Government Resolution
+                    </button>
+                  </div>
+                )}
+              </div>
               <div style={{
                 maxHeight: '300px',
                 overflowY: 'auto',
@@ -528,7 +579,7 @@ export default function Home() {
                             {h.issued_on ? ` · ${h.issued_on}` : ""}
                           </div>
                         </div>
-                        <div className="hit-score" style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--blue)' }}>{(h.score * 100).toFixed(0)}%</div>
+
                       </div>
                       <div className="ri-sub" style={{ marginTop: 10, fontSize: '14px', color: '#444' }}>{h.snippet}</div>
                       <div className="source-dropdown" onClick={(e) => e.stopPropagation()} style={{ marginTop: '12px', position: 'relative', display: 'inline-block' }}>

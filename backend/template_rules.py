@@ -425,10 +425,13 @@ def check_template(body_text: str) -> List[TemplateIssue]:
     Both English and Marathi patterns are checked in every rule so this
     function is language-agnostic — it will correctly validate GRs in
     either language.
+
+    The text is stripped once here so individual rules do not need to.
     """
+    normalised = body_text.strip()
     issues: List[TemplateIssue] = []
     for rule in RULES:
-        result = rule(body_text)
+        result = rule(normalised)
         if result is not None:
             issues.append(result)
     return issues

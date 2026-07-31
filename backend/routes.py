@@ -706,20 +706,23 @@ async def copilot_draft(
         for idx, hit in enumerate(hits):
             examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
 
-        # 2. LLM drafting call
-        system_prompt = prompts.COPILOT_DRAFT
-        dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
-        dept_display = dept.replace("_", " ")
+        # 2. LLM drafting call — use language-specific prompt to avoid
+        # injecting the unused language template (~260 token saving).
+        with perf("Prompt Construction"):
+            system_prompt = prompts.build_draft_prompt(payload.language)
+            dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
+            dept_display = dept.replace("_", " ")
 
-        user_msg = (
-            f"Input:\n"
-            f"- User Prompt: {payload.prompt}\n"
-            f"- Issuing Department: {dept_display}\n"
-            f"- Language: {payload.language}\n"
-            f"- Retrieved Context:\n{examples_str}"
-        )
+            user_msg = (
+                f"Input:\n"
+                f"- User Prompt: {payload.prompt}\n"
+                f"- Issuing Department: {dept_display}\n"
+                f"- Language: {payload.language}\n"
+                f"- Retrieved Context:\n{examples_str}"
+            )
+            
         with perf("Draft Generation"):
-            body_text = await run_in_threadpool(llm.call_model, system_prompt, user_msg)
+            body_text = await run_in_threadpool(llm.call_model, system_prompt, user_msg, purpose="draft_generation")
 
         title = f"Draft GR: {payload.prompt[:50]}"
         lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH
@@ -737,28 +740,46 @@ async def copilot_draft(
                 detect_cross_department_conflicts, body_text, draft_lang
             )
 
+        # 3.5 Assemble final GR with deterministic header/footer
+        import datetime
+        current_date_str = datetime.datetime.now().strftime("%d %B, %Y")
+        current_year = datetime.datetime.now().year
+        
+        if draft_lang == "mr":
+            final_body_text = prompts.MARATHI_GR_HEADER_TEMPLATE.format(
+                department=dept_display,
+                year=current_year,
+                date=current_date_str
+            ) + body_text + prompts.MARATHI_GR_FOOTER_TEMPLATE
+        else:
+            final_body_text = prompts.ENGLISH_GR_HEADER_TEMPLATE.format(
+                department=dept_display,
+                year=current_year,
+                date=current_date_str
+            ) + body_text + prompts.ENGLISH_GR_FOOTER_TEMPLATE
+
         # 4. Persist draft + conflicts + references in ONE transaction — the
         # get_session dependency commits once at the end of the request and
         # rolls back everything here if any of these inserts fails.
         with perf("Database"):
-            with perf("Create Draft"):
+            with perf("Draft Insert"):
                 draft = await store.create_draft(
                     session,
                     title=title,
                     language=lang_enum.value,
                     drafted_by=current.officer_id,
-                    content=body_text,
+                    content=final_body_text,
                     department=dept,
-                    content_plain=_strip_html(body_text),
+                    content_plain=_strip_html(final_body_text),
                     brief=payload.prompt,
                 )
             if reference_hits:
-                with perf("Save References"):
+                with perf("Reference Insert"):
                     await store.add_references(
                         session, draft.generated_draft_id, [_reference_hit_to_row(h) for h in reference_hits]
                     )
             if conflict_items:
-                with perf("Save Conflicts"):
+                with perf("Conflict Insert"):
                     await store.add_conflicts(
                         session,
                         draft.generated_draft_id,
@@ -778,10 +799,22 @@ async def copilot_draft(
     
     # Also attach it to the HTTP response header as Base64 so the frontend can read it
     report_str = perf.get_report_string()
-    if report_str:
+    if report_str and settings.ENABLE_TELEMETRY:
         import base64
+        import json
+        import uuid
         encoded = base64.b64encode(report_str.encode("utf-8")).decode("ascii")
         response.headers["X-Performance-Profile"] = encoded
+        
+        meta_list = perf.get_all_meta()
+        if meta_list:
+            payload = {
+                "version": 1,
+                "request_id": str(uuid.uuid4()),
+                "calls": meta_list
+            }
+            meta_json = json.dumps(payload)
+            response.headers["X-NIRN-Metrics"] = base64.b64encode(meta_json.encode("utf-8")).decode("ascii")
 
     perf.reset()
     return result_payload
@@ -808,7 +841,7 @@ def copilot_compare(payload: ComparisonRequest) -> ComparisonResponse:
         "Present the output as a clean Markdown table comparing the two, followed by a brief summary of key differences."
     )
     user_msg = f"GOVERNMENT RESOLUTION 1 ({payload.gr_id_1}):\n{text1}\n\nGOVERNMENT RESOLUTION 2 ({payload.gr_id_2}):\n{text2}"
-    report = llm.call_model(system_prompt, user_msg)
+    report = llm.call_model(system_prompt, user_msg, purpose="compare_versions")
 
     return ComparisonResponse(
         gr_id_1=payload.gr_id_1,
@@ -825,7 +858,7 @@ def copilot_explain_clause(payload: ClauseExplanationRequest) -> ClauseExplanati
     )
     lang_name = "Marathi" if payload.language == Language.MARATHI else "English"
     user_msg = f"EXPLAIN THIS CLAUSE IN SIMPLE {lang_name}:\n{payload.clause_text}"
-    explanation = llm.call_model(system_prompt, user_msg)
+    explanation = llm.call_model(system_prompt, user_msg, purpose="explain_policy")
 
     return ClauseExplanationResponse(explanation=explanation)
 

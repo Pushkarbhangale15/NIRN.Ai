@@ -67,6 +67,13 @@ def detect_cross_department_conflicts(
             queries=clauses,
             top_k=settings.CANDIDATES_PER_CLAUSE,
             draft_language=draft_language,
+            # Conservative score threshold: the FAISS index uses Inner Product on
+            # normalized vectors (= cosine similarity, range 0–1).  Scores below
+            # 0.40 indicate near-zero topical overlap; sending them to Gemma
+            # wastes tokens and adds noise.  The chat endpoint uses 0.81;
+            # reference resolution uses 0.70.  We use 0.40 here to be
+            # deliberately permissive — we never want to miss a real conflict.
+            min_score=0.40,
         )
 
     # Flatten for llm.detect_conflicts: it expects a flat list of

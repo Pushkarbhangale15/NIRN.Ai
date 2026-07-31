@@ -87,27 +87,35 @@ class _Span:
         self.meta.update(kwargs)
 
 
+import contextvars
+
 # -----------------------------------------------------------------------
-# Thread-local state
+# Context-local state (supports Starlette run_in_threadpool)
 # -----------------------------------------------------------------------
 
-_local = threading.local()
+_root_var = contextvars.ContextVar("profiler_root", default=None)
+_stack_var = contextvars.ContextVar("profiler_stack", default=None)
+_spans_var = contextvars.ContextVar("profiler_spans", default=None)
 
 
 def _get_root() -> Optional[_Span]:
-    return getattr(_local, "root", None)
+    return _root_var.get()
 
 
 def _get_stack() -> List[_Span]:
-    if not hasattr(_local, "stack"):
-        _local.stack = []
-    return _local.stack
+    s = _stack_var.get()
+    if s is None:
+        s = []
+        _stack_var.set(s)
+    return s
 
 
 def _get_spans() -> List[_Span]:
-    if not hasattr(_local, "spans"):
-        _local.spans = []
-    return _local.spans
+    s = _spans_var.get()
+    if s is None:
+        s = []
+        _spans_var.set(s)
+    return s
 
 
 # -----------------------------------------------------------------------
@@ -136,7 +144,7 @@ class _PerfContext:
             parent.children.append(span)
         else:
             # root-level span — store as the request root
-            _local.root = span
+            _root_var.set(span)
         stack.append(span)
         _get_spans().append(span)
         self._span = span
@@ -183,9 +191,50 @@ class _Profiler:
     def __call__(self, name: str) -> _PerfContext:
         return _PerfContext(name)
 
+    def inject(self, name: str, duration_s: float, **meta) -> None:
+        """Inject a completed span into the current active span (or root)."""
+        if not PROFILING_ENABLED:
+            return
+        stack = _get_stack()
+        parent = stack[-1] if stack else None
+        span = _Span(name, parent)
+        span.end = span.start + duration_s
+        if parent is not None:
+            parent.children.append(span)
+        else:
+            if _root_var.get() is None:
+                _root_var.set(span)
+        _get_spans().append(span)
+        if meta:
+            span.add_meta(**meta)
+
+    def current_meta(self, **kwargs) -> None:
+        """Attach arbitrary metadata to the CURRENT active span on the stack."""
+        if not PROFILING_ENABLED:
+            return
+        stack = _get_stack()
+        if stack:
+            stack[-1].add_meta(**kwargs)
+
     # ----------------------------------------------------------------
-    # get_report_string() and report()
+    # get_all_meta(), get_report_string() and report()
     # ----------------------------------------------------------------
+
+    def get_all_meta(self) -> List[Dict[str, Any]]:
+        """Extract all metadata dicts from the tree, in order."""
+        root = _get_root()
+        if not root:
+            return []
+            
+        out = []
+        def _traverse(s: _Span):
+            if s.meta:
+                out.append(s.meta)
+            for c in s.children:
+                _traverse(c)
+                
+        _traverse(root)
+        return out
 
     def get_report_string(self) -> str:
         """Returns the formatted report as a string, or empty if disabled."""
@@ -266,9 +315,9 @@ class _Profiler:
     def reset(self) -> None:
         if not PROFILING_ENABLED:
             return
-        _local.root = None
-        _local.stack = []
-        _local.spans = []
+        _root_var.set(None)
+        _stack_var.set([])
+        _spans_var.set([])
 
     # ----------------------------------------------------------------
     # render tree
@@ -282,7 +331,7 @@ class _Profiler:
         label_col = 40 - len(indent)
         dots = "." * max(1, label_col - len(label))
         lines.append(f"  {indent}{label} {dots} {elapsed:>7.3f} s")
-
+        
         for child in span.children:
             self._render_span(child, lines, depth + 1)
 
