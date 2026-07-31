@@ -26,6 +26,18 @@ async function request(path, options = {}) {
     },
     ...options,
   });
+  
+  // Extract and print performance profile if present
+  const profileHeader = res.headers.get("X-Performance-Profile");
+  if (profileHeader) {
+    try {
+      const decodedProfile = atob(profileHeader);
+      console.log("%c" + decodedProfile, "color: #4CAF50; font-family: monospace;");
+    } catch (e) {
+      console.error("Failed to decode performance profile", e);
+    }
+  }
+
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {

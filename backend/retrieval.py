@@ -13,6 +13,7 @@ import numpy as np
 import threading
 
 from config import settings
+from profiler import perf
 from schemas import CorpusHit
 
 
@@ -181,6 +182,106 @@ def search(
     # Re-sort by boosted score descending, then trim to top_k
     results.sort(key=lambda h: h.score, reverse=True)
     return results[:top_k]
+
+
+def search_batch(
+    queries: List[str],
+    top_k: int = None,
+    min_score: float = 0.0,
+    draft_language: Optional[str] = None,
+) -> List[List[CorpusHit]]:
+    """
+    Semantic search over the GR corpus for *multiple* query strings in one call.
+
+    This uses embed_batch() to compute all query embeddings in a single
+    SentenceTransformer forward pass, which is dramatically faster than calling
+    search() (and therefore encode()) once per clause inside a Python loop.
+
+    Returns a list-of-lists: results[i] contains the top_k CorpusHit objects
+    for queries[i].  The ordering and schema of each inner list is identical to
+    what search() returns, so callers can iterate over the results normally.
+
+    Parameters
+    ----------
+    queries        : All clause strings to embed and search for simultaneously.
+    top_k          : Number of results per query.
+    min_score      : Minimum similarity score threshold.
+    draft_language : Optional language hint ('mr' or 'en') applied to every query.
+    """
+    if not queries:
+        return []
+
+    top_k = top_k or settings.TOP_K
+    fetch_k = min(top_k * 3, 50)
+
+    model = _load_model()
+    _load_faiss()
+
+    if _index is None or _chunks is None:
+        return [[] for _ in queries]
+
+    # Single encoder forward pass for all clauses — the expensive part.
+    with perf("SentenceTransformer encode"):
+        with _model_lock:
+            all_embeddings = model.encode(
+                ["query: " + q for q in queries],
+                convert_to_numpy=True,
+            )
+
+    # Normalise each row independently for cosine similarity.
+    faiss.normalize_L2(all_embeddings)
+
+    # Batch FAISS search: one call instead of N separate calls.
+    with perf("FAISS search"):
+        all_distances, all_indices = _index.search(all_embeddings, k=fetch_k)
+
+    LANG_BOOST = 0.05
+
+    output: List[List[CorpusHit]] = []
+    with perf("CorpusHit creation"):
+        for q_i, query in enumerate(queries):
+            query_is_marathi = (
+                draft_language == "mr"
+                or (draft_language is None and is_marathi_text(query))
+            )
+
+            hits: List[CorpusHit] = []
+            for j, idx in enumerate(all_indices[q_i]):
+                if idx < 0:
+                    continue
+                score = float(all_distances[q_i][j])
+                norm_score = min(max(score, 0.0), 1.0)
+                if norm_score < min_score:
+                    continue
+
+                chunk = _chunks[idx]
+                chunk_lang = chunk.get("language", "en")
+
+                if query_is_marathi and chunk_lang == "mr":
+                    norm_score = min(norm_score + LANG_BOOST, 1.0)
+                elif not query_is_marathi and chunk_lang == "en":
+                    norm_score = min(norm_score + LANG_BOOST, 1.0)
+
+                title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+                lang_path = "English" if chunk_lang == "en" else "Marathi"
+                hits.append(CorpusHit(
+                    gr_id=chunk.get("gr_id", "Unknown"),
+                    title=title,
+                    department=chunk.get("department", "Unknown"),
+                    issued_on=chunk.get("issued_on"),
+                    snippet=chunk.get("text", "")[:800],
+                    score=norm_score,
+                    source_url=(
+                        f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/"
+                        f"{lang_path}/{chunk.get('gr_id', '')}.pdf"
+                    ),
+                ))
+
+            with perf("Sort hits"):
+                hits.sort(key=lambda h: h.score, reverse=True)
+            output.append(hits[:top_k])
+
+    return output
 
 def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
     # In FAISS we would need to iterate through chunks or have a separate metadata dict.

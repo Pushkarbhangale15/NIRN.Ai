@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -46,6 +46,7 @@ from db.security import create_access_token, hash_password, verify_password
 from lookup import get_adapter
 from config import settings
 from rate_limit import limiter
+from profiler import perf, PROFILING_ENABLED
 from schemas import (
     Language,
     AnalysisReport,
@@ -647,7 +648,26 @@ def _is_devanagari(text: str) -> bool:
 _SEVERITY_MAP = {"Low": "low", "Medium": "medium", "High": "high", "Critical": "high"}
 
 
+def _conflict_hit_to_row(item: ConflictHit) -> dict:
+    """
+    Convert a ConflictHit (returned by the unified conflict pipeline) into
+    the dict shape expected by store.add_conflicts().
+    """
+    return dict(
+        source_of_conflict=(
+            f"{item.existing_gr_id}: {item.existing_gr_title}"
+        )[:200],
+        conflicting_text=item.existing_clause,
+        draft_excerpt=item.draft_clause,
+        conflicting_gr_id=item.existing_gr_id[:64] if item.existing_gr_id else None,
+        severity=_SEVERITY_MAP.get(item.severity or "High", "medium"),
+        justification=item.justification[:10000],
+        detected_by="llm_verifier",
+    )
+
+
 def _conflict_report_to_row(item: ConflictReportItem) -> dict:
+    """Legacy helper kept for the /api/conflicts/detect standalone endpoint."""
     gr_id = item.matched_gr.split(":", 1)[0].strip() if item.matched_gr else None
     return dict(
         source_of_conflict=(item.matched_gr or item.category)[:200],
@@ -673,65 +693,98 @@ def _reference_hit_to_row(hit: ReferenceHit) -> dict:
 @router.post("/api/copilot/draft", response_model=DraftGenerateResponse, tags=["copilot"])
 async def copilot_draft(
     payload: DraftGenerateRequest,
+    response: Response,
     current: Officer = Depends(deps.get_current_officer),
     session: AsyncSession = Depends(get_session),
 ) -> DraftGenerateResponse:
-    # 1. Retrieve similar GRs for styling/reference — trim snippets to save tokens
-    hits = await run_in_threadpool(retrieval.search, payload.prompt, top_k=3)
-    examples_str = ""
-    for idx, hit in enumerate(hits):
-        examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
+    with perf("REQUEST /api/copilot/draft"):
 
-    # 2. LLM drafting call
-    system_prompt = prompts.COPILOT_DRAFT
-    dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
-    dept_display = dept.replace("_", " ")
+        # 1. Retrieve similar GRs for styling/reference — trim snippets to save tokens
+        with perf("Retrieval Search"):
+            hits = await run_in_threadpool(retrieval.search, payload.prompt, top_k=3)
+        examples_str = ""
+        for idx, hit in enumerate(hits):
+            examples_str += f"--- EXAMPLE GR {idx+1} (Dept: {hit.department}) ---\n{hit.snippet[:400]}\n\n"
 
-    user_msg = (
-        f"Input:\n"
-        f"- User Prompt: {payload.prompt}\n"
-        f"- Issuing Department: {dept_display}\n"
-        f"- Language: {payload.language}\n"
-        f"- Retrieved Context:\n{examples_str}"
-    )
-    body_text = await run_in_threadpool(llm.call_model, system_prompt, user_msg)
+        # 2. LLM drafting call
+        system_prompt = prompts.COPILOT_DRAFT
+        dept = payload.department if payload.department else (hits[0].department if hits else "General_Administration_Department")
+        dept_display = dept.replace("_", " ")
 
-    title = f"Draft GR: {payload.prompt[:50]}"
-    lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH
-
-    # 3. Objective 3 + Objective 1, run against the freshly generated text
-    reference_hits = references.extract_references(body_text)
-    conflict_items = await run_in_threadpool(detect_cross_department_conflicts, body_text)
-
-    # 4. Persist draft + conflicts + references in ONE transaction — the
-    # get_session dependency commits once at the end of the request and
-    # rolls back everything here if any of these inserts fails.
-    draft = await store.create_draft(
-        session,
-        title=title,
-        language=lang_enum.value,
-        drafted_by=current.officer_id,
-        content=body_text,
-        department=dept,
-        content_plain=_strip_html(body_text),
-        brief=payload.prompt,
-    )
-    if reference_hits:
-        await store.add_references(
-            session, draft.generated_draft_id, [_reference_hit_to_row(h) for h in reference_hits]
+        user_msg = (
+            f"Input:\n"
+            f"- User Prompt: {payload.prompt}\n"
+            f"- Issuing Department: {dept_display}\n"
+            f"- Language: {payload.language}\n"
+            f"- Retrieved Context:\n{examples_str}"
         )
-    if conflict_items:
-        await store.add_conflicts(
-            session, draft.generated_draft_id, [_conflict_report_to_row(c) for c in conflict_items]
+        with perf("Draft Generation"):
+            body_text = await run_in_threadpool(llm.call_model, system_prompt, user_msg)
+
+        title = f"Draft GR: {payload.prompt[:50]}"
+        lang_enum = Language.MARATHI if payload.language.lower() == "marathi" else Language.ENGLISH
+
+        # 3. Objective 3 + Objective 1, run against the freshly generated text.
+        # detect_cross_department_conflicts now returns List[ConflictHit] (same
+        # schema as the analysis route) using the batched pipeline.
+        draft_lang = lang_enum.value  # "en" or "mr"
+
+        with perf("Reference Extraction"):
+            reference_hits = references.extract_references(body_text)
+
+        with perf("Conflict Detection"):
+            conflict_items = await run_in_threadpool(
+                detect_cross_department_conflicts, body_text, draft_lang
+            )
+
+        # 4. Persist draft + conflicts + references in ONE transaction — the
+        # get_session dependency commits once at the end of the request and
+        # rolls back everything here if any of these inserts fails.
+        with perf("Database"):
+            with perf("Create Draft"):
+                draft = await store.create_draft(
+                    session,
+                    title=title,
+                    language=lang_enum.value,
+                    drafted_by=current.officer_id,
+                    content=body_text,
+                    department=dept,
+                    content_plain=_strip_html(body_text),
+                    brief=payload.prompt,
+                )
+            if reference_hits:
+                with perf("Save References"):
+                    await store.add_references(
+                        session, draft.generated_draft_id, [_reference_hit_to_row(h) for h in reference_hits]
+                    )
+            if conflict_items:
+                with perf("Save Conflicts"):
+                    await store.add_conflicts(
+                        session,
+                        draft.generated_draft_id,
+                        [_conflict_hit_to_row(c) for c in conflict_items],
+                    )
+
+        result_payload = DraftGenerateResponse(
+            draft_id=str(draft.generated_draft_id),
+            title=draft.title,
+            department=draft.department,
+            body_text=draft.content,
+            references=hits
         )
 
-    return DraftGenerateResponse(
-        draft_id=str(draft.generated_draft_id),
-        title=draft.title,
-        department=draft.department,
-        body_text=draft.content,
-        references=hits
-    )
+    # Print timing report to terminal as before
+    perf.report()
+    
+    # Also attach it to the HTTP response header as Base64 so the frontend can read it
+    report_str = perf.get_report_string()
+    if report_str:
+        import base64
+        encoded = base64.b64encode(report_str.encode("utf-8")).decode("ascii")
+        response.headers["X-Performance-Profile"] = encoded
+
+    perf.reset()
+    return result_payload
 
 
 @router.post("/api/copilot/compare", response_model=ComparisonResponse, tags=["copilot"])

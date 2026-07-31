@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { LanguageProvider } from "./LanguageContext.jsx";
 import { AuthProvider } from "./AuthContext.jsx";
+import { DraftProvider } from "./DraftContext.jsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -11,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
-          <App />
+          <DraftProvider>
+            <App />
+          </DraftProvider>
         </AuthProvider>
       </LanguageProvider>
     </BrowserRouter>

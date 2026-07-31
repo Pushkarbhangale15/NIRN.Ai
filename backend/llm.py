@@ -33,6 +33,7 @@ from config import settings
 from schemas import ConflictHit, CorpusHit, Language, Relation, TermMapping
 
 logger = logging.getLogger(__name__)
+from profiler import perf
 
 
 # =====================================================================
@@ -100,6 +101,17 @@ _cache = _LRUCache(maxsize=128)
 
 
 # =====================================================================
+# Persistent HTTP client for Ollama
+# =====================================================================
+
+# A single httpx.Client is reused for every Ollama request in this
+# process.  Creating a new client per call (as httpx.post() does
+# internally) pays TCP + TLS setup cost 40+ times per drafting request.
+# Timeout matches the previous per-call value of 120 s.
+_ollama_client = httpx.Client(timeout=120.0)
+
+
+# =====================================================================
 # Token-bucket rate limiter
 # =====================================================================
 
@@ -116,7 +128,18 @@ class _TokenBucket:
         self._last_refill = time.monotonic()
         self._lock = threading.Lock()
 
-    def acquire(self) -> None:
+    def acquire(self, local: bool = False) -> None:
+        """Acquire one token from the bucket.
+
+        When *local* is True (i.e. the request is going to a locally
+        running Ollama instance) the bucket is bypassed entirely — a
+        local HTTP server has no external rate-limit, so sleeping here
+        only wastes wall-clock time (up to 186 s for a 40-call request
+        at the default 10 RPM setting).
+        """
+        if local:
+            return  # no sleep for local Ollama
+
         with self._lock:
             now = time.monotonic()
             elapsed = now - self._last_refill
@@ -217,7 +240,10 @@ def _call_ollama(system_prompt: str, user_message: str) -> tuple[str, bool]:
         payload["format"] = "json"
 
     try:
-        response = httpx.post(url, json=payload, timeout=120.0)  # local can be slow on first token
+        # Reuse the module-level persistent client — avoids TCP/TLS
+        # setup overhead on every one of the 40+ sequential calls that
+        # a single drafting request can make.
+        response = _ollama_client.post(url, json=payload)
         response.raise_for_status()
         text = response.json()["message"]["content"]
         return text, True
@@ -275,6 +301,8 @@ def _call_model_raw(system_prompt: str, user_message: str) -> str:
         cached = _cache.get(provider, system_prompt, user_message)
         if cached is not None:
             return cached
+        # Acquire a bucket token — but Ollama is local so skip sleeping.
+        _bucket.acquire(local=True)
         text, is_real = _call_ollama(system_prompt, user_message)
         if is_real:
             _cache.set(provider, system_prompt, user_message, text)
@@ -318,8 +346,8 @@ def _call_model_raw(system_prompt: str, user_message: str) -> str:
                     response.status_code, attempt + 1, _MAX_RETRIES, backoff,
                 )
                 time.sleep(backoff)
-                # Re-acquire token after backoff
-                _bucket.acquire()
+                # Re-acquire token after backoff (Gemini only — local=False)
+                _bucket.acquire(local=False)
                 continue
 
             response.raise_for_status()
@@ -339,7 +367,7 @@ def _call_model_raw(system_prompt: str, user_message: str) -> str:
                     exc.response.status_code, attempt + 1, _MAX_RETRIES, backoff,
                 )
                 time.sleep(backoff)
-                _bucket.acquire()
+                _bucket.acquire(local=False)
             else:
                 break   # Non-retryable HTTP error — give up immediately
         except Exception as exc:
@@ -538,78 +566,90 @@ def detect_conflicts(
         if not clause_candidates:
             continue
 
-        # Step 1: Run Rule Engine
-        llm_pending = []
-        for idx, hit in enumerate(clause_candidates):
-            det_res = check_deterministic_conflict(clause, hit.snippet)
-            if det_res:
-                category, severity, reason = det_res
-                results.append(
-                    ConflictHit(
-                        draft_clause=clause[:350],
-                        existing_gr_id=hit.gr_id,
-                        existing_gr_title=hit.title,
-                        existing_department=hit.department,
-                        existing_clause=hit.snippet,
-                        relation=Relation.CONFLICT,
-                        confidence=1.0,
-                        justification=reason,
-                        source_url=hit.source_url,
-                        conflict_type=category,
-                        severity=severity,
-                    )
-                )
-            else:
-                llm_pending.append((idx, hit))
+        clause_label = f"Clause {clause_idx + 1}"
+        with perf(clause_label) as clause_ctx:
 
-        if not llm_pending:
-            continue
-
-        # Step 2: Build LLM message for remaining candidates
-        user_msg = f"DRAFT CLAUSE:\n{clause[:500]}\n\nEXISTING CLAUSES TO COMPARE:\n"
-        for llm_idx, (orig_idx, hit) in enumerate(llm_pending):
-            snippet = hit.snippet[:_SNIPPET_MAX]
-            user_msg += (
-                f"--- CANDIDATE {llm_idx} (ID: {hit.gr_id}, Dept: {hit.department}) ---\n"
-                f"{snippet}\n\n"
-            )
-
-        raw_reply = call_model(system_prompt, user_msg)
-        parsed = parse_json_reply(raw_reply)
-        if not parsed or not isinstance(parsed, list):
-            continue
-
-        for item in parsed:
-            try:
-                c_idx = int(item.get("candidate_idx", -1))
-                if 0 <= c_idx < len(llm_pending):
-                    orig_idx, hit = llm_pending[c_idx]
-                    relation_str = item.get("relation", "independent")
-                    if relation_str == "contradictory":
-                        relation_enum = Relation.CONFLICT
-                    elif relation_str == "superseding":
-                        relation_enum = Relation.SUPERSEDES
-                    elif relation_str == "compatible":
-                        relation_enum = Relation.OVERLAP
-                    else:
-                        continue
-                    results.append(
-                        ConflictHit(
-                            draft_clause=clause[:350],
-                            existing_gr_id=hit.gr_id,
-                            existing_gr_title=hit.title,
-                            existing_department=hit.department,
-                            existing_clause=hit.snippet,
-                            relation=relation_enum,
-                            confidence=float(item.get("confidence", 0.5)),
-                            justification=item.get("justification", "Analyzed by AI."),
-                            source_url=hit.source_url,
-                            conflict_type=item.get("conflict_type", "Policy Conflict"),
-                            severity=item.get("severity", "High"),
+            # Step 1: Run Rule Engine
+            with perf("Rule Engine"):
+                llm_pending = []
+                for idx, hit in enumerate(clause_candidates):
+                    det_res = check_deterministic_conflict(clause, hit.snippet)
+                    if det_res:
+                        category, severity, reason = det_res
+                        results.append(
+                            ConflictHit(
+                                draft_clause=clause[:350],
+                                existing_gr_id=hit.gr_id,
+                                existing_gr_title=hit.title,
+                                existing_department=hit.department,
+                                existing_clause=hit.snippet,
+                                relation=Relation.CONFLICT,
+                                confidence=1.0,
+                                justification=reason,
+                                source_url=hit.source_url,
+                                conflict_type=category,
+                                severity=severity,
+                            )
                         )
+                    else:
+                        llm_pending.append((idx, hit))
+
+            if not llm_pending:
+                clause_ctx.meta(candidates=len(clause_candidates), llm_skipped=True)
+                continue
+
+            clause_ctx.meta(candidates=len(clause_candidates), llm_pending=len(llm_pending))
+
+            # Step 2: Build LLM message for remaining candidates
+            with perf("Prompt Build"):
+                user_msg = f"DRAFT CLAUSE:\n{clause[:500]}\n\nEXISTING CLAUSES TO COMPARE:\n"
+                for llm_idx, (orig_idx, hit) in enumerate(llm_pending):
+                    snippet = hit.snippet[:_SNIPPET_MAX]
+                    user_msg += (
+                        f"--- CANDIDATE {llm_idx} (ID: {hit.gr_id}, Dept: {hit.department}) ---\n"
+                        f"{snippet}\n\n"
                     )
-            except Exception as exc:
-                logger.warning("Error parsing conflict item: %s", exc)
+
+            with perf(f"Ollama Call [{clause_idx + 1}]"):
+                raw_reply = call_model(system_prompt, user_msg)
+
+            with perf("JSON Parse"):
+                parsed = parse_json_reply(raw_reply)
+            if not parsed or not isinstance(parsed, list):
+                continue
+
+            with perf("ConflictHit assembly"):
+                for item in parsed:
+                    try:
+                        c_idx = int(item.get("candidate_idx", -1))
+                        if 0 <= c_idx < len(llm_pending):
+                            orig_idx, hit = llm_pending[c_idx]
+                            relation_str = item.get("relation", "independent")
+                            if relation_str == "contradictory":
+                                relation_enum = Relation.CONFLICT
+                            elif relation_str == "superseding":
+                                relation_enum = Relation.SUPERSEDES
+                            elif relation_str == "compatible":
+                                relation_enum = Relation.OVERLAP
+                            else:
+                                continue
+                            results.append(
+                                ConflictHit(
+                                    draft_clause=clause[:350],
+                                    existing_gr_id=hit.gr_id,
+                                    existing_gr_title=hit.title,
+                                    existing_department=hit.department,
+                                    existing_clause=hit.snippet,
+                                    relation=relation_enum,
+                                    confidence=float(item.get("confidence", 0.5)),
+                                    justification=item.get("justification", "Analyzed by AI."),
+                                    source_url=hit.source_url,
+                                    conflict_type=item.get("conflict_type", "Policy Conflict"),
+                                    severity=item.get("severity", "High"),
+                                )
+                            )
+                    except Exception as exc:
+                        logger.warning("Error parsing conflict item: %s", exc)
 
     return results
 
