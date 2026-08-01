@@ -19,7 +19,8 @@ import re
 import time
 import threading
 from collections import OrderedDict
-from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Union
 
 from dotenv import load_dotenv
 
@@ -46,26 +47,158 @@ _LLM_API_KEY: str = os.getenv("LLM_API_KEY") or settings.LLM_API_KEY
 
 
 # =====================================================================
-# Clause splitting — rule-based on purpose
+# Clause splitting — structural parser
 # =====================================================================
 
-def split_into_clauses(text: str) -> List[str]:
-    """
-    Break a draft into its operative clauses.
+@dataclass
+class ClauseInfo:
+    """A single parsed clause from a Government Resolution."""
+    clause_id: str = ""
+    clause_number: int = 0
+    clause_type: str = "operative"   # header | read | background | operative | schedule | footer
+    text: str = ""
+    start_offset: int = 0
+    end_offset: int = 0
 
-    Supports both Arabic numerals (1., 2.) and Devanagari numerals (०१., १., २.)
-    so that Marathi GRs drafted with the official numbering are correctly split
-    into individual clauses for conflict detection.
+
+# Patterns to detect boilerplate sections that should NOT be embedded or
+# sent to the LLM as candidate clauses.
+_HEADER_MARKERS_MR = [
+    "महाराष्ट्र शासन", "शासन निर्णय क्रमांक", "मंत्रालय", "बांधकाम भवन",
+    "दिनांक", "# Page 1", "Government of Maharashtra",
+]
+_HEADER_MARKERS_EN = [
+    "Government of Maharashtra", "Government Resolution", "Mantralaya",
+    "# Page 1", "Date:", "Hutatma Rajguru Chowk",
+]
+_READ_MARKERS = ["वाचा", "Read:-", "Read :-", "Reference:-", "संदर्भ"]
+_BACKGROUND_MARKERS = ["प्रस्तावना", "Preamble", "Introduction:", "Background:"]
+_FOOTER_MARKERS = [
+    "प्रत", "Copy to", "By order", "सही/-", "(Signed)", "e-mail",
+    "या शासन निर्णयाची सत्यप्रत", "This Government Resolution",
+]
+
+
+def _classify_section(text: str) -> str:
+    """Classify a text section as header/read/background/operative/footer."""
+    text_lower = text.lower()
+    first_100 = text[:100]
+
+    # Check footer markers first (they appear at the end)
+    for m in _FOOTER_MARKERS:
+        if m.lower() in text_lower:
+            # Only classify as footer if the marker appears early in the chunk
+            # or the chunk is short (signature block)
+            if len(text) < 200 or m.lower() in text_lower[:150]:
+                return "footer"
+
+    # Check header markers
+    for m in _HEADER_MARKERS_MR + _HEADER_MARKERS_EN:
+        if m in first_100:
+            return "header"
+
+    # Check read section
+    for m in _READ_MARKERS:
+        if m in first_100:
+            return "read"
+
+    # Check background
+    for m in _BACKGROUND_MARKERS:
+        if m in first_100:
+            return "background"
+
+    return "operative"
+
+
+def extract_clauses(text: str) -> List[ClauseInfo]:
     """
-    # Match:
-    #   \d+[.)]           — Arabic: 1. 2. 1) 2)
-    #   [\u0966-\u096F]+[.)] — Devanagari: १. ०१. ०२.
-    parts = re.split(
+    Structural parser for Government Resolutions.
+
+    Splits the text into classified sections, stripping administrative
+    boilerplate (headers, dates, department names, Read sections, signatures)
+    and preserving background and operative clauses.
+
+    Returns a list of ClauseInfo objects with rich metadata.
+    """
+    if not text or not text.strip():
+        return []
+
+    # Step 1: Split on numbered clauses (Arabic + Devanagari)
+    # This regex splits before lines starting with a number followed by . or )
+    raw_parts = re.split(
         r"\n\s*(?=(?:\d+|[\u0966-\u096F]+)[.)]\s)",
         text,
     )
-    clauses = [part.strip() for part in parts if len(part.strip()) > 40]
-    return clauses or [text.strip()]
+
+    clauses: List[ClauseInfo] = []
+    offset = 0
+    clause_counter = 0
+
+    for part in raw_parts:
+        stripped = part.strip()
+        if len(stripped) < 20:
+            offset += len(part)
+            continue
+
+        section_type = _classify_section(stripped)
+
+        # Extract clause number from text if it starts with one
+        num_match = re.match(r'^(?:(\d+)|([\u0966-\u096F]+))[.)]\s', stripped)
+        if num_match:
+            clause_counter += 1
+            if num_match.group(1):
+                clause_num = int(num_match.group(1))
+            else:
+                # Convert Devanagari digits to Arabic
+                dev_str = num_match.group(2)
+                clause_num = int(''.join(
+                    str(ord(c) - 0x0966) for c in dev_str
+                ))
+            if section_type == "operative":
+                section_type = "operative"  # confirm
+        else:
+            clause_num = clause_counter
+
+        clauses.append(ClauseInfo(
+            clause_id=f"clause_{clause_counter}",
+            clause_number=clause_num,
+            clause_type=section_type,
+            text=stripped,
+            start_offset=offset,
+            end_offset=offset + len(part),
+        ))
+        offset += len(part)
+
+    # If no clauses were found, treat the entire text as one clause
+    if not clauses:
+        return [ClauseInfo(
+            clause_id="clause_1",
+            clause_number=1,
+            clause_type="operative",
+            text=text.strip(),
+            start_offset=0,
+            end_offset=len(text),
+        )]
+
+    return clauses
+
+
+def split_into_clauses(text: str) -> List[str]:
+    """
+    Break a draft into its operative clauses (backward-compatible API).
+
+    Internally uses the structural parser, but returns plain strings
+    for callers that don't need ClauseInfo metadata.
+    Only returns operative and background clauses, stripping headers,
+    read sections, and footers.
+    """
+    all_clauses = extract_clauses(text)
+    operative = [
+        c.text for c in all_clauses
+        if c.clause_type in ("operative", "background")
+        and len(c.text.strip()) > 40
+    ]
+    return operative or [text.strip()]
 
 
 # =====================================================================
@@ -451,419 +584,377 @@ def parse_json_reply(raw: str) -> Optional[dict | list]:
 
 
 # =====================================================================
-# Objective 1 — conflict detection
+# Objective 1 — conflict detection (Semantic-First Pipeline)
 # =====================================================================
 
-_SNIPPET_MAX = 400   # chars sent per candidate to the API (saves tokens)
+_SNIPPET_MAX = 600   # chars sent per candidate to the API
 
 # =====================================================================
-# Conflict detection system prompts — pre-built module-level constants
-#
-# Motivation: detect_conflicts() is called once per clause (up to 10×).
-# The original code reconstructed the ~1 977-char system prompt string
-# from literals on every call. Moving these to module level:
-#  - Eliminates string concatenation overhead × 10 calls
-#  - Reduces the taxonomy from the verbose 42-item prose form to a
-#    condensed comma-separated list (same category names, ~90 fewer tokens)
+# Conflict categories — expanded taxonomy
 # =====================================================================
 
-# Condensed conflict type list — identical category names, shorter surrounding
-# prose. The model still receives every category name unchanged so output
-# schema (ConflictHit.conflict_type) is unaffected.
 _CONFLICT_TYPES = (
-    "Authority Conflict, Department Responsibility Conflict, Funding Conflict, "
-    "Budget Allocation Conflict, Budget Head Conflict, Fund Utilization Conflict, "
-    "Fund Diversion Conflict, Administrative Approval Conflict, Technical Approval Conflict, "
-    "Operational Conflict, Implementation Agency Conflict, Implementation Procedure Conflict, "
-    "Tendering Procedure Conflict, Procurement Conflict, Policy Conflict, Legal Conflict, "
-    "Legal Reference Conflict, Regulatory Conflict, Timeline Conflict, "
-    "Monitoring & Reporting Conflict, Committee Structure Conflict, Governance Conflict, "
-    "Jurisdiction Conflict, Responsibility Assignment Conflict, Financial Compliance Conflict, "
-    "Expenditure Rule Conflict, Payment Authority Conflict, Quality Assurance Conflict, "
-    "Inspection Procedure Conflict, Land Acquisition Conflict, Encroachment Procedure Conflict, "
-    "Environmental Policy Conflict, Infrastructure Scope Conflict, Digital Compliance Conflict, "
-    "Documentation Conflict, Terminology Conflict, Reference Conflict, "
-    "Eligibility Criteria Conflict, Priority Conflict, Resource Allocation Conflict, "
-    "Approval Hierarchy Conflict, Compliance Conflict"
+    "Amendment, Supersession, Withdrawal, Cancellation, Approval Change, "
+    "Eligibility Change, Funding Conflict, Budget Allocation Conflict, "
+    "Timeline Conflict, Legal Reference Conflict, Policy Conflict, "
+    "Jurisdiction Conflict, Responsibility Transfer, Administrative Conflict, "
+    "Authority Conflict, Monitoring & Reporting Conflict, "
+    "Implementation Procedure Conflict, Procurement Conflict"
 )
 
-_CONFLICT_BASE = (
-    "You are a policy analyst for the Government of Maharashtra.\n"
-    "Compare the DRAFT CLAUSE against each numbered CANDIDATE.\n"
-    "Determine if any candidates represent a TRUE conflict (e.g. contradictory, superseding, overrides, funding conflict).\n\n"
-    "If a candidate represents a TRUE conflict, assign one conflict_type from:\n"
-    + _CONFLICT_TYPES + "\n"
-    "And assign severity: Low | Medium | High | Critical.\n\n"
-    "Return ONLY a JSON array containing candidates that have a TRUE conflict.\n"
-    "If NO candidates conflict, you MUST return an empty array: []\n"
-    "Do NOT generate JSON objects for independent, compatible, related, or non-conflicting candidates.\n\n"
-    "Return ONLY a JSON array, no markdown:\n"
-    '[{"candidate_idx": 0, "relation": "contradictory", "conflict_type": "...", '
-    '"severity": "...", "confidence": 0.0-1.0, '
-    '"justification": "explanation quoting clashing text"}]'
+# =====================================================================
+# Semantic-first conflict prompt — never bypasses the LLM
+# =====================================================================
+
+_SEMANTIC_CONFLICT_SYSTEM_PROMPT = (
+    "You are a senior policy analyst for the Government of Maharashtra.\n"
+    "You must compare a DRAFT CLAUSE from a new Government Resolution against \n"
+    "EXISTING CLAUSES from the corpus of existing Government Resolutions.\n\n"
+    "CLASSIFICATION RULES:\n"
+    "For each existing clause, classify the relationship as EXACTLY one of:\n"
+    "  - compatible     : No conflict. Clauses can coexist without contradiction.\n"
+    "  - independent    : Clauses address different subjects entirely.\n"
+    "  - related        : Same subject area but no contradiction.\n"
+    "  - superseded     : Draft clause replaces or supersedes the existing clause.\n"
+    "  - contradictory  : Clauses CANNOT both be valid. One directly contradicts the other.\n\n"
+    "CRITICAL INSTRUCTIONS:\n"
+    "1. Two clauses from DIFFERENT departments are NOT automatically contradictory.\n"
+    "   A clause from School Education and a clause from Higher Education can coexist.\n"
+    "2. Different department names, authority names, or dates do NOT constitute a conflict.\n"
+    "3. Only flag a conflict when the POLICY SUBSTANCE directly contradicts.\n"
+    "   Example: Draft says 'approval is withdrawn' while existing says 'approval is granted' = contradictory.\n"
+    "   Example: Draft mentions 'School Education' while existing mentions 'Higher Education' = independent (NOT contradictory).\n"
+    "4. Administrative boilerplate (headers, dates, addresses, reference lists) must be IGNORED.\n\n"
+    "SEMANTIC HINTS (from automated pre-screening — use these to guide your analysis, \n"
+    "but YOU must make the final determination):\n"
+    "{hints}\n\n"
+    "If a candidate IS contradictory, assign one conflict_type from:\n"
+    + _CONFLICT_TYPES + "\n\n"
+    "Severity: Low | Medium | High | Critical\n\n"
+    "Return ONLY a JSON array. Include ONLY candidates classified as 'contradictory' or 'superseded'.\n"
+    "If NO candidates are contradictory or superseded, return an empty array: []\n\n"
+    "JSON schema (return ONLY this, no markdown):\n"
+    '[{"candidate_idx": 0, "relation": "contradictory", "conflict_type": "Policy Conflict", '
+    '"severity": "High", "confidence": 0.85, '
+    '"draft_quote": "exact text from draft clause", '
+    '"existing_quote": "exact text from existing clause", '
+    '"justification": "Explain WHY these clauses contradict each other."}]'
 )
 
-# Marathi-aware variant: appends language guidance once.
-_CONFLICT_SYSTEM_PROMPT_MR: str = (
-    _CONFLICT_BASE
-    + "\n\nIMPORTANT: The draft clause is in Marathi (मराठी). "
-    "Candidates may be Marathi or English. Compare semantically across languages, "
-    "understanding administrative terms (शासन निर्णय, अनुदान, विभाग, पात्रता, "
-    "प्रशासकीय मान्यता, वित्तीय मंजुरी)."
-)
-_CONFLICT_SYSTEM_PROMPT_EN: str = _CONFLICT_BASE
-
-_UNIFIED_CONFLICT_BASE = (
-    "You are a policy analyst for the Government of Maharashtra.\n"
-    "You are provided with multiple numbered DRAFT CLAUSES and multiple numbered EXISTING CANDIDATES.\n"
-    "Compare EVERY draft clause against EVERY existing candidate.\n"
-    "Determine if any pairing represents a TRUE conflict (e.g. contradictory, superseding, overrides, funding conflict).\n\n"
-    "If a pairing represents a TRUE conflict, assign one conflict_type from:\n"
-    + _CONFLICT_TYPES + "\n"
-    "And assign severity: Low | Medium | High | Critical.\n\n"
-    "Return ONLY a JSON array containing the pairings that have a TRUE conflict.\n"
-    "If NO pairings conflict, you MUST return an empty array: []\n"
-    "Do NOT generate JSON objects for independent, compatible, related, or non-conflicting pairings.\n\n"
-    "Return ONLY a JSON array, no markdown:\n"
-    '[{"clause_idx": 0, "candidate_idx": 1, "relation": "contradictory", "conflict_type": "...", '
-    '"severity": "...", "confidence": 0.0-1.0, '
-    '"justification": "explanation quoting clashing text"}]'
+_SEMANTIC_CONFLICT_MR_SUFFIX = (
+    "\n\nLANGUAGE: The draft clause is in Marathi (मराठी). "
+    "Candidates may be Marathi or English. Compare SEMANTICALLY across languages, "
+    "understanding administrative terms (शासन निर्णय = Government Resolution, "
+    "अनुदान = Grant, विभाग = Department, पात्रता = Eligibility, "
+    "प्रशासकीय मान्यता = Administrative Approval, वित्तीय मंजुरी = Financial Sanction)."
 )
 
-_UNIFIED_CONFLICT_SYSTEM_PROMPT_MR: str = (
-    _UNIFIED_CONFLICT_BASE
-    + "\n\nIMPORTANT: The draft clauses are in Marathi (मराठी). "
-    "Candidates may be Marathi or English. Compare semantically across languages, "
-    "understanding administrative terms (शासन निर्णय, अनुदान, विभाग, पात्रता, "
-    "प्रशासकीय मान्यता, वित्तीय मंजुरी)."
-)
-_UNIFIED_CONFLICT_SYSTEM_PROMPT_EN: str = _UNIFIED_CONFLICT_BASE
+# =====================================================================
+# Legacy prompts — kept for backward compat with USE_UNIFIED_CONFLICT_PROMPT
+# =====================================================================
+
+_CONFLICT_BASE = _SEMANTIC_CONFLICT_SYSTEM_PROMPT.replace("{hints}", "No hints available.")
+_CONFLICT_SYSTEM_PROMPT_MR = _CONFLICT_BASE + _SEMANTIC_CONFLICT_MR_SUFFIX
+_CONFLICT_SYSTEM_PROMPT_EN = _CONFLICT_BASE
+_UNIFIED_CONFLICT_BASE = _CONFLICT_BASE
+_UNIFIED_CONFLICT_SYSTEM_PROMPT_MR = _CONFLICT_BASE + _SEMANTIC_CONFLICT_MR_SUFFIX
+_UNIFIED_CONFLICT_SYSTEM_PROMPT_EN = _CONFLICT_BASE
 
 
-def check_authority_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+# =====================================================================
+# Semantic Hint Generators (formerly deterministic conflict rules)
+#
+# These functions NO LONGER return ConflictHit objects and NO LONGER
+# bypass the LLM. They return hint strings that are injected into the
+# LLM prompt to guide its analysis.
+# =====================================================================
+
+def _hint_authority(draft: str, existing: str) -> Optional[str]:
+    """Generate a hint if different authority names are detected."""
     authorities = [
-        "PCCF", "Principal Chief Conservator", "District Collector", "Collector", "Commissioner", "Secretary", "Minister", "Director",
-        "जिल्हाधिकारी", "कलेक्टर", "आयुक्त", "सचिव", "मंत्री"
+        "PCCF", "Principal Chief Conservator", "District Collector", "Collector",
+        "Commissioner", "Secretary", "Minister", "Director",
+        "जिल्हाधिकारी", "कलेक्टर", "आयुक्त", "सचिव", "मंत्री",
     ]
     draft_auths = [a for a in authorities if a.lower() in draft.lower()]
     exist_auths = [a for a in authorities if a.lower() in existing.lower()]
-    if draft_auths and exist_auths:
-        # Check if they are different (mismatch)
-        if not set(draft_auths).intersection(set(exist_auths)):
-            return (
-                "Authority Conflict",
-                "High",
-                f"Controlling authority has been changed from {exist_auths[0]} to {draft_auths[0]}."
-            )
+    if draft_auths and exist_auths and not set(draft_auths).intersection(set(exist_auths)):
+        return (
+            f"HINT: Different authorities detected (draft: {draft_auths[0]}, "
+            f"existing: {exist_auths[0]}). Verify whether approval authority "
+            f"has actually changed in a conflicting way."
+        )
     return None
 
-def check_funding_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
-    csr_terms = ["csr", "निधी"]
-    if any(c in draft.lower() for c in csr_terms) and any(c in existing.lower() for c in csr_terms):
-        draft_prohibits = any(w in draft.lower() for w in ["shall not", "prohibit", "not allowed", "not be utilized", "no permission", "परवानगी नाही", "वापरू नये"])
-        exist_permits = any(w in existing.lower() for w in ["permit", "allowed", "may be utilized", "utilized", "permission", "परवानगी आहे", "वापरता येईल", "मान्यता"])
-        draft_permits = any(w in draft.lower() for w in ["permit", "allowed", "may be utilized", "utilized", "permission", "परवानगी आहे", "वापरता येईल", "मान्यता"])
-        exist_prohibits = any(w in existing.lower() for w in ["shall not", "prohibit", "not allowed", "not be utilized", "no permission", "परवानगी नाही", "वापरू नये"])
-        
-        if (draft_prohibits and exist_permits) or (draft_permits and exist_prohibits):
-            reason = "Draft prohibits CSR funding whereas the existing GR explicitly permits CSR funding." if draft_prohibits else "Draft permits CSR funding whereas the existing GR prohibits CSR funding."
-            return ("Funding Conflict", "Critical", reason)
+
+def _hint_funding(draft: str, existing: str) -> Optional[str]:
+    """Generate a hint if funding source keywords differ."""
+    fund_terms = ["csr", "निधी", "funding", "grant", "अनुदान", "budget"]
+    draft_has = any(t in draft.lower() for t in fund_terms)
+    exist_has = any(t in existing.lower() for t in fund_terms)
+    if draft_has and exist_has:
+        return (
+            "HINT: Both clauses mention funding/financial terms. "
+            "Verify whether funding sources or amounts are contradictory."
+        )
     return None
 
-def check_timeline_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
-    timeline_terms = ["31 march", "financial year", "deadline", "timeline", "months", "days", "दिवस", "महिना", "मुदत"]
-    if any(t in draft.lower() for t in timeline_terms) and any(t in existing.lower() for t in timeline_terms):
-        if "continue next financial year" in draft.lower() and "before" in existing.lower():
-            return (
-                "Timeline Conflict",
-                "Medium",
-                "Draft allows expenditure to continue into the next financial year, whereas the existing GR mandates completion/expenditure before a strict deadline."
-            )
+
+def _hint_timeline(draft: str, existing: str) -> Optional[str]:
+    """Generate a hint if timeline keywords are detected."""
+    time_terms = ["deadline", "days", "months", "financial year", "दिवस", "महिना", "मुदत"]
+    draft_has = any(t in draft.lower() for t in time_terms)
+    exist_has = any(t in existing.lower() for t in time_terms)
+    if draft_has and exist_has:
+        return (
+            "HINT: Both clauses contain timeline references. "
+            "Check whether the timelines are contradictory."
+        )
     return None
 
-def check_monitoring_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
-    intervals = ["monthly", "quarterly", "weekly", "annual", "six-monthly", "fortnightly", "मासिक", "तिमाही", "वार्षिक"]
-    draft_intervals = [i for i in intervals if i in draft.lower()]
-    exist_intervals = [i for i in intervals if i in existing.lower()]
-    if draft_intervals and exist_intervals:
-        if not set(draft_intervals).intersection(set(exist_intervals)):
-            return (
-                "Monitoring & Reporting Conflict",
-                "Medium",
-                f"Reporting frequency has been changed from {exist_intervals[0]} to {draft_intervals[0]}."
-            )
+
+def _hint_monitoring(draft: str, existing: str) -> Optional[str]:
+    """Generate a hint if monitoring/reporting intervals differ."""
+    intervals = ["monthly", "quarterly", "weekly", "annual", "मासिक", "तिमाही", "वार्षिक"]
+    draft_int = [i for i in intervals if i in draft.lower()]
+    exist_int = [i for i in intervals if i in existing.lower()]
+    if draft_int and exist_int and not set(draft_int).intersection(set(exist_int)):
+        return (
+            f"HINT: Different reporting frequencies detected "
+            f"(draft: {draft_int[0]}, existing: {exist_int[0]}). "
+            f"Verify whether this represents a genuine reporting conflict."
+        )
     return None
 
-def check_dept_responsibility_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+
+def _hint_department(draft: str, existing: str) -> Optional[str]:
+    """Generate a hint if different departments are mentioned.
+
+    CRITICAL: This is a hint ONLY. Different department names NEVER
+    automatically imply a conflict. The LLM must verify semantically.
+    """
     depts = [
-        "Revenue Department", "Rural Development Department", "Public Health Department",
-        "Water Supply", "School Education", "Higher and Technical", "Industries",
-        "Home Department", "Finance Department", "महसूल विभाग", "ग्रामविकास विभाग", "आरोग्य विभाग"
+        "Revenue Department", "Rural Development", "Public Health",
+        "Water Supply", "School Education", "Higher and Technical",
+        "Industries", "Home Department", "Finance Department",
+        "महसूल विभाग", "ग्रामविकास विभाग", "आरोग्य विभाग",
     ]
     draft_depts = [d for d in depts if d.lower() in draft.lower()]
     exist_depts = [d for d in depts if d.lower() in existing.lower()]
-    if draft_depts and exist_depts:
-        if not set(draft_depts).intersection(set(exist_depts)):
-            return (
-                "Department Responsibility Conflict",
-                "High",
-                f"Implementing/Nodal department has been changed from {exist_depts[0]} to {draft_depts[0]}."
-            )
+    if draft_depts and exist_depts and not set(draft_depts).intersection(set(exist_depts)):
+        return (
+            f"HINT: Cross-department reference detected "
+            f"(draft: {draft_depts[0]}, existing: {exist_depts[0]}). "
+            f"This is likely a cross-department reference, NOT a conflict. "
+            f"Only flag as conflict if implementation RESPONSIBILITY has genuinely transferred."
+        )
     return None
 
+
+def generate_semantic_hints(draft_clause: str, existing_clause: str) -> List[str]:
+    """Run all hint generators and return the list of triggered hints."""
+    hints = []
+    for fn in [_hint_authority, _hint_funding, _hint_timeline, _hint_monitoring, _hint_department]:
+        result = fn(draft_clause, existing_clause)
+        if result:
+            hints.append(result)
+    return hints
+
+
+# =====================================================================
+# Legacy API: check_deterministic_conflict — kept for backward compat
+# but now returns None always (hints are used instead)
+# =====================================================================
+
+def check_authority_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    return None  # Converted to semantic hint
+
+def check_funding_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    return None  # Converted to semantic hint
+
+def check_timeline_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    return None  # Converted to semantic hint
+
+def check_monitoring_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    return None  # Converted to semantic hint
+
+def check_dept_responsibility_conflict(draft: str, existing: str) -> Optional[tuple[str, str, str]]:
+    return None  # Converted to semantic hint
+
 def check_deterministic_conflict(draft_clause: str, existing_clause: str) -> Optional[tuple[str, str, str]]:
-    res = check_authority_conflict(draft_clause, existing_clause)
-    if res: return res
-    res = check_funding_conflict(draft_clause, existing_clause)
-    if res: return res
-    res = check_timeline_conflict(draft_clause, existing_clause)
-    if res: return res
-    res = check_monitoring_conflict(draft_clause, existing_clause)
-    if res: return res
-    res = check_dept_responsibility_conflict(draft_clause, existing_clause)
-    if res: return res
-    return None
+    return None  # All rules converted to semantic hints
+
+
+# =====================================================================
+# Confidence bands
+# =====================================================================
+
+_CONF_AUTO = 0.85       # >= this: auto-confirmed conflict
+_CONF_REVIEW = 0.60     # >= this: needs officer review
+# < _CONF_REVIEW: discarded
+
+
+def _confidence_recommendation(confidence: float) -> str:
+    """Return an officer recommendation based on confidence band."""
+    if confidence >= _CONF_AUTO:
+        return "High-confidence conflict. Immediate review recommended."
+    elif confidence >= _CONF_REVIEW:
+        return "Moderate confidence. Officer verification required."
+    else:
+        return "Low confidence. May be discarded."
+
+
+# =====================================================================
+# Main conflict detection — semantic-first pipeline
+# =====================================================================
 
 def detect_conflicts(
     draft_clauses: List[str],
-    candidates: List[CorpusHit],
+    candidates: Union[List[CorpusHit], List[List[CorpusHit]]],
     draft_language: str = "en",
 ) -> List[ConflictHit]:
     """
-    For each draft clause, check deterministic rule engine first. If no conflict
-    is found, send a batched LLM call covering all remaining candidates.
+    Semantic-first conflict detection pipeline.
+
+    For each draft clause:
+    1. Gather candidates from retrieval
+    2. Generate semantic hints
+    3. Build prompt with hints and complete clause objects
+    4. Send to LLM for semantic verification
+    5. Apply confidence filtering and return ConflictHit objects with quotes
 
     Parameters
     ----------
     draft_clauses   : Operative clauses extracted from the draft GR.
-    candidates      : Corpus chunks retrieved as potential conflict candidates.
+    candidates      : Corpus hits retrieved as potential conflict candidates (flat or nested per clause).
     draft_language  : 'mr' for Marathi drafts, 'en' for English drafts.
-                      When 'mr', the LLM prompt instructs the model to compare
-                      Marathi text and reason about Maharashtra administrative
-                      context in that language.
     """
     if not draft_clauses or not candidates:
         return []
 
-    results = []
+    results: List[ConflictHit] = []
     candidates_per_clause = settings.CANDIDATES_PER_CLAUSE
+    mr_suffix = _SEMANTIC_CONFLICT_MR_SUFFIX if draft_language == "mr" else ""
 
-    # Select the pre-built module-level system prompt — no string construction
-    # per call. The MR variant appends Marathi-language guidance once.
-    system_prompt = (
-        _CONFLICT_SYSTEM_PROMPT_MR if draft_language == "mr"
-        else _CONFLICT_SYSTEM_PROMPT_EN
-    )
-    unified_system_prompt = (
-        _UNIFIED_CONFLICT_SYSTEM_PROMPT_MR if draft_language == "mr"
-        else _UNIFIED_CONFLICT_SYSTEM_PROMPT_EN
-    )
+    # Normalize candidate structure: handle both List[List[CorpusHit]] and flat List[CorpusHit]
+    is_nested = isinstance(candidates[0], list) if candidates else False
 
-    # -------------------------------------------------------------------------
-    # EXPERIMENTAL: Unified Conflict Orchestration
-    # -------------------------------------------------------------------------
-    if getattr(settings, "USE_UNIFIED_CONFLICT_PROMPT", False):
-        try:
-            with perf("Unified Conflict Workflow"):
-                llm_pending_unified = []
-                # Map unified indices back to (clause_idx, clause, original_candidate_idx, hit)
-                candidate_mapping = {}
-                unified_candidate_idx = 0
-                
-                unified_clauses_msg = []
-                unified_candidates_msg = []
-                
-                # Deduplicate candidates across clauses so we don't send the same hit multiple times
-                seen_candidates = {}
+    for clause_idx, clause in enumerate(draft_clauses[:settings.MAX_CLAUSES_ANALYSED]):
+        if is_nested:
+            if clause_idx < len(candidates):
+                clause_candidates = candidates[clause_idx]
+            else:
+                clause_candidates = []
+        else:
+            start_idx = clause_idx * candidates_per_clause
+            clause_candidates = candidates[start_idx:start_idx + candidates_per_clause]
 
-                for clause_idx, clause in enumerate(draft_clauses[: settings.MAX_CLAUSES_ANALYSED]):
-                    unified_clauses_msg.append(f"--- DRAFT CLAUSE {clause_idx} ---\n{clause[:500]}\n")
-                    
-                    start_idx = clause_idx * candidates_per_clause
-                    clause_candidates = candidates[start_idx : start_idx + candidates_per_clause]
-                    
-                    for idx, hit in enumerate(clause_candidates):
-                        # Step 1: Run deterministic engine immediately
-                        det_res = check_deterministic_conflict(clause, hit.snippet)
-                        if det_res:
-                            category, severity, reason = det_res
-                            results.append(
-                                ConflictHit(
-                                    draft_clause=clause[:350],
-                                    existing_gr_id=hit.gr_id,
-                                    existing_gr_title=hit.title,
-                                    existing_department=hit.department,
-                                    existing_clause=hit.snippet,
-                                    relation=Relation.CONFLICT,
-                                    confidence=1.0,
-                                    justification=reason,
-                                    source_url=hit.source_url,
-                                    conflict_type=category,
-                                    severity=severity,
-                                )
-                            )
-                        else:
-                            # Add to unified LLM list
-                            if hit.gr_id not in seen_candidates:
-                                seen_candidates[hit.gr_id] = unified_candidate_idx
-                                unified_candidates_msg.append(
-                                    f"--- EXISTING CANDIDATE {unified_candidate_idx} (ID: {hit.gr_id}) ---\n{hit.snippet[:_SNIPPET_MAX]}\n"
-                                )
-                                unified_candidate_idx += 1
-                                
-                            c_uidx = seen_candidates[hit.gr_id]
-                            candidate_mapping[(clause_idx, c_uidx)] = (clause, hit)
-
-                if candidate_mapping:
-                    user_msg = (
-                        "DRAFT CLAUSES TO EVALUATE:\n" + "\n".join(unified_clauses_msg) +
-                        "\n\nEXISTING CANDIDATES TO COMPARE:\n" + "\n".join(unified_candidates_msg)
-                    )
-                    
-                    with perf("Unified Ollama Call"):
-                        raw_reply = call_model(unified_system_prompt, user_msg, purpose="conflict_detection")
-                    
-                    with perf("Ollama JSON Parsing"):
-                        parsed = parse_json_reply(raw_reply)
-                        
-                    if not isinstance(parsed, list):
-                        raise ValueError(f"Unified parser expected list, got {type(parsed)}")
-                    
-                    with perf("Confidence Filtering"):
-                        for item in parsed:
-                            c_idx = int(item.get("clause_idx", -1))
-                            cand_idx = int(item.get("candidate_idx", -1))
-                            
-                            if (c_idx, cand_idx) not in candidate_mapping:
-                                if c_idx != -1 and cand_idx != -1:
-                                    logger.warning(f"Unified LLM hallucinated index pairing: clause {c_idx}, cand {cand_idx}")
-                                continue
-                                
-                            clause, hit = candidate_mapping[(c_idx, cand_idx)]
-                            relation_str = item.get("relation", "independent")
-                            if relation_str in ["contradictory", "conflict", "true conflict"]:
-                                relation_enum = Relation.CONFLICT
-                            elif relation_str in ["superseding", "overrides", "supersedes"]:
-                                relation_enum = Relation.SUPERSEDES
-                            elif relation_str in ["compatible", "duplicate", "overlap"]:
-                                relation_enum = Relation.OVERLAP
-                            else:
-                                continue
-                                
-                            results.append(
-                                ConflictHit(
-                                    draft_clause=clause[:350],
-                                    existing_gr_id=hit.gr_id,
-                                    existing_gr_title=hit.title,
-                                    existing_department=hit.department,
-                                    existing_clause=hit.snippet,
-                                    relation=relation_enum,
-                                    confidence=float(item.get("confidence", 0.5)),
-                                    justification=item.get("justification", item.get("reason", "Analyzed by AI.")),
-                                    source_url=hit.source_url,
-                                    conflict_type=item.get("conflict_type", "Policy Conflict"),
-                                    severity=item.get("severity", "High"),
-                                )
-                            )
-            # If we get here successfully, return immediately (skipping sequential loop)
-            return results
-        except Exception as exc:
-            logger.error(f"Unified conflict detection failed: {exc}. Falling back to sequential mode.")
-            # Clear any results we might have partially accumulated during the deterministic phase
-            results = []
-
-    # -------------------------------------------------------------------------
-    # STANDARD: Sequential Orchestration Loop
-    # -------------------------------------------------------------------------
-    for clause_idx, clause in enumerate(draft_clauses[: settings.MAX_CLAUSES_ANALYSED]):
-        start_idx = clause_idx * candidates_per_clause
-        clause_candidates = candidates[start_idx : start_idx + candidates_per_clause]
         if not clause_candidates:
             continue
 
         clause_label = f"Clause {clause_idx + 1}"
         with perf(clause_label) as clause_ctx:
 
-            # Step 1: Run Rule Engine
-            with perf("Rule Engine"):
-                llm_pending = []
-                for idx, hit in enumerate(clause_candidates):
-                    det_res = check_deterministic_conflict(clause, hit.snippet)
-                    if det_res:
-                        category, severity, reason = det_res
-                        results.append(
-                            ConflictHit(
-                                draft_clause=clause[:350],
-                                existing_gr_id=hit.gr_id,
-                                existing_gr_title=hit.title,
-                                existing_department=hit.department,
-                                existing_clause=hit.snippet,
-                                relation=Relation.CONFLICT,
-                                confidence=1.0,
-                                justification=reason,
-                                source_url=hit.source_url,
-                                conflict_type=category,
-                                severity=severity,
-                            )
-                        )
-                    else:
-                        llm_pending.append((idx, hit))
+            # Step 1: Generate semantic hints for ALL candidates
+            with perf("Hint Generation"):
+                all_hints: List[str] = []
+                for hit in clause_candidates:
+                    hints = generate_semantic_hints(clause, hit.snippet)
+                    all_hints.extend(hints)
+                unique_hints = list(dict.fromkeys(all_hints))
+                hints_text = "\n".join(unique_hints) if unique_hints else "No specific concerns detected."
 
-            if not llm_pending:
-                clause_ctx.meta(candidates=len(clause_candidates), llm_skipped=True)
-                continue
-
-            clause_ctx.meta(candidates=len(clause_candidates), llm_pending=len(llm_pending))
-
-            # Step 2: Build LLM message for remaining candidates.
-            # Use list-join instead of += to avoid O(N²) string copying.
+            # Step 2: Build the prompt with hints and full clause text
             with perf("Prompt Build"):
-                parts = [f"DRAFT CLAUSE:\n{clause[:500]}\n\nEXISTING CLAUSES TO COMPARE:\n"]
-                for llm_idx, (orig_idx, hit) in enumerate(llm_pending):
+                system_prompt = _SEMANTIC_CONFLICT_SYSTEM_PROMPT.replace("{hints}", hints_text) + mr_suffix
+
+                parts = [f"DRAFT CLAUSE:\n{clause}\n\nEXISTING CLAUSES TO COMPARE:\n"]
+                for cand_idx, hit in enumerate(clause_candidates):
                     parts.append(
-                        f"--- CANDIDATE {llm_idx} (ID: {hit.gr_id}, Dept: {hit.department}) ---\n"
-                        f"{hit.snippet[:_SNIPPET_MAX]}\n\n"
+                        f"--- CANDIDATE {cand_idx} ---\n"
+                        f"GR ID: {hit.gr_id}\n"
+                        f"Department: {hit.department}\n"
+                        f"Subject/Title: {hit.title}\n"
+                        f"Clause Type: {getattr(hit, 'clause_type', 'operative') or 'operative'}\n"
+                        f"Clause Number: {getattr(hit, 'clause_number', 'N/A') or 'N/A'}\n"
+                        f"Similarity Score: {hit.score:.3f}\n"
+                        f"Text:\n{hit.snippet}\n\n"
                     )
                 user_msg = "".join(parts)
 
-            with perf(f"Ollama Call [{clause_idx + 1}]"):
+            clause_ctx.meta(
+                candidates=len(clause_candidates),
+                hints=len(unique_hints),
+                llm_skipped=False,
+            )
+
+            # Step 3: Call LLM — always, no bypass
+            with perf(f"LLM Call [{clause_idx + 1}]"):
                 raw_reply = call_model(system_prompt, user_msg, purpose="conflict_detection")
 
-            with perf("Ollama JSON Parsing"):
+            # Step 4: Parse response
+            with perf("JSON Parsing"):
                 parsed = parse_json_reply(raw_reply)
             if not parsed or not isinstance(parsed, list):
                 continue
 
+            # Step 5: Apply confidence filtering and build ConflictHit objects
             with perf("Confidence Filtering"):
                 for item in parsed:
                     try:
                         c_idx = int(item.get("candidate_idx", -1))
-                        if 0 <= c_idx < len(llm_pending):
-                            orig_idx, hit = llm_pending[c_idx]
-                            relation_str = item.get("relation", "independent")
-                            if relation_str in ["contradictory", "conflict", "true conflict"]:
-                                relation_enum = Relation.CONFLICT
-                            elif relation_str in ["superseding", "overrides", "supersedes"]:
-                                relation_enum = Relation.SUPERSEDES
-                            elif relation_str in ["compatible", "duplicate", "overlap"]:
-                                relation_enum = Relation.OVERLAP
-                            else:
-                                continue
-                            results.append(
-                                ConflictHit(
-                                    draft_clause=clause[:350],
-                                    existing_gr_id=hit.gr_id,
-                                    existing_gr_title=hit.title,
-                                    existing_department=hit.department,
-                                    existing_clause=hit.snippet,
-                                    relation=relation_enum,
-                                    confidence=float(item.get("confidence", 0.5)),
-                                    justification=item.get("justification", item.get("reason", "Analyzed by AI.")),
-                                    source_url=hit.source_url,
-                                    conflict_type=item.get("conflict_type", "Policy Conflict"),
-                                    severity=item.get("severity", "High"),
-                                )
+                        if not (0 <= c_idx < len(clause_candidates)):
+                            logger.warning("LLM hallucinated candidate_idx=%d (max=%d)", c_idx, len(clause_candidates) - 1)
+                            continue
+
+                        hit = clause_candidates[c_idx]
+                        confidence = float(item.get("confidence", 0.5))
+
+                        # Discard low-confidence results
+                        if confidence < _CONF_REVIEW:
+                            logger.debug("Discarding low-confidence (%.2f) conflict for GR %s", confidence, hit.gr_id)
+                            continue
+
+                        relation_str = str(item.get("relation", "independent")).lower()
+                        if relation_str in ["contradictory", "conflict", "true conflict"]:
+                            relation_enum = Relation.CONFLICT
+                        elif relation_str in ["superseding", "overrides", "supersedes"]:
+                            relation_enum = Relation.SUPERSEDES
+                        elif relation_str in ["compatible", "duplicate", "overlap"]:
+                            relation_enum = Relation.OVERLAP
+                        else:
+                            continue  # independent/related — not a conflict
+
+                        # Build rich justification with exact clause quotes
+                        draft_quote = str(item.get("draft_quote", "")).strip()
+                        existing_quote = str(item.get("existing_quote", "")).strip()
+                        raw_justification = str(item.get("justification", item.get("reason", "Analyzed by AI."))).strip()
+                        recommendation = _confidence_recommendation(confidence)
+
+                        justification_parts = []
+                        if draft_quote:
+                            justification_parts.append(f'Draft Quote: "{draft_quote}"')
+                        if existing_quote:
+                            justification_parts.append(f'Existing Quote: "{existing_quote}"')
+                        justification_parts.append(f"Reason: {raw_justification}")
+                        justification_parts.append(f"Recommendation: {recommendation}")
+                        full_justification = " | ".join(justification_parts)
+
+                        results.append(
+                            ConflictHit(
+                                draft_clause=clause,
+                                existing_gr_id=hit.gr_id,
+                                existing_gr_title=hit.title,
+                                existing_department=hit.department,
+                                existing_clause=hit.snippet,
+                                relation=relation_enum,
+                                confidence=confidence,
+                                justification=full_justification,
+                                source_url=hit.source_url,
+                                conflict_type=item.get("conflict_type", "Policy Conflict"),
+                                severity=item.get("severity", "High"),
                             )
+                        )
                     except Exception as exc:
                         logger.warning("Error parsing conflict item: %s", exc)
 

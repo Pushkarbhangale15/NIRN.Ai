@@ -7,36 +7,38 @@ a .docx extension must not sail through).
 import zipfile
 from io import BytesIO
 
-import magic
-
-from document_extraction.errors import UnsupportedFileTypeError
-
-_DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-
-ALLOWED_MIME_TO_KIND = {
-    _DOCX_MIME: "docx",
-    "application/pdf": "pdf",
-    "image/png": "image",
-    "image/jpeg": "image",
-    "image/webp": "image",
-    "text/plain": "txt",
-}
-
-
-def _looks_like_docx(content: bytes) -> bool:
-    """libmagic sometimes reports a .docx as generic 'application/zip'
-    depending on the installed magic database version. A .docx is
-    specifically a zip that contains word/document.xml — check that
-    directly rather than trusting the extension."""
-    try:
-        with zipfile.ZipFile(BytesIO(content)) as zf:
-            return "word/document.xml" in zf.namelist()
-    except zipfile.BadZipFile:
-        return False
+try:
+    import magic
+except ImportError:
+    magic = None
 
 
 def detect_kind(content: bytes) -> str:
-    mime = magic.from_buffer(content, mime=True)
+    mime = None
+    if magic is not None:
+        try:
+            mime = magic.from_buffer(content, mime=True)
+        except Exception:
+            mime = None
+
+    # Pure byte magic number fallback if libmagic is unavailable or fails
+    if mime is None:
+        if content.startswith(b"%PDF"):
+            mime = "application/pdf"
+        elif content.startswith(b"\x89PNG"):
+            mime = "image/png"
+        elif content.startswith(b"\xff\xd8\xff"):
+            mime = "image/jpeg"
+        elif content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+            mime = "image/webp"
+        elif content.startswith(b"PK\x03\x04"):
+            mime = _DOCX_MIME if _looks_like_docx(content) else "application/zip"
+        else:
+            try:
+                content.decode("utf-8")
+                mime = "text/plain"
+            except UnicodeDecodeError:
+                mime = "application/octet-stream"
     kind = ALLOWED_MIME_TO_KIND.get(mime)
 
     if kind is None and mime in ("application/zip", "application/octet-stream"):

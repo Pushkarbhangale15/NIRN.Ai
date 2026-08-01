@@ -80,12 +80,17 @@ class Settings(BaseSettings):
 
     # How many corpus candidates to retrieve per draft clause before the
     # model judges the relationships.
-    CANDIDATES_PER_CLAUSE: int = 4
+    CANDIDATES_PER_CLAUSE: int = 5
 
     # Minimum confidence for a conflict to be included in the final report.
-    CONFLICT_CONFIDENCE_FLOOR: float = 0.45
+    CONFLICT_CONFIDENCE_FLOOR: float = 0.60
 
-    # Experimental feature flag for unified conflict detection
+    # Confidence bands for the semantic-first pipeline
+    CONFIDENCE_AUTO: float = 0.85       # >= this: auto-confirmed conflict
+    CONFIDENCE_REVIEW: float = 0.60     # >= this: needs officer review
+    # < CONFIDENCE_REVIEW: discarded
+
+    # Experimental feature flag for unified conflict detection (legacy, unused)
     USE_UNIFIED_CONFLICT_PROMPT: bool = False
 
     # ---- Chunking ----------------------------------------------------------

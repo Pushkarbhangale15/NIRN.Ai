@@ -77,7 +77,6 @@ export default function Draft() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scrollToClauseIndex, setScrollToClauseIndex] = useState(null);
-  const [activeReviewTab, setActiveReviewTab] = useState("compliance");
   // The persisted, CFL-coded conflicts for this draft (draft_conflicts
   // rows) — what the Policy Conflicts tab now shows, so every conflict
   // an officer sees there is the same addressable record History and
@@ -194,38 +193,6 @@ export default function Draft() {
     }
   };
 
-  const handleGenerate = async () => {
-    if (!prompt.trim() || !department) return;
-    setLoading(true);
-    setError("");
-    setDraftResult(null);
-    setAnalysisReport(null);
-    setLowConfidenceWarning(false);
-    setSaved(false);
-    setScrollToClauseIndex(null);
-    setDraftConflicts([]);
-    setCurrentStage(1);
-
-    try {
-      // Step 1: LLM Draft Generation
-      const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
-      setDraftResult(res);
-      setCurrentStage(2);
-
-      // Step 2: AI Review & Conflict Analysis
-      if (res && res.draft_id) {
-        loadDraftConflicts(res.draft_id);
-        await runAnalysisFor(res.draft_id);
-      }
-      setCurrentStage(5);
-    } catch (err) {
-      setError(err.message || "Draft generation failed.");
-      setCurrentStage(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Generating/uploading only persists a scratch row (conflict detection
   // needs one to attach to) — it stays out of History until the officer
   // confirms it's worth keeping. See is_saved on GeneratedDraft.
@@ -242,20 +209,6 @@ export default function Draft() {
       setSaving(false);
     }
   };
-
-  const handleReset = () => {
-    setPrompt("");
-    setDepartment("");
-    setDraftResult(null);
-    setAnalysisReport(null);
-    setCurrentStage(0);
-    setError("");
-    setLowConfidenceWarning(false);
-    setSaved(false);
-    setScrollToClauseIndex(null);
-    setDraftConflicts([]);
-  };
->>>>>>> origin/kumar-db
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];

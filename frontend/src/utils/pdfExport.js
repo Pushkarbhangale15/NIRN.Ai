@@ -20,10 +20,7 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-function formatConfidence(confidence) {
-  const pct = Math.round((Number(confidence) || 0) * 100);
-  return `${pct}%`;
-}
+
 
 function formatDateTime(date) {
   return date.toLocaleString("en-IN", {
@@ -224,6 +221,7 @@ function conflictBlockHtml(conflict, index, headingPrefix = "Conflict") {
       <div class="nirn-tag-row">
         <span class="nirn-tag">Detected by: ${escapeHtml(conflict.detected_by === "rule_engine" ? "Rule Engine" : "LLM Verifier")}</span>
         ${conflict.severity ? `<span class="nirn-tag">Severity: ${escapeHtml(conflict.severity)}</span>` : ""}
+        ${conflict.relation ? `<span class="nirn-tag">Relation: ${escapeHtml(conflict.relation)}</span>` : ""}
       </div>
 
       <div class="nirn-field-label">Justification</div>
@@ -306,9 +304,6 @@ function buildIndividualReportHtml(draftText, conflict, metadata, now) {
 }
 
 function buildFullReportHtml(draftText, conflicts, metadata, now) {
-  const highestConfidence = metadata.summary?.highest_conflict_confidence
-    ?? conflicts.reduce((max, c) => Math.max(max, Number(c.confidence) || 0), 0);
-
   return `
     <div class="nirn-pdf-report">
       <style>${REPORT_STYLES}</style>
@@ -331,10 +326,6 @@ function buildFullReportHtml(draftText, conflicts, metadata, now) {
         <div class="nirn-summary-box">
           <div class="nirn-num">${conflicts.length}</div>
           <div class="nirn-label">Total Conflicts Found</div>
-        </div>
-        <div class="nirn-summary-box">
-          <div class="nirn-num">${formatConfidence(highestConfidence)}</div>
-          <div class="nirn-label">Highest Confidence Score</div>
         </div>
       </div>
 

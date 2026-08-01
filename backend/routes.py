@@ -740,20 +740,20 @@ async def run_conflict_detection(
     draft_lang = draft.language  # already "en" or "mr"
 
     clauses = await run_in_threadpool(llm.split_into_clauses, draft.content)
+    if not clauses:
+        return []
 
-    candidates = []
-    for clause in clauses[:settings.MAX_CLAUSES_ANALYSED]:
-        candidates.extend(
-            await run_in_threadpool(
-                retrieval.search,
-                clause,
-                top_k=settings.CANDIDATES_PER_CLAUSE,
-                draft_language=draft_lang,
-            )
-        )
+    target_clauses = clauses[:settings.MAX_CLAUSES_ANALYSED]
+    all_candidates = await run_in_threadpool(
+        retrieval.search_batch,
+        queries=target_clauses,
+        top_k=settings.CANDIDATES_PER_CLAUSE,
+        draft_language=draft_lang,
+        draft_department=draft.department,
+    )
 
     conflicts = await run_in_threadpool(
-        llm.detect_conflicts, clauses, candidates, draft_language=draft_lang
+        llm.detect_conflicts, target_clauses, all_candidates, draft_language=draft_lang
     )
     return [c for c in conflicts
             if c.confidence >= settings.CONFLICT_CONFIDENCE_FLOOR]

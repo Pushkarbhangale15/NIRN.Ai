@@ -205,6 +205,16 @@ class CorpusHit(BaseModel):
     snippet: str
     score: float = Field(..., ge=0.0, le=1.0)
     source_url: Optional[str] = None
+    subject: Optional[str] = None
+    language: Optional[str] = None
+    clause_number: Optional[int] = None
+    clause_type: Optional[str] = None
+    year: Optional[int] = None
+    financial_flag: Optional[bool] = None
+    authority_flag: Optional[bool] = None
+    timeline_flag: Optional[bool] = None
+    keywords: Optional[List[str]] = None
+
 
 
 class CorpusSearchResponse(BaseModel):

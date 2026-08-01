@@ -61,6 +61,12 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(router)
 
+@app.on_event("startup")
+def startup_event():
+    """Execute clause-aware semantic index startup validation and health report."""
+    logger.info("Initializing clause-aware semantic index...")
+    retrieval.init_retrieval()
+
 @app.get("/", tags=["health"])
 def root():
     return {

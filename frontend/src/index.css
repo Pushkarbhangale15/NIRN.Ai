@@ -2741,14 +2741,12 @@ mark.highlight-mark {
 
 @media print {
   body * {
-    visibility: hidden !important;
-  }
-  .ProseMirror-print-wrapper,
-  .ProseMirror-print-wrapper * {
     visibility: hidden;
   }
-  .a4-paper-wrapper, .ProseMirror-print-wrapper, .ProseMirror-print-wrapper * {
-    visibility: visible;
+  .a4-paper-wrapper,
+  .ProseMirror-print-wrapper,
+  .ProseMirror-print-wrapper * {
+    visibility: visible !important;
   }
   .ProseMirror-print-wrapper {
     position: absolute;

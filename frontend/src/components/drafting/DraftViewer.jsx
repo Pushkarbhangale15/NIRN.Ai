@@ -48,11 +48,7 @@ const IconDocument = () => (
     <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm7 7V3.5L18.5 9zM8 13h8v2H8zm0 4h8v2H8zm0-8h5v2H8z"/>
   </svg>
 );
-const IconSave = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10z"/>
-  </svg>
-);
+
 
 // Uploaded/converted drafts arrive as block-level HTML (see
 // document_extraction/html_convert.py); LLM-generated drafts are still
@@ -284,12 +280,17 @@ function TiptapToolbar({ editor }) {
 export default function DraftViewer({
   draft,
   loading,
-  onSaveDraft
+  onSaveDraft,
+  saved,
+  saving,
+  onSave,
+  scrollToClauseIndex
 }) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const bodyRef = useRef(null);
 
   // Track draft ID to prevent overwriting user edits on parent state updates
   const loadedDraftIdRef = useRef(null);
@@ -350,6 +351,38 @@ export default function DraftViewer({
     }
   }, [draft, editor]);
 
+  // Best-effort deep-link from a conflict lookup's "Open draft" link.
+  useEffect(() => {
+    if (loading || scrollToClauseIndex == null || !bodyRef.current) return;
+    const items = bodyRef.current.querySelectorAll('li');
+    const target = items[scrollToClauseIndex];
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('clause-highlight');
+    const timer = setTimeout(() => target.classList.remove('clause-highlight'), 3000);
+    return () => clearTimeout(timer);
+  }, [scrollToClauseIndex, draft, loading]);
+
+  const isHtmlContent = (text) => {
+    if (!text || typeof text !== 'string') return false;
+    const trimmed = text.trim();
+    return (
+      trimmed.startsWith('<p') ||
+      trimmed.startsWith('<h') ||
+      trimmed.startsWith('<ol') ||
+      trimmed.startsWith('<ul') ||
+      trimmed.startsWith('<div')
+    );
+  };
+
+  const plainBodyText = () => {
+    if (!draft?.body_text) return '';
+    if (!isHtmlContent(draft.body_text)) return draft.body_text;
+    const el = document.createElement('div');
+    el.innerHTML = draft.body_text;
+    return el.textContent || '';
+  };
+
   // Explicit Manual Save Click Handler
   const handleManualSave = async () => {
     if (!editor || isSaving) return;
@@ -363,6 +396,8 @@ export default function DraftViewer({
     try {
       if (onSaveDraft) {
         await onSaveDraft(htmlContent, textContent);
+      } else if (onSave) {
+        await onSave();
       }
       setToast({ message: 'Document saved successfully! ✓', type: 'success' });
     } catch (err) {
@@ -375,53 +410,9 @@ export default function DraftViewer({
   };
 
   const handleCopy = () => {
-    if (!editor) return;
-    const text = editor.getText();
+    const text = editor ? editor.getText() : plainBodyText();
+    if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
-=======
-  saved,
-  saving,
-  onSave,
-  scrollToClauseIndex
-}) {
-  const { t } = useLanguage();
-  const [copied, setCopied] = useState(false);
-  const bodyRef = useRef(null);
-
-  // Best-effort deep-link from a conflict lookup's "Open draft" link.
-  // draft_clause_index is the Nth clause split.py.split_into_clauses()
-  // saw — that only lines up with a DOM element for uploaded/converted
-  // drafts, whose numbered clauses render as <li> (see
-  // document_extraction/html_convert.py). LLM-generated drafts are
-  // still plain text with no addressable blocks, so there's nothing to
-  // scroll to there — silently do nothing rather than guess a position.
-  useEffect(() => {
-    // bodyRef only exists once the loaded (non-loading) branch below has
-    // mounted — without `loading` in the dependency array, this can fire
-    // once while still loading (ref null, no-op) and never get a second
-    // chance to run once the content actually mounts.
-    if (loading || scrollToClauseIndex == null || !bodyRef.current) return;
-    const items = bodyRef.current.querySelectorAll('li');
-    const target = items[scrollToClauseIndex];
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    target.classList.add('clause-highlight');
-    const timer = setTimeout(() => target.classList.remove('clause-highlight'), 3000);
-    return () => clearTimeout(timer);
-  }, [scrollToClauseIndex, draft, loading]);
-
-  const plainBodyText = () => {
-    if (!draft?.body_text) return '';
-    if (!isHtmlContent(draft.body_text)) return draft.body_text;
-    const el = document.createElement('div');
-    el.innerHTML = draft.body_text;
-    return el.textContent || '';
-  };
-
-  const handleCopy = () => {
-    if (!draft || !draft.body_text) return;
-    navigator.clipboard.writeText(plainBodyText()).then(() => {
->>>>>>> origin/kumar-db
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });

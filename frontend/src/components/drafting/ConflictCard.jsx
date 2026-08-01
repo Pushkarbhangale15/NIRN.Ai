@@ -205,7 +205,6 @@ export default function ConflictCard({
                 const sourceSide = item.conflicting_gr_id
                   ? (item.source_clause_ref ? `${item.source_clause_ref} of GR ${item.conflicting_gr_id}` : `GR ${item.conflicting_gr_id}`)
                   : 'the referenced GR';
-
                 return (
                   <div key={item.conflict_id || idx} style={{
                     border: '2px solid var(--ink)',
@@ -251,7 +250,7 @@ export default function ConflictCard({
                         border: '1px solid var(--ink)',
                         textTransform: 'uppercase'
                       }}>
-                        {item.severity}
+                        {item.severity || 'Medium'}
                       </span>
                     </div>
 
