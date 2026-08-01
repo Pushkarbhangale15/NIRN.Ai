@@ -1,31 +1,25 @@
 """
 conflict_detection/__init__.py
 
-Two-stage pipeline to detect policy, funding, authority, timeline, and
-operational conflicts between the draft GR text and existing GRs.
+Semantic-first conflict detection pipeline for NIRN.Ai.
 
-PERFORMANCE NOTES
------------------
-The previous implementation called ``verify_conflict_with_llm`` once per
-(clause, candidate) pair inside a nested Python loop, producing up to
-MAX_CLAUSES × CANDIDATES_PER_CLAUSE = 10 × 4 = 40 sequential Ollama
-requests per document.
+Pipeline:
+  1. Structural clause extraction (headers stripped, only operative clauses)
+  2. Batch embedding + FAISS retrieval with metadata weighting
+  3. Boilerplate filtering + clause-level deduplication
+  4. Cross-encoder reranking (if available)
+  5. Semantic hint generation (replaces deterministic rule bypass)
+  6. LLM semantic verification with hints injected
+  7. Confidence band filtering
 
-This version replaces that with:
-  1. ``retrieval.search_batch`` — embeds ALL clause strings in ONE
-     SentenceTransformer forward pass and fans out FAISS results.
-  2. ``llm.detect_conflicts``  — for each clause sends ONE batched LLM
-     prompt covering all of its candidates, reducing LLM calls from 40
-     to at most 10 (one per clause).
-
-Functional output is identical: same ConflictHit schema, same
-confidence threshold, same rule-engine logic, same detected_by tag.
+All conflicts are verified by the LLM. No deterministic bypass.
 """
 
 from typing import List
 
 import llm
 import retrieval
+from clause_numbering import clause_ref
 from config import settings
 from profiler import perf
 from schemas import ConflictHit
@@ -48,6 +42,7 @@ def detect_cross_department_conflicts(
     draft_language : 'mr' or 'en' — used to bias retrieval towards
                      same-language corpus chunks.
     """
+    # Stage 1: Structural clause extraction
     with perf("Split Clauses"):
         clauses = llm.split_into_clauses(body_text)
         if not clauses:
@@ -56,23 +51,13 @@ def detect_cross_department_conflicts(
         clauses = clauses[: settings.MAX_CLAUSES_ANALYSED]
 
     # ------------------------------------------------------------------
-    # Stage 1: Batch-embed all clauses in ONE transformer forward pass.
-    # The previous code called retrieval.search() per clause, which
-    # called model.encode() per clause — N separate forward passes.
-    # search_batch() reduces that to a single model.encode() call for
-    # all clauses simultaneously.
+    # Stage 2: Batch-embed all clauses in ONE transformer forward pass.
     # ------------------------------------------------------------------
-    with perf("Batch Embedding + FAISS"):
+    with perf("Batch Embedding + FAISS + Reranking"):
         all_candidate_lists = retrieval.search_batch(
             queries=clauses,
             top_k=settings.CANDIDATES_PER_CLAUSE,
             draft_language=draft_language,
-            # Conservative score threshold: the FAISS index uses Inner Product on
-            # normalized vectors (= cosine similarity, range 0–1).  Scores below
-            # 0.40 indicate near-zero topical overlap; sending them to Gemma
-            # wastes tokens and adds noise.  The chat endpoint uses 0.81;
-            # reference resolution uses 0.70.  We use 0.40 here to be
-            # deliberately permissive — we never want to miss a real conflict.
             min_score=0.40,
         )
 
@@ -87,9 +72,7 @@ def detect_cross_department_conflicts(
         return []
 
     # ------------------------------------------------------------------
-    # Stage 2: Batched LLM verification — at most ONE call per clause.
-    # llm.detect_conflicts() runs the deterministic rule-engine first
-    # and only sends a batched prompt for candidates that pass through.
+    # Stage 3: Semantic-first LLM verification
     # ------------------------------------------------------------------
     with perf("LLM Conflict Detection"):
         conflicts = llm.detect_conflicts(
@@ -98,7 +81,7 @@ def detect_cross_department_conflicts(
             draft_language=draft_language,
         )
 
-    # Apply the global confidence floor (same filter as the analysis route).
+    # Apply the global confidence floor
     with perf("Confidence Filter"):
         result = [c for c in conflicts if c.confidence >= settings.CONFLICT_CONFIDENCE_FLOOR]
 

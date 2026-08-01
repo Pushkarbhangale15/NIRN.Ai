@@ -23,6 +23,11 @@ const STAGE_VERB_KEYS = {
   references: [
     'status_verb_extracting_references',
   ],
+  extracting: [
+    'status_verb_reading_document',
+    'status_verb_extracting_text',
+    'status_verb_recognising_script',
+  ],
 };
 
 const CYCLE_MS = 2500;

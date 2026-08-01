@@ -10,13 +10,6 @@
 
 import html2pdf from "html2pdf.js";
 
-const RELATION_LABELS = {
-  conflict: "Conflict",
-  overlap: "Overlap",
-  supersedes: "Supersedes",
-  unrelated: "Unrelated",
-};
-
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;",
@@ -30,12 +23,6 @@ function escapeHtml(value) {
 function formatConfidence(confidence) {
   const pct = Math.round((Number(confidence) || 0) * 100);
   return `${pct}%`;
-}
-
-function relationLabel(relation) {
-  if (!relation) return "Conflict";
-  const key = String(relation).toLowerCase();
-  return RELATION_LABELS[key] || relation;
 }
 
 function formatDateTime(date) {
@@ -210,25 +197,32 @@ const REPORT_STYLES = `
 `;
 
 function conflictBlockHtml(conflict, index, headingPrefix = "Conflict") {
+  const draftSide = conflict.draft_clause_ref ? `${conflict.draft_clause_ref} of this draft` : "this draft";
+  const sourceSide = conflict.conflicting_gr_id
+    ? (conflict.source_clause_ref ? `${conflict.source_clause_ref} of GR ${conflict.conflicting_gr_id}` : `GR ${conflict.conflicting_gr_id}`)
+    : "the referenced GR";
+
   return `
     <div class="nirn-conflict-block">
       <div class="nirn-conflict-heading">
-        <span>${escapeHtml(headingPrefix)} ${index != null ? `#${index + 1}` : ""}</span>
-        <span>GR ${escapeHtml(conflict.existing_gr_id)}</span>
+        <span>${escapeHtml(headingPrefix)} ${index != null ? `#${index + 1}` : ""} — <span style="font-family:monospace;">${escapeHtml(conflict.conflict_ref || "—")}</span></span>
+        <span>GR ${escapeHtml(conflict.conflicting_gr_id || "—")}</span>
       </div>
 
+      <div class="nirn-field-label">Location</div>
+      <div>${escapeHtml(draftSide)} &harr; ${escapeHtml(sourceSide)}</div>
+
       <div class="nirn-field-label">Draft Clause (source of conflict)</div>
-      <div class="nirn-clause-box nirn-draft-clause">${escapeHtml(conflict.draft_clause)}</div>
+      <div class="nirn-clause-box nirn-draft-clause">${escapeHtml(conflict.draft_excerpt || "—")}</div>
 
       <div class="nirn-field-label">Existing GR</div>
-      <div>${escapeHtml(conflict.existing_gr_title)} — ${escapeHtml((conflict.existing_department || "").replace(/_/g, " "))} (GR #${escapeHtml(conflict.existing_gr_id)})</div>
+      <div>${escapeHtml(conflict.source_gr_title || "Untitled")}${conflict.source_gr_date ? ` — ${escapeHtml(conflict.source_gr_date)}` : ""} (GR #${escapeHtml(conflict.conflicting_gr_id || "—")})</div>
 
       <div class="nirn-field-label">Existing Clause (conflicting text)</div>
-      <div class="nirn-clause-box nirn-existing-clause">${escapeHtml(conflict.existing_clause)}</div>
+      <div class="nirn-clause-box nirn-existing-clause">${escapeHtml(conflict.conflicting_text)}</div>
 
       <div class="nirn-tag-row">
-        <span class="nirn-tag">Relation: ${escapeHtml(relationLabel(conflict.relation))}</span>
-        <span class="nirn-tag">Confidence: ${formatConfidence(conflict.confidence)}</span>
+        <span class="nirn-tag">Detected by: ${escapeHtml(conflict.detected_by === "rule_engine" ? "Rule Engine" : "LLM Verifier")}</span>
         ${conflict.severity ? `<span class="nirn-tag">Severity: ${escapeHtml(conflict.severity)}</span>` : ""}
       </div>
 
@@ -425,7 +419,7 @@ export async function generateConflictPDF(draftText, conflicts, metadata = {}) {
 
   const filename = isFull
     ? `NIRN-Full-Conflict-Report-${filenameTimestamp(now)}.pdf`
-    : `NIRN-Conflict-${(Array.isArray(conflicts) ? conflicts[0] : conflicts)?.existing_gr_id || "GR"}-${filenameTimestamp(now)}.pdf`;
+    : `NIRN-${(Array.isArray(conflicts) ? conflicts[0] : conflicts)?.conflict_ref || "Conflict"}-${filenameTimestamp(now)}.pdf`;
 
   await renderHtmlToPdf(html, filename, isFull ? "NIRN.Ai | Confidential Draft Analysis" : null);
   return filename;

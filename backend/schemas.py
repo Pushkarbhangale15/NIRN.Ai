@@ -80,6 +80,11 @@ class ReferenceScript(str, Enum):
     DEVANAGARI = "devanagari"
 
 
+class DraftSource(str, Enum):
+    GENERATED = "generated"
+    UPLOADED = "uploaded"
+
+
 # A login_id may only contain letters, digits, dots, underscores and
 # hyphens — this alone rejects payloads like "admin' OR '1'='1" with a
 # 422 before it ever reaches a query.
@@ -290,6 +295,7 @@ class OfficerOut(BaseModel):
     designation: Optional[str] = None
     role: OfficerRole
     is_active: bool
+    must_change_password: bool = False
     last_login_at: Optional[datetime] = None
     created_at: datetime
 
@@ -302,11 +308,28 @@ class LoginRequest(BaseModel):
     password: constr(min_length=1, max_length=128)
 
 
-class OfficerUpdate(BaseModel):
-    """PATCH /api/admin/officers/{id} — admin-only. Both fields optional;
-    only the ones provided are changed."""
-    is_active: Optional[bool] = None
+class OfficerEdit(BaseModel):
+    """PATCH /api/officers/{id} — admin-only. login_id is deliberately
+    absent: it's the officer's permanent identifier, immutable after
+    creation. Every field is optional; only the ones provided change."""
+    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    department: Optional[str] = Field(default=None, max_length=160)
+    designation: Optional[str] = Field(default=None, max_length=120)
     role: Optional[OfficerRole] = None
+
+
+class ResetPasswordResponse(BaseModel):
+    """The temporary password is returned exactly once, here — it is
+    never logged and never retrievable again after this response."""
+    temporary_password: str
+    must_change_password: bool = True
+
+
+class PaginatedOfficers(BaseModel):
+    items: List[OfficerOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class TokenResponse(BaseModel):
@@ -339,11 +362,22 @@ class PersistedDraftUpdate(BaseModel):
 
 
 class DraftConflictOut(BaseModel):
+    """A conflict as it appears embedded under a draft's own detail view
+    (PersistedDraftDetail.conflicts) or the dismiss-conflict response —
+    the parent draft's own fields are already available at the top
+    level there, so no nested `draft` object. See ConflictWithDraftOut
+    for the standalone conflict-registry endpoints, which do need one."""
     conflict_id: UUID
+    conflict_ref: str
     source_of_conflict: str
     conflicting_text: str
     draft_excerpt: Optional[str] = None
     conflicting_gr_id: Optional[str] = None
+    draft_clause_ref: Optional[str] = None
+    draft_clause_index: Optional[int] = None
+    source_clause_ref: Optional[str] = None
+    source_gr_title: Optional[str] = None
+    source_gr_date: Optional[date] = None
     severity: ConflictSeverity
     justification: str
     detected_by: ConflictDetectedBy
@@ -353,6 +387,40 @@ class DraftConflictOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ConflictDraftBrief(BaseModel):
+    """Minimal parent-draft context for a conflict shown outside its own
+    draft's page — the History expansion, the lookup box."""
+    draft_id: UUID
+    gr_number: Optional[str] = None
+    title: str
+
+
+class ConflictDraftDetail(ConflictDraftBrief):
+    """Richer parent-draft context for GET /api/conflicts/lookup, which
+    has no surrounding draft page to supply this from."""
+    department: str
+    language: Language
+    created_at: datetime
+
+
+class ConflictWithDraftOut(DraftConflictOut):
+    """DraftConflictOut plus the nested `draft` object every standalone
+    conflict-registry endpoint (lookup, per-draft list, cross-draft
+    list) returns — see routes.py's Conflict registry section."""
+    draft: ConflictDraftBrief
+
+
+class ConflictLookupOut(ConflictWithDraftOut):
+    draft: ConflictDraftDetail
+
+
+class PaginatedConflicts(BaseModel):
+    items: List[ConflictWithDraftOut]
+    total: int
+    page: int
+    page_size: int
 
 
 class DraftReferenceOut(BaseModel):
@@ -378,6 +446,9 @@ class PersistedDraftOut(BaseModel):
     brief: Optional[str] = None
     gr_number: Optional[str] = None
     status: PersistedDraftStatus
+    source: DraftSource = DraftSource.GENERATED
+    original_filename: Optional[str] = None
+    is_saved: bool = False
     version: int
     template_score: Optional[float] = None
     created_at: datetime
@@ -392,15 +463,43 @@ class PersistedDraftDetail(PersistedDraftOut):
     references: List[DraftReferenceOut] = []
 
 
-class PaginatedDrafts(BaseModel):
-    items: List[PersistedDraftOut]
+class DraftHistoryItem(PersistedDraftOut):
+    """One row of GET /api/drafts as consumed by the History page —
+    PersistedDraftOut plus an unresolved-conflict count computed via a
+    single aggregate query (see db/repositories/drafts.py), never N+1.
+    officer_name/officer_login_id identify the author for the admin
+    "view this officer's history" panel — set in routes.py from the
+    eager-loaded GeneratedDraft.officer relationship."""
+    conflict_count: int = 0
+    officer_name: Optional[str] = None
+    officer_login_id: Optional[str] = None
+
+
+class PaginatedDraftHistory(BaseModel):
+    items: List[DraftHistoryItem]
     total: int
-    limit: int
-    offset: int
+    page: int
+    page_size: int
 
 
 class DismissConflictRequest(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=1000)
+
+
+# ---------------------------------------------------------------------
+# Upload an existing GR (Word/PDF/scan) into a draft
+# ---------------------------------------------------------------------
+
+class UploadDraftResponse(BaseModel):
+    generated_draft_id: UUID
+    title: str
+    content: str                    # Tiptap-compatible HTML
+    department: str
+    language: Language
+    gr_number: Optional[str] = None
+    detected_script: ReferenceScript
+    ocr_confidence: Optional[float] = None   # null when OCR wasn't used
+    low_confidence: bool = False
 
 
 # ---------------------------------------------------------------------

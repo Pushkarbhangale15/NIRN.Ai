@@ -2988,6 +2988,116 @@ mark.highlight-mark {
   border-top: 1px solid var(--line);
 }
 
+.admin-table--officers .admin-table-row {
+  grid-template-columns: 1.3fr 1fr 1.3fr 1fr 0.7fr 0.8fr 1fr 1.6fr;
+}
+
+.admin-table--history .admin-table-row {
+  grid-template-columns: 0.9fr 1.6fr 1.2fr 0.7fr 0.9fr 0.8fr 0.7fr 1fr 1.4fr;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.admin-toolbar .field {
+  min-width: 160px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+/* ================================================================
+   Admin modal (add/edit officer, confirm dialogs)
+   ================================================================ */
+.admin-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.admin-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: var(--border-width) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.admin-modal--narrow {
+  max-width: 420px;
+}
+
+.draft-html-content p,
+.draft-html-content h1,
+.draft-html-content h2,
+.draft-html-content h3,
+.draft-html-content ol,
+.draft-html-content ul {
+  margin: 0 0 14px 0;
+}
+
+.draft-html-content h1,
+.draft-html-content h2,
+.draft-html-content h3 {
+  font-weight: 700;
+}
+
+.draft-html-content ol,
+.draft-html-content ul {
+  padding-left: 24px;
+}
+
+.skeleton-line {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--line) 25%, #e5e1d8 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.admin-generated-password {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--ink);
+  border-radius: 8px;
+  background: var(--cream);
+  font-family: monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+
 @media (max-width: 900px) {
   .admin-table-row {
     grid-template-columns: 1fr;
@@ -3002,4 +3112,133 @@ mark.highlight-mark {
     padding: 12px 14px;
     border-bottom: 2px solid var(--line);
   }
+}
+
+/* ================================================================
+   Conflict registry — History expansion, lookup box result, and the
+   analysis-panel Policy Conflicts tab all render one conflict the same
+   way: flat card, thick ink border, hard offset shadow, no gradients.
+   ================================================================ */
+.badge-btn {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.badge-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.conflict-expansion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conflict-item {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--ink);
+  padding: 14px 16px;
+}
+
+.conflict-item-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.conflict-ref-code {
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--cream);
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+
+.conflict-item-line {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+
+.conflict-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.conflict-compare-heading {
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.conflict-excerpt-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.conflict-item-justification {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.conflict-item-dismissed {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .conflict-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Conflict detail modal — same .admin-modal chrome, but a full-screen
+   sheet on mobile instead of a centred card, per spec. */
+.conflict-detail-modal {
+  max-width: 640px;
+}
+
+@media (max-width: 640px) {
+  .admin-modal-overlay:has(.conflict-detail-modal) {
+    padding: 0;
+  }
+
+  .conflict-detail-modal {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border-width: 0;
+  }
+}
+
+/* Scroll target when "Open draft" lands on a specific clause. */
+.clause-highlight {
+  animation: clause-flash 3s ease-out;
+  border-radius: 3px;
+}
+
+@keyframes clause-flash {
+  0% { background-color: var(--yellow); }
+  100% { background-color: transparent; }
 }

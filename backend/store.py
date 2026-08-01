@@ -78,6 +78,8 @@ async def create_draft(
     brief: Optional[str] = None,
     gr_number: Optional[str] = None,
     template_score: Optional[float] = None,
+    source: str = "generated",
+    original_filename: Optional[str] = None,
 ):
     return await drafts_repo.create_draft(
         session,
@@ -90,6 +92,8 @@ async def create_draft(
         brief=brief,
         gr_number=gr_number,
         template_score=template_score,
+        source=source,
+        original_filename=original_filename,
     )
 
 
@@ -113,6 +117,9 @@ async def list_drafts(
     privileged: bool,
     department: Optional[str] = None,
     status: Optional[str] = None,
+    source: Optional[str] = None,
+    search: Optional[str] = None,
+    author_id: Optional[UUID] = None,
     sort_by: str = "created_at",
     sort_dir: str = "desc",
     limit: int = 20,
@@ -124,6 +131,9 @@ async def list_drafts(
         privileged=privileged,
         department=department,
         status=status,
+        source=source,
+        search=search,
+        author_id=author_id,
         sort_by=sort_by,
         sort_dir=sort_dir,
         limit=limit,
@@ -154,8 +164,8 @@ async def update_draft_content(
     )
 
 
-async def archive_draft(session: AsyncSession, draft_id: UUID, *, officer_id: UUID, privileged: bool) -> bool:
-    return await drafts_repo.archive_draft(session, draft_id, officer_id=officer_id, privileged=privileged)
+async def save_draft(session: AsyncSession, draft_id: UUID, *, officer_id: UUID, privileged: bool):
+    return await drafts_repo.save_draft(session, draft_id, officer_id=officer_id, privileged=privileged)
 
 
 async def add_conflicts(session: AsyncSession, draft_id: UUID, conflicts: Iterable[dict]):

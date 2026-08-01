@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 import { useDraft } from "../DraftContext.jsx";
 
 import WorkflowStepper from "../components/drafting/WorkflowStepper.jsx";
 import DraftInputCard from "../components/drafting/DraftInputCard.jsx";
+import UploadGrCard from "../components/drafting/UploadGrCard.jsx";
 import DraftViewer from "../components/drafting/DraftViewer.jsx";
+import StatusVerb from "../components/StatusVerb.jsx";
 import ComplianceCard from "../components/drafting/ComplianceCard.jsx";
 import ConflictCard from "../components/drafting/ConflictCard.jsx";
 import ReferencesCard from "../components/drafting/ReferencesCard.jsx";
@@ -54,21 +57,205 @@ const REVIEW_TABS = [
 
 export default function Draft() {
   const { t, siteLanguage } = useLanguage();
+  const location = useLocation();
   const {
     prompt, setPrompt,
     language, setLanguage,
     department, setDepartment,
-    loading,
-    analysisLoading,
-    currentStage,
-    draftResult,
-    analysisReport,
-    error,
+    loading, setLoading,
+    analysisLoading, setAnalysisLoading,
+    currentStage, setCurrentStage,
+    draftResult, setDraftResult,
+    analysisReport, setAnalysisReport,
+    error, setError,
     activeReviewTab, setActiveReviewTab,
     handleGenerate,
     handleReset,
     handleSaveDraft
   } = useDraft();
+  
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [scrollToClauseIndex, setScrollToClauseIndex] = useState(null);
+  const [activeReviewTab, setActiveReviewTab] = useState("compliance");
+  // The persisted, CFL-coded conflicts for this draft (draft_conflicts
+  // rows) — what the Policy Conflicts tab now shows, so every conflict
+  // an officer sees there is the same addressable record History and
+  // the lookup box use. Independent of analysisReport.conflicts (the
+  // ephemeral live-recomputed list still used for the overall
+  // clean/needs_review/blocked status) and fetched separately since the
+  // conflicts are already in the database the moment the draft exists —
+  // no need to wait on the slower live-analysis LLM call.
+  const [draftConflicts, setDraftConflicts] = useState([]);
+  const [draftConflictsLoading, setDraftConflictsLoading] = useState(false);
+
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [lowConfidenceWarning, setLowConfidenceWarning] = useState(false);
+
+  const loadDraftConflicts = async (draftId) => {
+    setDraftConflictsLoading(true);
+    try {
+      setDraftConflicts(await api.getDraftConflicts(draftId));
+    } catch (err) {
+      console.warn("Conflict registry fetch warning:", err);
+    } finally {
+      setDraftConflictsLoading(false);
+    }
+  };
+
+  const runAnalysisFor = async (draftId) => {
+    setAnalysisLoading(true);
+    try {
+      setCurrentStage(3);
+      const report = await api.runFullAnalysis(draftId);
+      setCurrentStage(4);
+      setAnalysisReport(report);
+    } catch (err) {
+      console.warn("Analysis call warning:", err);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  // Arriving from History's "Open" action, or a conflict lookup's "Open
+  // draft" link: load that draft into the editor and re-run analysis,
+  // same as a freshly generated one. scrollToClauseIndex (conflict
+  // lookups only) is best-effort — see DraftViewer, which scrolls to
+  // the Nth <li> of an uploaded/converted draft's rendered HTML and
+  // silently no-ops for plain-text LLM-generated drafts or a null index,
+  // rather than guessing a location it can't back up.
+  useEffect(() => {
+    const openDraftId = location.state?.openDraftId;
+    if (!openDraftId) return;
+
+    setLoading(true);
+    setError("");
+    setLowConfidenceWarning(false);
+    setScrollToClauseIndex(location.state?.scrollToClauseIndex ?? null);
+    api.getDraft(openDraftId)
+      .then((detail) => {
+        setDraftResult({
+          draft_id: detail.generated_draft_id,
+          title: detail.title,
+          department: detail.department,
+          body_text: detail.content,
+          references: [],
+        });
+        // Only reachable via History's "Open", which only lists saved
+        // drafts (see is_saved) — so this is always already saved.
+        setSaved(true);
+        setDepartment(detail.department);
+        setLanguage(detail.language === "mr" ? "Marathi" : "English");
+        setCurrentStage(2);
+        loadDraftConflicts(detail.generated_draft_id);
+        return runAnalysisFor(detail.generated_draft_id);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => {
+        setLoading(false);
+        setCurrentStage(5);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.openDraftId]);
+
+  const handleUpload = async (file) => {
+    setUploadLoading(true);
+    setError("");
+    setDraftResult(null);
+    setAnalysisReport(null);
+    setLowConfidenceWarning(false);
+    setSaved(false);
+    setScrollToClauseIndex(null);
+    setDraftConflicts([]);
+    setCurrentStage(1);
+
+    try {
+      const res = await api.uploadDraft({
+        file, department, language: language.toLowerCase() === "marathi" ? "mr" : "en",
+      });
+      setDraftResult({
+        draft_id: res.generated_draft_id,
+        title: res.title,
+        department: res.department,
+        body_text: res.content,
+        references: [],
+      });
+      setLowConfidenceWarning(Boolean(res.low_confidence));
+      setCurrentStage(2);
+      loadDraftConflicts(res.generated_draft_id);
+      await runAnalysisFor(res.generated_draft_id);
+      setCurrentStage(5);
+    } catch (err) {
+      setError(err.message || "Upload failed.");
+      setCurrentStage(0);
+      throw err;
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!prompt.trim() || !department) return;
+    setLoading(true);
+    setError("");
+    setDraftResult(null);
+    setAnalysisReport(null);
+    setLowConfidenceWarning(false);
+    setSaved(false);
+    setScrollToClauseIndex(null);
+    setDraftConflicts([]);
+    setCurrentStage(1);
+
+    try {
+      // Step 1: LLM Draft Generation
+      const res = await api.copilotDraft(prompt, language.toLowerCase(), department);
+      setDraftResult(res);
+      setCurrentStage(2);
+
+      // Step 2: AI Review & Conflict Analysis
+      if (res && res.draft_id) {
+        loadDraftConflicts(res.draft_id);
+        await runAnalysisFor(res.draft_id);
+      }
+      setCurrentStage(5);
+    } catch (err) {
+      setError(err.message || "Draft generation failed.");
+      setCurrentStage(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generating/uploading only persists a scratch row (conflict detection
+  // needs one to attach to) — it stays out of History until the officer
+  // confirms it's worth keeping. See is_saved on GeneratedDraft.
+  const handleSave = async () => {
+    if (!draftResult?.draft_id || saved) return;
+    setSaving(true);
+    setError("");
+    try {
+      await api.saveDraft(draftResult.draft_id);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message || "Failed to save draft.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setPrompt("");
+    setDepartment("");
+    setDraftResult(null);
+    setAnalysisReport(null);
+    setCurrentStage(0);
+    setError("");
+    setLowConfidenceWarning(false);
+    setSaved(false);
+    setScrollToClauseIndex(null);
+    setDraftConflicts([]);
+  };
+>>>>>>> origin/kumar-db
 
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
@@ -107,12 +294,27 @@ export default function Draft() {
             onReset={handleReset}
           />
 
+          {/* 1b. Upload an existing GR instead of generating one */}
+          <UploadGrCard
+            department={department}
+            setDepartment={setDepartment}
+            language={language}
+            setLanguage={setLanguage}
+            onUpload={handleUpload}
+            loading={uploadLoading}
+          />
+          {uploadLoading && (
+            <p style={{ margin: '-16px 0 24px', fontSize: 14, color: 'var(--ink-soft)' }}>
+              <StatusVerb stage="extracting" />
+            </p>
+          )}
+
           {/* 2. Workflow Stepper directly under the Generate Draft block */}
           <WorkflowStepper currentStage={currentStage} isGenerating={loading || analysisLoading} />
 
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">
-            
+
             {/* Left Column: Official Document Viewer */}
             <div>
               {error && (
@@ -129,6 +331,22 @@ export default function Draft() {
                   gap: '8px'
                 }}>
                   <IconAlert /> {error}
+                </div>
+              )}
+              {lowConfidenceWarning && (
+                <div style={{
+                  background: '#fff7e6',
+                  border: '2px solid #f2b01d',
+                  color: '#92400e',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <IconAlert /> {t('upload_low_confidence_warning')}
                 </div>
               )}
               <DraftViewer
@@ -193,8 +411,8 @@ export default function Draft() {
                 )}
                 {activeReviewTab === "conflicts" && (
                   <ConflictCard
-                    conflicts={allConflicts}
-                    loading={analysisLoading}
+                    conflicts={draftConflicts}
+                    loading={draftConflictsLoading}
                     hasGenerated={Boolean(draftResult)}
                     draftText={draftResult?.body_text}
                     metadata={{

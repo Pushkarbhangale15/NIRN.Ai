@@ -16,14 +16,16 @@ handlers below only call repository functions (directly, or via the
 thin async wrappers in store.py).
 """
 
+import logging
 import re
+import secrets
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -43,36 +45,52 @@ from db.models import Officer
 from db.repositories import conflicts as conflicts_repo
 from db.repositories import officers as officers_repo
 from db.security import create_access_token, hash_password, verify_password
+from document_extraction import extract_document
+from document_extraction.errors import ExtractionError, OcrUnavailableError, UnsupportedFileTypeError
 from lookup import get_adapter
-from config import settings
+from config import MAX_UPLOAD_SIZE_BYTES, OCR_LOW_CONFIDENCE_THRESHOLD, settings
 from rate_limit import limiter
 from profiler import perf, PROFILING_ENABLED
 from schemas import (
     Language,
     AnalysisReport,
     AnalysisSummary,
+    ConflictDetectedBy,
+    ConflictDraftBrief,
+    ConflictDraftDetail,
     ConflictHit,
+    ConflictLookupOut,
+    ConflictSeverity,
+    ConflictWithDraftOut,
     CorpusSearchResponse,
     DismissConflictRequest,
     DraftConflictOut,
+    DraftHistoryItem,
+    DraftSource,
     FullOCRResponse,
     LoginRequest,
     OfficerCreate,
+    OfficerEdit,
     OfficerOut,
-    OfficerUpdate,
+    OfficerRole,
     OfficialSourceResponse,
     DraftCreate,
-    PaginatedDrafts,
+    PaginatedConflicts,
+    PaginatedDraftHistory,
+    PaginatedOfficers,
     PersistedDraftCreate,
     PersistedDraftDetail,
     PersistedDraftOut,
     PersistedDraftStatus,
     PersistedDraftUpdate,
     ReferenceHit,
+    ReferenceScript,
+    ResetPasswordResponse,
     Severity,
     TemplateIssue,
     TermMapping,
     TokenResponse,
+    UploadDraftResponse,
     ChatRequest,
     ChatResponse,
     DraftGenerateRequest,
@@ -84,43 +102,19 @@ from schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(settings.APP_NAME)
 
 
 # =====================================================================
 # Auth
+#
+# There is no public self-registration. Officer accounts are created by
+# an admin only — see the /api/officers* section below. This is a
+# deliberate access-control decision, not an oversight: the only path
+# that creates an Officer row is admin_create_officer, which requires
+# deps.require_admin AND has the caller's role re-checked inside
+# officers_repo.create_officer_as_admin (defence in depth).
 # =====================================================================
-
-@router.post("/api/auth/register", response_model=OfficerOut,
-             status_code=status.HTTP_201_CREATED, tags=["auth"])
-async def register_officer(
-    payload: OfficerCreate, session: AsyncSession = Depends(get_session)
-) -> OfficerOut:
-    """
-    Public, unauthenticated self-registration. Always creates a plain
-    'officer' — any `role` the caller sends is ignored, otherwise an
-    anonymous visitor could POST role: "admin" and grant themselves
-    full access. Promotion to reviewer/admin only happens through
-    PATCH /api/admin/officers/{id}, which requires an existing admin.
-    """
-    existing = await officers_repo.get_by_login_id(session, payload.login_id)
-    if existing is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="login_id already registered")
-
-    try:
-        officer = await officers_repo.create_officer(
-            session,
-            name=payload.name,
-            login_id=payload.login_id,
-            password_hash=hash_password(payload.password),
-            department=payload.department,
-            designation=payload.designation,
-            role="officer",
-        )
-    except SQLAlchemyError:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not register officer")
-
-    return OfficerOut.model_validate(officer)
-
 
 @router.post("/api/auth/login", response_model=TokenResponse, tags=["auth"])
 @limiter.limit("5/minute")
@@ -150,34 +144,58 @@ async def get_me(current: Officer = Depends(deps.get_current_officer)) -> Office
 
 # =====================================================================
 # Admin — officer management. Every route here requires role='admin',
-# not just 'reviewer' (see deps.require_admin).
+# not just 'reviewer' (see deps.require_admin). This is the ONLY place
+# officer accounts get created (see the Auth section above).
 # =====================================================================
 
-@router.get("/api/admin/officers", response_model=List[OfficerOut], tags=["admin"])
+@router.get("/api/officers", response_model=PaginatedOfficers, tags=["admin"])
 async def admin_list_officers(
+    search: Optional[str] = Query(default=None, max_length=120, description="Matches name or login_id"),
+    role: Optional[OfficerRole] = Query(default=None),
+    department: Optional[str] = Query(default=None, max_length=160),
+    is_active: Optional[bool] = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     _admin: Officer = Depends(deps.require_admin),
     session: AsyncSession = Depends(get_session),
-) -> List[OfficerOut]:
-    officers = await officers_repo.list_officers(session)
-    return [OfficerOut.model_validate(o) for o in officers]
+) -> PaginatedOfficers:
+    try:
+        officers, total = await officers_repo.list_officers(
+            session,
+            search=search,
+            role=role.value if role else None,
+            department=department,
+            is_active=is_active,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return PaginatedOfficers(
+        items=[OfficerOut.model_validate(o) for o in officers], total=total, limit=limit, offset=offset,
+    )
 
 
-@router.post("/api/admin/officers", response_model=OfficerOut,
+@router.post("/api/officers", response_model=OfficerOut,
              status_code=status.HTTP_201_CREATED, tags=["admin"])
 async def admin_create_officer(
     payload: OfficerCreate,
-    _admin: Officer = Depends(deps.require_admin),
+    admin: Officer = Depends(deps.require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> OfficerOut:
-    """Unlike public /api/auth/register, an admin creating an officer here
-    CAN set role directly — the caller is already authenticated as admin."""
+    """The only endpoint that creates officer accounts. Unlike a public
+    self-registration endpoint (which this app deliberately does not
+    have), the caller here is already authenticated as admin, so `role`
+    on the payload is honoured as-is."""
     existing = await officers_repo.get_by_login_id(session, payload.login_id)
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="login_id already registered")
 
     try:
-        officer = await officers_repo.create_officer(
+        officer = await officers_repo.create_officer_as_admin(
             session,
+            creating_officer_role=admin.role,
             name=payload.name,
             login_id=payload.login_id,
             password_hash=hash_password(payload.password),
@@ -185,29 +203,106 @@ async def admin_create_officer(
             designation=payload.designation,
             role=payload.role.value,
         )
+    except officers_repo.AdminRequiredError:
+        # Belt-and-braces: deps.require_admin already rejected non-admins
+        # before this ran. This is the repository's own defence-in-depth
+        # check firing independently of the route dependency.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
     except SQLAlchemyError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create officer")
 
     return OfficerOut.model_validate(officer)
 
 
-@router.patch("/api/admin/officers/{officer_id}", response_model=OfficerOut, tags=["admin"])
-async def admin_update_officer(
+@router.patch("/api/officers/{officer_id}", response_model=OfficerOut, tags=["admin"])
+async def admin_edit_officer(
     officer_id: UUID,
-    payload: OfficerUpdate,
+    payload: OfficerEdit,
     _admin: Officer = Depends(deps.require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> OfficerOut:
-    officer = await officers_repo.get_by_id(session, officer_id)
+    """login_id is not editable here by design — see OfficerEdit."""
+    if payload.role is not None and payload.role != OfficerRole.ADMIN:
+        target = await officers_repo.get_by_id(session, officer_id)
+        if target is not None and target.role == "admin" and target.is_active:
+            # Demoting an admin (including self-demotion, which nothing
+            # else here blocks) can zero out active admins just as
+            # surely as deactivating or deleting the last one — same
+            # guard, same lock-based race protection.
+            remaining = await officers_repo.count_active_admins(session, exclude_officer_id=officer_id, lock=True)
+            if remaining == 0:
+                raise HTTPException(status_code=400, detail="Cannot demote the last active admin")
+
+    officer = await officers_repo.update_officer(
+        session,
+        officer_id,
+        name=payload.name,
+        department=payload.department,
+        designation=payload.designation,
+        role=payload.role.value if payload.role else None,
+    )
     if officer is None:
         raise HTTPException(status_code=404, detail=f"Officer {officer_id} not found")
-
-    if payload.is_active is not None:
-        officer = await officers_repo.set_active(session, officer_id, payload.is_active)
-    if payload.role is not None:
-        officer = await officers_repo.set_role(session, officer_id, payload.role.value)
-
     return OfficerOut.model_validate(officer)
+
+
+@router.patch("/api/officers/{officer_id}/deactivate", response_model=OfficerOut, tags=["admin"])
+async def admin_deactivate_officer(
+    officer_id: UUID,
+    admin: Officer = Depends(deps.require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> OfficerOut:
+    if officer_id == admin.officer_id:
+        raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
+
+    target = await officers_repo.get_by_id(session, officer_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail=f"Officer {officer_id} not found")
+
+    if target.role == "admin" and target.is_active:
+        # lock=True: two concurrent requests deactivating different
+        # admins can't both read "1 remaining" and both proceed.
+        remaining = await officers_repo.count_active_admins(session, exclude_officer_id=officer_id, lock=True)
+        if remaining == 0:
+            raise HTTPException(status_code=400, detail="Cannot deactivate the last active admin")
+
+    officer = await officers_repo.set_active(session, officer_id, False)
+    return OfficerOut.model_validate(officer)
+
+
+@router.patch("/api/officers/{officer_id}/activate", response_model=OfficerOut, tags=["admin"])
+async def admin_activate_officer(
+    officer_id: UUID,
+    _admin: Officer = Depends(deps.require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> OfficerOut:
+    officer = await officers_repo.set_active(session, officer_id, True)
+    if officer is None:
+        raise HTTPException(status_code=404, detail=f"Officer {officer_id} not found")
+    return OfficerOut.model_validate(officer)
+
+
+@router.post("/api/officers/{officer_id}/reset-password", response_model=ResetPasswordResponse, tags=["admin"])
+async def admin_reset_password(
+    officer_id: UUID,
+    _admin: Officer = Depends(deps.require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> ResetPasswordResponse:
+    # 16 URL-safe chars comfortably clears the 10-char Password minimum
+    # and never needs escaping when shown/copied in the admin UI.
+    temporary_password = secrets.token_urlsafe(12)
+    officer = await officers_repo.set_password(
+        session, officer_id, hash_password(temporary_password), must_change_password=True
+    )
+    if officer is None:
+        raise HTTPException(status_code=404, detail=f"Officer {officer_id} not found")
+    return ResetPasswordResponse(temporary_password=temporary_password, must_change_password=True)
+
+
+# Officer accounts are never hard-deleted — see officers_repo (no
+# delete_officer function) and the note on GeneratedDraft.drafted_by
+# (ON DELETE RESTRICT). Deactivate is the only removal path, which
+# blocks login while preserving every draft they authored.
 
 
 # =====================================================================
@@ -251,40 +346,51 @@ async def create_draft(
     return PersistedDraftOut.model_validate(draft)
 
 
-@router.get("/api/drafts", response_model=PaginatedDrafts, tags=["drafts"])
+@router.get("/api/drafts", response_model=PaginatedDraftHistory, tags=["drafts"])
 async def list_drafts(
     department: Optional[str] = Query(default=None, max_length=160),
     status_filter: Optional[PersistedDraftStatus] = Query(default=None, alias="status"),
+    source_filter: Optional[DraftSource] = Query(default=None, alias="source"),
+    search: Optional[str] = Query(default=None, max_length=200, description="Free-text search: title + content"),
+    author_id: Optional[UUID] = Query(default=None, description="Admin/reviewer only: narrow to one officer's drafts"),
     sort_by: str = Query(default="created_at"),
     sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current: Officer = Depends(deps.get_current_officer),
     session: AsyncSession = Depends(get_session),
-) -> PaginatedDrafts:
+) -> PaginatedDraftHistory:
     # sort_by is checked against a hardcoded allowlist inside the repo —
     # column names can never come from raw user input (PART 2 rule 4).
     try:
-        items, total = await store.list_drafts(
+        rows, total = await store.list_drafts(
             session,
             officer_id=current.officer_id,
             privileged=deps.is_privileged(current),
             department=department,
             status=status_filter.value if status_filter else None,
+            source=source_filter.value if source_filter else None,
+            search=search,
+            author_id=author_id,
             sort_by=sort_by,
             sort_dir=sort_dir,
-            limit=limit,
-            offset=offset,
+            limit=page_size,
+            offset=(page - 1) * page_size,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    return PaginatedDrafts(
-        items=[PersistedDraftOut.model_validate(d) for d in items],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+    # rows is [(GeneratedDraft, unresolved_conflict_count), ...] — the
+    # count came from one aggregate query in the repo, not a per-row loop.
+    items = []
+    for draft, conflict_count in rows:
+        item = DraftHistoryItem.model_validate(draft)
+        item.conflict_count = conflict_count
+        item.officer_name = draft.officer.name if draft.officer else None
+        item.officer_login_id = draft.officer.login_id if draft.officer else None
+        items.append(item)
+
+    return PaginatedDraftHistory(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/api/drafts/{draft_id}", response_model=PersistedDraftDetail, tags=["drafts"])
@@ -321,20 +427,103 @@ async def patch_draft(
     return PersistedDraftOut.model_validate(updated)
 
 
-@router.delete("/api/drafts/{draft_id}",
-               status_code=status.HTTP_204_NO_CONTENT, tags=["drafts"])
-async def delete_draft(
+@router.patch("/api/drafts/{draft_id}/save", response_model=PersistedDraftOut, tags=["drafts"])
+async def save_draft(
     draft_id: UUID,
     current: Officer = Depends(deps.get_current_officer),
     session: AsyncSession = Depends(get_session),
-) -> None:
-    """Soft delete: sets status='archived'. Rows are never hard-deleted —
-    audit history (versions, conflicts) must survive."""
-    ok = await store.archive_draft(
+) -> PersistedDraftOut:
+    """Confirms a freshly generated/uploaded draft is worth keeping —
+    flips is_saved so it starts showing up in GET /api/drafts (History).
+    See the is_saved filter in db/repositories/drafts.py."""
+    draft = await store.save_draft(
         session, draft_id, officer_id=current.officer_id, privileged=deps.is_privileged(current)
     )
-    if not ok:
+    if draft is None:
         raise HTTPException(status_code=404, detail=f"Draft {draft_id} not found")
+    return PersistedDraftOut.model_validate(draft)
+
+
+@router.post("/api/drafts/upload", response_model=UploadDraftResponse,
+             status_code=status.HTTP_201_CREATED, tags=["drafts"])
+async def upload_draft(
+    file: UploadFile = File(...),
+    department: str = Form(..., min_length=2, max_length=160),
+    language: Language = Form(...),
+    title: Optional[str] = Form(default=None, max_length=400),
+    current: Officer = Depends(deps.get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> UploadDraftResponse:
+    """
+    Upload an existing GR (Word/PDF/scan/photo) and load it into a draft.
+
+    Routes to the cheapest, most accurate extraction path for the real
+    file type (sniffed by content, not filename) — OCR is the last
+    resort, not the default. Runs in a threadpool since OCR is
+    CPU-bound and would otherwise block the event loop for every other
+    request during a demo. Never stores the uploaded binary — the text
+    is extracted, persisted, and the original bytes are discarded.
+    """
+    content = await file.read()
+
+    if not content:
+        raise HTTPException(status_code=422, detail="The uploaded file is empty.")
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large — the maximum upload size is {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB.",
+        )
+
+    try:
+        result = await run_in_threadpool(extract_document, content)
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except OcrUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except ExtractionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception:
+        logger.exception("Unhandled error extracting uploaded file %s", file.filename)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not process this file. Try a different format or a clearer scan.",
+        )
+
+    if not result.plain_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="No readable text was found in this file. If it's a scanned document, try a clearer, higher-resolution scan.",
+        )
+
+    detected_script = ReferenceScript.DEVANAGARI if _is_devanagari(result.plain_text) else ReferenceScript.LATIN
+    draft_title = (title or file.filename or "Uploaded GR")[:400]
+
+    draft = await store.create_draft(
+        session,
+        title=draft_title,
+        language=language.value,
+        drafted_by=current.officer_id,
+        content=result.html,
+        department=department,
+        content_plain=result.plain_text,
+        brief=None,
+        source="uploaded",
+        original_filename=(file.filename or None),
+    )
+
+    low_confidence = result.ocr_confidence is not None and result.ocr_confidence < OCR_LOW_CONFIDENCE_THRESHOLD
+
+    return UploadDraftResponse(
+        generated_draft_id=draft.generated_draft_id,
+        title=draft.title,
+        content=draft.content,
+        department=draft.department,
+        language=Language(draft.language),
+        gr_number=draft.gr_number,
+        detected_script=detected_script,
+        ocr_confidence=result.ocr_confidence,
+        low_confidence=low_confidence,
+    )
 
 
 @router.patch("/api/conflicts/{conflict_id}/dismiss", response_model=DraftConflictOut, tags=["conflicts"])
@@ -354,6 +543,152 @@ async def dismiss_conflict(
     if conflict is None:
         raise HTTPException(status_code=404, detail=f"Conflict {conflict_id} not found")
     return DraftConflictOut.model_validate(conflict)
+
+
+# =====================================================================
+# Conflict registry — CFL- codes make every detected conflict a
+# first-class, addressable record (see Task list this section
+# implements): a lookup endpoint by code or UUID, a per-draft list for
+# the History expansion, and a cross-draft list for the officer's own
+# conflict history.
+# =====================================================================
+
+_CONFLICT_REF_RE = re.compile(r"^CFL-\d{4}-\d{6}$")
+
+
+def _conflict_draft_brief(draft) -> ConflictDraftBrief:
+    return ConflictDraftBrief(draft_id=draft.generated_draft_id, gr_number=draft.gr_number, title=draft.title)
+
+
+def _conflict_to_with_draft(conflict) -> ConflictWithDraftOut:
+    return ConflictWithDraftOut(
+        **DraftConflictOut.model_validate(conflict).model_dump(),
+        draft=_conflict_draft_brief(conflict.draft),
+    )
+
+
+def _conflict_to_lookup(conflict) -> ConflictLookupOut:
+    return ConflictLookupOut(
+        **DraftConflictOut.model_validate(conflict).model_dump(),
+        draft=ConflictDraftDetail(
+            draft_id=conflict.draft.generated_draft_id,
+            gr_number=conflict.draft.gr_number,
+            title=conflict.draft.title,
+            department=conflict.draft.department,
+            language=conflict.draft.language,
+            created_at=conflict.draft.created_at,
+        ),
+    )
+
+
+@router.get("/api/conflicts/lookup", response_model=ConflictLookupOut, tags=["conflicts"])
+async def lookup_conflict(
+    ref: str = Query(..., min_length=1, max_length=64, description="A CFL-YYYY-NNNNNN code or a conflict UUID"),
+    current: Officer = Depends(deps.get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> ConflictLookupOut:
+    """Accepts either shape people might paste in: the CFL- code
+    (case-insensitive, trimmed) or the raw conflict UUID. Anything that
+    matches neither shape is rejected with 422 before it reaches the
+    database. A conflict that exists but belongs to another officer
+    returns the SAME 404 as one that doesn't exist at all — see
+    conflicts_repo.lookup, which folds ownership into the query itself
+    rather than checking it after the fact, so there's nothing here that
+    could leak which codes are real."""
+    normalised = ref.strip()
+    conflict_id: Optional[UUID] = None
+    conflict_ref: Optional[str] = None
+    try:
+        conflict_id = UUID(normalised)
+    except ValueError:
+        upper = normalised.upper()
+        if _CONFLICT_REF_RE.match(upper):
+            conflict_ref = upper
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="ref must be a CFL-YYYY-NNNNNN code or a valid conflict UUID",
+            )
+
+    conflict = await conflicts_repo.lookup(
+        session,
+        conflict_id=conflict_id,
+        conflict_ref=conflict_ref,
+        officer_id=current.officer_id,
+        privileged=deps.is_privileged(current),
+    )
+    if conflict is None:
+        raise HTTPException(status_code=404, detail="No conflict found with that reference.")
+    return _conflict_to_lookup(conflict)
+
+
+@router.get("/api/drafts/{draft_id}/conflicts", response_model=List[ConflictWithDraftOut], tags=["conflicts"])
+async def list_draft_conflicts(
+    draft_id: UUID,
+    severity: Optional[ConflictSeverity] = Query(default=None),
+    is_dismissed: Optional[bool] = Query(default=None),
+    current: Officer = Depends(deps.get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> List[ConflictWithDraftOut]:
+    """Every conflict on one draft — what the History page's expansion
+    row fetches. _load_draft already 404s on a draft that doesn't exist
+    or isn't this officer's (unless privileged), so no separate
+    ownership check is needed for the conflicts themselves."""
+    await _load_draft(session, draft_id, current)
+    conflicts = await conflicts_repo.list_for_draft(
+        session,
+        draft_id,
+        severity=severity.value if severity else None,
+        is_dismissed=is_dismissed,
+    )
+    return [_conflict_to_with_draft(c) for c in conflicts]
+
+
+@router.get("/api/conflicts", response_model=PaginatedConflicts, tags=["conflicts"])
+async def list_conflicts(
+    severity: Optional[ConflictSeverity] = Query(default=None),
+    is_dismissed: Optional[bool] = Query(default=None),
+    department: Optional[str] = Query(default=None, max_length=160),
+    date_from: Optional[date] = Query(default=None),
+    date_to: Optional[date] = Query(default=None),
+    detected_by: Optional[ConflictDetectedBy] = Query(default=None),
+    search: Optional[str] = Query(default=None, max_length=200, description="Free-text search: conflicting text + justification"),
+    sort_by: str = Query(default="created_at"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current: Officer = Depends(deps.get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> PaginatedConflicts:
+    """Cross-draft conflict list, scoped to the current officer's own
+    drafts (or every officer's, if reviewer/admin) — sort_by is checked
+    against a hardcoded allowlist inside the repo, never raw user input."""
+    try:
+        rows, total = await conflicts_repo.list_conflicts(
+            session,
+            officer_id=current.officer_id,
+            privileged=deps.is_privileged(current),
+            severity=severity.value if severity else None,
+            is_dismissed=is_dismissed,
+            department=department,
+            date_from=date_from,
+            date_to=date_to,
+            detected_by=detected_by.value if detected_by else None,
+            search=search,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            limit=page_size,
+            offset=(page - 1) * page_size,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return PaginatedConflicts(
+        items=[_conflict_to_with_draft(c) for c in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # =====================================================================
@@ -647,6 +982,23 @@ def _is_devanagari(text: str) -> bool:
 
 _SEVERITY_MAP = {"Low": "low", "Medium": "medium", "High": "high", "Critical": "high"}
 
+_GR_DATE_FORMATS = ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d.%m.%Y")
+
+
+def _parse_gr_date(raw: Optional[str]) -> Optional[date]:
+    """Best-effort parse of the FAISS chunk's free-form issued_on string.
+    Returns None rather than guessing when it doesn't match a known
+    format — never fabricate a date the corpus didn't actually give us."""
+    if not raw:
+        return None
+    raw = raw.strip()
+    for fmt in _GR_DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
 
 def _conflict_hit_to_row(item: ConflictHit) -> dict:
     """
@@ -677,6 +1029,11 @@ def _conflict_report_to_row(item: ConflictReportItem) -> dict:
         severity=_SEVERITY_MAP.get(item.severity, "medium"),
         justification=f"{item.reason} Recommendation: {item.recommendation}"[:10000],
         detected_by=item.detected_by or "llm_verifier",
+        draft_clause_ref=item.draft_clause_ref,
+        draft_clause_index=item.draft_clause_index,
+        source_clause_ref=item.source_clause_ref,
+        source_gr_title=item.source_gr_title[:400] if item.source_gr_title else None,
+        source_gr_date=_parse_gr_date(item.source_gr_date),
     )
 
 

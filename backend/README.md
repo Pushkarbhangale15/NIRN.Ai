@@ -124,13 +124,94 @@ re-run — it skips rows that already exist.
 
 ## 5. Auth
 
-- `POST /api/auth/register`, `POST /api/auth/login` (rate-limited to
-  5/minute/IP via slowapi), `GET /api/officers/me`.
-- All `/api/drafts*`, `/api/analysis/*`, and
-  `/api/conflicts/{id}/dismiss` routes require a `Bearer` JWT and are
-  scoped to the calling officer's own drafts, unless their role is
-  `reviewer` or `admin` — enforced both in the route and again inside
-  `db/repositories/*.py` (defence in depth).
+**There is no public self-registration.** Officer accounts are created
+by an admin only, via `POST /api/officers` (see §6). `POST
+/api/auth/login` is rate-limited to 5/minute/IP via slowapi. `GET
+/api/officers/me` returns the caller's own profile.
+
+Because there's no self-registration, a fresh database (including a
+freshly-migrated Neon project) has **zero officers** until one is
+created. `seed.py` only creates plain `officer`-role accounts — bootstrap
+the first admin directly in the database once:
+
+```bash
+cd backend
+../venv/bin/python3 -c "
+import asyncio
+from db.base import async_session_factory, engine
+from db.repositories import officers as officers_repo
+from db.security import hash_password
+
+async def main():
+    async with async_session_factory() as session:
+        await officers_repo.create_officer(
+            session, name='Admin Officer', login_id='admin',
+            password_hash=hash_password('CHANGE-ME-Now123!'),
+            department='General Administration Department', role='admin',
+        )
+        await session.commit()
+    await engine.dispose()
+
+asyncio.run(main())
+"
+```
+
+From there, that admin can create every other officer (including more
+admins) through the `/admin` page in the app.
+
+All `/api/drafts*`, `/api/analysis/*`, and `/api/conflicts/{id}/dismiss`
+routes require a `Bearer` JWT and are scoped to the calling officer's
+own drafts, unless their role is `reviewer` or `admin` — enforced both
+in the route and again inside `db/repositories/*.py` (defence in depth).
+
+## 6. Officer management (admin-only)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/officers` | Paginated, searchable (name/login_id), filterable by role/department/is_active |
+| POST | `/api/officers` | Create — the only way an officer account gets made |
+| PATCH | `/api/officers/{id}` | Edit name/department/designation/role (`login_id` is immutable) |
+| PATCH | `/api/officers/{id}/deactivate` | Blocks login; refuses to deactivate yourself or the last active admin |
+| PATCH | `/api/officers/{id}/activate` | |
+| POST | `/api/officers/{id}/reset-password` | Returns a one-time temporary password, sets `must_change_password=true` |
+| DELETE | `/api/officers/{id}` | Hard delete — **409** if the officer has any drafts (deactivate instead; audit history must survive `ON DELETE RESTRICT`), **400** on self-delete or deleting the last active admin |
+
+The last-active-admin guard also applies to `PATCH /api/officers/{id}`
+when a role edit would demote the only remaining admin (including
+self-demotion) — not just to deactivate/delete.
+
+## 7. Uploading an existing GR (Word / PDF / scan)
+
+`POST /api/drafts/upload` (multipart, JWT required) extracts text from
+an uploaded file and loads it into a draft, routing to the cheapest
+accurate path first — OCR is the last resort:
+
+| Input | Path |
+|---|---|
+| `.docx` | `python-docx` — reads paragraphs/runs directly, preserving headings/bold/italic/lists |
+| `.pdf` with a text layer | `PyMuPDF` text extraction |
+| `.pdf` with no text layer (scanned) | `PyMuPDF` rasterises each page, then OCR |
+| `.png` / `.jpg` / `.jpeg` / `.webp` | OCR directly |
+| `.txt` | read as-is |
+
+Max size 15 MB (enforced server-side); the real file type is sniffed
+from content via `libmagic`, never trusted from the filename extension.
+The uploaded binary is never stored — only the extracted text and
+converted HTML are persisted.
+
+**OCR needs Tesseract installed as a system binary** (it is not a pip
+package). On macOS:
+
+```bash
+brew install tesseract tesseract-lang
+```
+
+`tesseract-lang` includes the Marathi (`mar`) trained data the OCR path
+requires (language string is `mar+eng`, so a single pass reads mixed
+Devanagari/Latin documents). If Tesseract or the `mar` data is missing,
+`/api/drafts/upload` returns a clear `503` with instructions — never a
+stack trace — and only when a request actually needs OCR; `.docx`,
+digital `.pdf`, and `.txt` uploads work fine without Tesseract at all.
 
 ## SQL injection prevention
 
