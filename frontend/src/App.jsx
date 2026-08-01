@@ -7,7 +7,7 @@ import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
 import Chat from "./pages/Chat.jsx";
 import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
+import History from "./pages/History.jsx";
 import Admin from "./pages/Admin.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
@@ -30,12 +30,11 @@ function RequireAuth({ children }) {
           <div className="panel-body" style={{ textAlign: "center" }}>
             <p style={{ marginBottom: 20 }}>
               Drafting a Government Resolution requires an officer account.
-              Sign in or register to continue — searching and browsing GRs
-              stays free for everyone.
+              Sign in to continue — searching and browsing GRs stays free
+              for everyone. New accounts are created by an administrator.
             </p>
             <div className="btn-row" style={{ justifyContent: "center", gap: 12 }}>
               <Link to="/login" className="btn btn-primary">Sign in</Link>
-              <Link to="/register" className="btn btn-secondary">Register</Link>
             </div>
           </div>
         </div>
@@ -103,6 +102,11 @@ function Navbar() {
           <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
             {t('nav_draft')}
           </NavLink>
+          {officer && (
+            <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_history')}
+            </NavLink>
+          )}
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
               {t('nav_admin')}
@@ -128,7 +132,7 @@ function Navbar() {
             </button>
           ) : (
             <NavLink to="/login" className="nav-cta-primary">
-              Login / Register
+              {t('nav_login')}
             </NavLink>
           )}
         </div>
@@ -153,6 +157,11 @@ function Navbar() {
             <NavLink to="/draft" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
               {t('nav_draft')}
             </NavLink>
+            {officer && (
+              <NavLink to="/history" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
+                {t('nav_history')}
+              </NavLink>
+            )}
             {isAdmin && (
               <NavLink to="/admin" className={({ isActive }) => (isActive ? "nav-mobile-link active" : "nav-mobile-link")}>
                 {t('nav_admin')}
@@ -169,7 +178,7 @@ function Navbar() {
               </button>
             ) : (
               <NavLink to="/login" className="nav-mobile-link nav-mobile-link--cta">
-                Login / Register
+                {t('nav_login')}
               </NavLink>
             )}
             <button onClick={toggleLanguage} className="nav-lang-toggle nav-mobile-lang">
@@ -274,10 +283,12 @@ export default function App() {
           />
 
           <Route
-            path="/register"
+            path="/history"
             element={
               <PageWrapper>
-                <Register />
+                <RequireAuth>
+                  <History />
+                </RequireAuth>
               </PageWrapper>
             }
           />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../../LanguageContext.jsx';
 import StatusVerb from '../StatusVerb.jsx';
@@ -28,17 +28,65 @@ const IconDocument = () => (
     <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm7 7V3.5L18.5 9zM8 13h8v2H8zm0 4h8v2H8zm0-8h5v2H8z"/>
   </svg>
 );
+const IconSave = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10z"/>
+  </svg>
+);
+
+// Uploaded/converted drafts arrive as block-level HTML (see
+// document_extraction/html_convert.py); LLM-generated drafts are still
+// plain text today. A cheap, reliable-enough test: does it open with
+// an HTML block tag?
+function isHtmlContent(text) {
+  return typeof text === "string" && /^\s*<(p|h[1-6]|ol|ul|div)[\s>]/i.test(text);
+}
 
 export default function DraftViewer({
   draft,
-  loading
+  loading,
+  saved,
+  saving,
+  onSave,
+  scrollToClauseIndex
 }) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
+  const bodyRef = useRef(null);
+
+  // Best-effort deep-link from a conflict lookup's "Open draft" link.
+  // draft_clause_index is the Nth clause split.py.split_into_clauses()
+  // saw — that only lines up with a DOM element for uploaded/converted
+  // drafts, whose numbered clauses render as <li> (see
+  // document_extraction/html_convert.py). LLM-generated drafts are
+  // still plain text with no addressable blocks, so there's nothing to
+  // scroll to there — silently do nothing rather than guess a position.
+  useEffect(() => {
+    // bodyRef only exists once the loaded (non-loading) branch below has
+    // mounted — without `loading` in the dependency array, this can fire
+    // once while still loading (ref null, no-op) and never get a second
+    // chance to run once the content actually mounts.
+    if (loading || scrollToClauseIndex == null || !bodyRef.current) return;
+    const items = bodyRef.current.querySelectorAll('li');
+    const target = items[scrollToClauseIndex];
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('clause-highlight');
+    const timer = setTimeout(() => target.classList.remove('clause-highlight'), 3000);
+    return () => clearTimeout(timer);
+  }, [scrollToClauseIndex, draft, loading]);
+
+  const plainBodyText = () => {
+    if (!draft?.body_text) return '';
+    if (!isHtmlContent(draft.body_text)) return draft.body_text;
+    const el = document.createElement('div');
+    el.innerHTML = draft.body_text;
+    return el.textContent || '';
+  };
 
   const handleCopy = () => {
     if (!draft || !draft.body_text) return;
-    navigator.clipboard.writeText(draft.body_text).then(() => {
+    navigator.clipboard.writeText(plainBodyText()).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -46,7 +94,7 @@ export default function DraftViewer({
 
   const handleDownloadTxt = () => {
     if (!draft || !draft.body_text) return;
-    const blob = new Blob([draft.body_text], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([plainBodyText()], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -178,6 +226,14 @@ export default function DraftViewer({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
+            onClick={onSave}
+            disabled={saved || saving}
+            className={`btn btn-sm ${saved ? 'btn-secondary' : 'btn-primary'}`}
+          >
+            {saved ? <><IconCheck /> Saved</> : saving ? 'Saving…' : <><IconSave /> Save to History</>}
+          </button>
+          <button
+            type="button"
             onClick={handleCopy}
             className="btn btn-sm btn-secondary"
           >
@@ -201,7 +257,7 @@ export default function DraftViewer({
       </div>
 
       {/* Official Government Resolution Scrollable Viewer */}
-      <div style={{
+      <div ref={bodyRef} style={{
         padding: '32px 40px',
         maxHeight: '680px',
         overflowY: 'auto',
@@ -223,10 +279,21 @@ export default function DraftViewer({
           </div>
         </div>
 
-        {/* GR Body Content */}
-        <div style={{ whiteSpace: 'pre-wrap', fontSize: '17px', textAlign: 'justify', lineHeight: 1.8 }}>
-          {draft.body_text}
-        </div>
+        {/* GR Body Content — uploaded/converted drafts arrive as real
+            HTML (<p>/<h2>/<ol> blocks from document_extraction); LLM
+            generation currently returns plain text. Render each
+            correctly rather than showing raw "<p>" tags as literal text. */}
+        {isHtmlContent(draft.body_text) ? (
+          <div
+            className="draft-html-content"
+            style={{ fontSize: '17px', textAlign: 'justify', lineHeight: 1.8 }}
+            dangerouslySetInnerHTML={{ __html: draft.body_text }}
+          />
+        ) : (
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: '17px', textAlign: 'justify', lineHeight: 1.8 }}>
+            {draft.body_text}
+          </div>
+        )}
       </div>
     </div>
   );

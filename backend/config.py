@@ -109,3 +109,59 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# ---- Department short codes ------------------------------------------------
+# Used to build provisional GR numbers (NIRN/<CODE>/<YYYY>/<seq>) — see
+# db/repositories/gr_numbers.py. Keys match the `value` strings sent by the
+# department dropdown in frontend/src/components/drafting/DraftInputCard.jsx
+# exactly (underscored department names), one entry per department listed
+# there. DEFAULT_DEPARTMENT_CODE covers anything unexpected instead of
+# crashing draft creation over a cosmetic reference number.
+DEFAULT_DEPARTMENT_CODE = "GEN"
+
+DEPARTMENT_CODES: dict[str, str] = {
+    "Agriculture,_Dairy_Development,_Animal_Husbandry_and_Fisheries_Department": "AGRI",
+    "Co-operation,_Textiles_and_Marketing_Department": "COOP",
+    "Environment_Department": "ENV",
+    "Finance_Department": "FIN",
+    "Food,_Civil_Supplies_and_Consumer_Protection_Department": "FCS",
+    "General_Administration_Department": "GAD",
+    "Higher_and_Technical_Education_Department": "HTE",
+    "Home_Department": "HOME",
+    "Housing_Department": "HSG",
+    "Industries,_Energy_and_Labour_Department": "IEL",
+    "Information_Technology_Department": "IT",
+    "Law_and_Judiciary_Department": "LAW",
+    "Marathi_Language_Department": "MLD",
+    "Medical_Education_and_Drugs_Department": "MED",
+    "Minorities_Development_Department": "MIN",
+    "Other_Backward_Bahujan_Welfare_Department": "OBC",
+    "Parliamentary_Affairs_Department": "PAD",
+    "Persons_with_Disabilities_Welfare_Department": "DIS",
+    "Planning_Department": "PLAN",
+    "Public_Health_Department": "PH",
+    "Public_Works_Department": "PWD",
+    "Revenue_and_Forest_Department": "REV",
+    "Rural_Development_Department": "RD",
+    "Skill_Development_and_Entrepreneurship_Department": "SDE",
+    "School_Education_and_Sports_Department": "SES",
+    "Social_Justice_and_Special_Assistance_Department": "SJSA",
+    "Soil_and_Water_Conservation_Department": "SWC",
+    "Tourism_and_Cultural_Affairs_Department": "TCA",
+    "Tribal_Development_Department": "TD",
+    "Urban_Development_Department": "UD",
+    "Water_Resources_Department": "WR",
+    "Water_Supply_and_Sanitation_Department": "WSS",
+    "Women_and_Child_Development_Department": "WCD",
+}
+
+
+def department_code(department: str) -> str:
+    return DEPARTMENT_CODES.get(department, DEFAULT_DEPARTMENT_CODE)
+
+
+# ---- Upload / document extraction ------------------------------------------
+MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB, enforced in routes.py
+OCR_LANGUAGES = "mar+eng"
+OCR_LOW_CONFIDENCE_THRESHOLD = 70.0

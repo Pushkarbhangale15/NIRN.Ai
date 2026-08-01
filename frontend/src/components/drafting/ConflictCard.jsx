@@ -13,6 +13,11 @@ const IconDownload = () => (
     <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
   </svg>
 );
+const IconCopySmall = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+  </svg>
+);
 
 export default function ConflictCard({
   conflicts = [],
@@ -29,6 +34,14 @@ export default function ConflictCard({
   const [isOpen, setIsOpen] = useState(true);
   const [generatingFull, setGeneratingFull] = useState(false);
   const [generatingIdx, setGeneratingIdx] = useState(null);
+  const [copiedIdx, setCopiedIdx] = useState(null);
+
+  const copyConflictRef = (ref, idx) => {
+    navigator.clipboard.writeText(ref).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1500);
+    });
+  };
 
   const handleDownloadFullReport = async () => {
     if (generatingFull) return;
@@ -182,31 +195,49 @@ export default function ConflictCard({
               </button>
 
               {conflicts.map((item, idx) => {
-                const isHigh = item.severity === 'Critical' || item.severity === 'High' || item.confidence >= 0.8;
-                const isMed = item.severity === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
+                const isHigh = item.severity === 'high';
+                const isMed = item.severity === 'medium';
                 const badgeColor = isHigh ? 'var(--red)' : isMed ? 'var(--yellow)' : 'var(--blue)';
                 const textColor = isHigh ? '#fff' : 'var(--ink)';
+                const draftSide = item.draft_clause_ref ? `${item.draft_clause_ref} of this draft` : 'this draft';
+                const sourceSide = item.conflicting_gr_id
+                  ? (item.source_clause_ref ? `${item.source_clause_ref} of GR ${item.conflicting_gr_id}` : `GR ${item.conflicting_gr_id}`)
+                  : 'the referenced GR';
 
                 return (
-                  <div key={idx} style={{
+                  <div key={item.conflict_id || idx} style={{
                     border: '2px solid var(--ink)',
                     borderRadius: '8px',
                     padding: '16px',
                     background: '#fff',
                     boxShadow: '0 2px 0 var(--ink)'
                   }}>
-                    {/* Header: Conflict Category Type and GR ID */}
+                    {/* Header: CFL code (copyable) and severity */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        background: 'var(--ink)',
-                        color: '#fff',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--ink)'
-                      }}>
-                        {item.conflict_type || 'Policy Conflict'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="mono" style={{
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          background: 'var(--ink)',
+                          color: '#fff',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--ink)'
+                        }}>
+                          {item.conflict_ref}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyConflictRef(item.conflict_ref, idx)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            fontSize: '11.5px', fontWeight: 600, padding: '4px 8px',
+                            background: '#fff', color: 'var(--ink)', border: '1.5px solid var(--ink)',
+                            borderRadius: '4px', cursor: 'pointer'
+                          }}
+                        >
+                          <IconCopySmall /> {copiedIdx === idx ? t('conflict_copied') : t('conflict_copy')}
+                        </button>
                       </span>
                       <span style={{
                         fontSize: '12px',
@@ -218,13 +249,14 @@ export default function ConflictCard({
                         border: '1px solid var(--ink)',
                         textTransform: 'uppercase'
                       }}>
-                        {item.severity || (isHigh ? 'High Risk' : 'Medium Risk')}
+                        {item.severity}
                       </span>
                     </div>
 
-                    {/* Department and Conflicting GR Metadata */}
+                    {/* Which clause of ours clashed with which clause of theirs */}
                     <div style={{ fontSize: '14.5px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-                      {item.existing_department?.replace(/_/g, ' ')} ({item.existing_gr_id})
+                      {draftSide} ↔ {sourceSide}
+                      {item.source_gr_title ? ` — ${item.source_gr_title}` : ''}
                     </div>
 
                     {/* Conflicting Text Comparison */}
@@ -241,33 +273,20 @@ export default function ConflictCard({
                       <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
                         <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Draft Clause Text:</span>
                         <div style={{ background: '#fffbe6', padding: '6px 8px', borderLeft: '3px solid var(--yellow)', marginTop: '4px', borderRadius: '3px', fontStyle: 'italic' }}>
-                          "{item.draft_clause}"
+                          "{item.draft_excerpt || '—'}"
                         </div>
                       </div>
                       <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
-                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Conflicting Reference Text (GR #{item.existing_gr_id}):</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Conflicting Reference Text{item.conflicting_gr_id ? ` (GR #${item.conflicting_gr_id})` : ''}:</span>
                         <div style={{ background: '#fff1f0', padding: '6px 8px', borderLeft: '3px solid var(--red)', marginTop: '4px', borderRadius: '3px', fontStyle: 'italic' }}>
-                          "{item.existing_clause}"
+                          "{item.conflicting_text}"
                         </div>
                       </div>
                     </div>
 
-                    {/* Contradiction Justification & Recommendation */}
-                    <div style={{ fontSize: '14.5px', color: '#374151', marginBottom: '8px', lineHeight: '1.4' }}>
+                    {/* Justification */}
+                    <div style={{ fontSize: '14.5px', color: '#374151', marginBottom: '12px', lineHeight: '1.4' }}>
                       <strong>Reason:</strong> {item.justification}
-                    </div>
-
-                    <div style={{
-                      fontSize: '14.5px',
-                      background: '#fef3c7',
-                      border: '1px solid #f59e0b',
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      color: '#92400e',
-                      lineHeight: '1.4',
-                      marginBottom: '12px'
-                    }}>
-                      <strong>Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

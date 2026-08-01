@@ -17,15 +17,7 @@ export function setStoredToken(token) {
   else localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
-async function request(path, options = {}) {
-  const token = getStoredToken();
-  const res = await fetch(path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...options,
-  });
+async function handleResponse(res) {
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {
@@ -43,30 +35,68 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+async function request(path, options = {}) {
+  const token = getStoredToken();
+  const res = await fetch(path, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...options,
+  });
+  return handleResponse(res);
+}
+
+// Multipart upload — deliberately does NOT set Content-Type so the
+// browser can add the multipart boundary itself; setting it manually
+// on a FormData body breaks the boundary and the server can't parse it.
+async function requestMultipart(path, formData, options = {}) {
+  const token = getStoredToken();
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+    ...options,
+  });
+  return handleResponse(res);
+}
+
 export const api = {
   health: () => request("/health"),
 
   // ── Auth ─────────────────────────────────────────────────────
+  // No public self-registration — officer accounts are created by an
+  // admin only (see the Admin functions below).
   login: (loginId, password) =>
     request("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ login_id: loginId, password }),
     }),
 
-  register: (payload) =>
-    request("/api/auth/register", { method: "POST", body: JSON.stringify(payload) }),
-
   me: () => request("/api/officers/me"),
 
   createDraft: (draft) =>
     request("/api/drafts", { method: "POST", body: JSON.stringify(draft) }),
 
-  // Paginated: { items, total, limit, offset }. Admins/reviewers see every
-  // officer's drafts; plain officers only see their own (enforced server-side).
-  listDrafts: ({ department, status, sortBy, sortDir, limit = 20, offset = 0 } = {}) => {
-    const params = new URLSearchParams({ limit, offset });
+  uploadDraft: ({ file, department, language, title }) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("department", department);
+    formData.append("language", language);
+    if (title) formData.append("title", title);
+    return requestMultipart("/api/drafts/upload", formData);
+  },
+
+  // Paginated (page/page_size), searchable, filterable by department /
+  // status / source. Admins/reviewers see every officer's drafts; plain
+  // officers only see their own (enforced server-side).
+  listDrafts: ({ department, status, source, search, authorId, sortBy, sortDir, page = 1, pageSize = 20 } = {}) => {
+    const params = new URLSearchParams({ page, page_size: pageSize });
     if (department) params.set("department", department);
     if (status) params.set("status", status);
+    if (source) params.set("source", source);
+    if (search) params.set("search", search);
+    if (authorId) params.set("author_id", authorId);
     if (sortBy) params.set("sort_by", sortBy);
     if (sortDir) params.set("sort_dir", sortDir);
     return request(`/api/drafts?${params.toString()}`);
@@ -74,8 +104,9 @@ export const api = {
 
   getDraft: (draftId) => request(`/api/drafts/${draftId}`),
 
-  // Soft delete — sets status to 'archived', never removes the row.
-  archiveDraft: (draftId) => request(`/api/drafts/${draftId}`, { method: "DELETE" }),
+  // Confirms a freshly generated/uploaded draft is worth keeping — until
+  // this is called it stays invisible in History (see is_saved).
+  saveDraft: (draftId) => request(`/api/drafts/${draftId}/save`, { method: "PATCH" }),
 
   dismissConflict: (conflictId, reason = null) =>
     request(`/api/conflicts/${conflictId}/dismiss`, {
@@ -83,21 +114,58 @@ export const api = {
       body: JSON.stringify({ reason }),
     }),
 
-  // ── Admin ────────────────────────────────────────────────────
-  listOfficers: () => request("/api/admin/officers"),
+  // ── Conflict registry ────────────────────────────────────────
+  // Every conflict on one draft — the History expansion row.
+  getDraftConflicts: (draftId, { severity, isDismissed } = {}) => {
+    const params = new URLSearchParams();
+    if (severity) params.set("severity", severity);
+    if (isDismissed !== undefined && isDismissed !== null) params.set("is_dismissed", isDismissed);
+    const qs = params.toString();
+    return request(`/api/drafts/${draftId}/conflicts${qs ? `?${qs}` : ""}`);
+  },
 
-  updateOfficer: (officerId, payload) =>
-    request(`/api/admin/officers/${officerId}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    }),
+  // Accepts either a CFL-YYYY-NNNNNN code or a raw conflict UUID.
+  lookupConflict: (ref) =>
+    request(`/api/conflicts/lookup?ref=${encodeURIComponent(ref)}`),
 
-  // Unlike api.register(), this lets an admin set the new officer's role
-  // directly (backend only honours `role` here because the caller is
-  // already authenticated as admin — public registration always forces
-  // role=officer).
-  createOfficerAdmin: (payload) =>
-    request("/api/admin/officers", { method: "POST", body: JSON.stringify(payload) }),
+  listConflicts: ({ severity, isDismissed, department, dateFrom, dateTo, detectedBy, search, sortBy, sortDir, page = 1, pageSize = 20 } = {}) => {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (severity) params.set("severity", severity);
+    if (isDismissed !== undefined && isDismissed !== null) params.set("is_dismissed", isDismissed);
+    if (department) params.set("department", department);
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    if (detectedBy) params.set("detected_by", detectedBy);
+    if (search) params.set("search", search);
+    if (sortBy) params.set("sort_by", sortBy);
+    if (sortDir) params.set("sort_dir", sortDir);
+    return request(`/api/conflicts?${params.toString()}`);
+  },
+
+  // ── Admin: officer management ───────────────────────────────
+  listOfficers: ({ search, role, department, isActive, limit = 20, offset = 0 } = {}) => {
+    const params = new URLSearchParams({ limit, offset });
+    if (search) params.set("search", search);
+    if (role) params.set("role", role);
+    if (department) params.set("department", department);
+    if (isActive !== undefined && isActive !== null) params.set("is_active", isActive);
+    return request(`/api/officers?${params.toString()}`);
+  },
+
+  createOfficer: (payload) =>
+    request("/api/officers", { method: "POST", body: JSON.stringify(payload) }),
+
+  editOfficer: (officerId, payload) =>
+    request(`/api/officers/${officerId}`, { method: "PATCH", body: JSON.stringify(payload) }),
+
+  deactivateOfficer: (officerId) =>
+    request(`/api/officers/${officerId}/deactivate`, { method: "PATCH" }),
+
+  activateOfficer: (officerId) =>
+    request(`/api/officers/${officerId}/activate`, { method: "PATCH" }),
+
+  resetOfficerPassword: (officerId) =>
+    request(`/api/officers/${officerId}/reset-password`, { method: "POST" }),
 
   // The full report: template + references + conflicts + terminology
   analyze: (draftId) =>

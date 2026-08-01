@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 
 export default function Login() {
@@ -64,8 +64,8 @@ export default function Login() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
 
-          <p style={{ marginTop: 16, fontSize: 13.5, textAlign: "center" }}>
-            New here? <Link to="/register">Create an account</Link>
+          <p style={{ marginTop: 16, fontSize: 13.5, textAlign: "center", color: "var(--ink-soft)" }}>
+            New accounts are created by an administrator.
           </p>
         </div>
       </form>
