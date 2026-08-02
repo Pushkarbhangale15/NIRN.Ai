@@ -602,43 +602,108 @@ _CONFLICT_TYPES = (
     "Implementation Procedure Conflict, Procurement Conflict"
 )
 
+_NEGATION_WORDS = [
+    "not",
+    "shall not",
+    "must not",
+    "cannot",
+    "withdraw",
+    "withdrawn",
+    "cancel",
+    "cancelled",
+    "revoke",
+    "revoked",
+    "deny",
+    "denied",
+    "prohibited",
+    "ineligible",
+    "नाही",
+    "रद्द",
+    "मागे",
+    "अवैध",
+    "अपात्र",
+    "प्रतिबंधित",
+    "अमान्य",
+]
+
+_RESPONSIBILITY_WORDS = [
+    "responsible",
+    "responsibility",
+    "liable",
+    "implement",
+    "implementation",
+    "ensure",
+    "maintain",
+    "supervise",
+    "जबाबदार",
+    "जबाबदारी",
+    "अंमलबजावणी",
+]
+
+_RESERVATION_WORDS = [
+    "sc",
+    "st",
+    "obc",
+    "sebc",
+    "ews",
+    "open",
+    "general",
+    "vjnt",
+    "nt",
+    "sbc",
+]
+
+_ELIGIBILITY_WORDS = [
+    "eligible",
+    "eligibility",
+    "qualification",
+    "criteria",
+    "qualified",
+    "ineligible",
+    "पात्र",
+    "अपात्र",
+    "अर्हता",
+]
+
 # =====================================================================
 # Semantic-first conflict prompt — never bypasses the LLM
 # =====================================================================
 
 _SEMANTIC_CONFLICT_SYSTEM_PROMPT = (
-    "You are a senior policy analyst for the Government of Maharashtra.\n"
-    "You must compare a DRAFT CLAUSE from a new Government Resolution against \n"
-    "EXISTING CLAUSES from the corpus of existing Government Resolutions.\n\n"
-    "CLASSIFICATION RULES:\n"
-    "For each existing clause, classify the relationship as EXACTLY one of:\n"
-    "  - compatible     : No conflict. Clauses can coexist without contradiction.\n"
-    "  - independent    : Clauses address different subjects entirely.\n"
-    "  - related        : Same subject area but no contradiction.\n"
-    "  - superseded     : Draft clause replaces or supersedes the existing clause.\n"
-    "  - contradictory  : Clauses CANNOT both be valid. One directly contradicts the other.\n\n"
-    "CRITICAL INSTRUCTIONS:\n"
-    "1. Two clauses from DIFFERENT departments are NOT automatically contradictory.\n"
-    "   A clause from School Education and a clause from Higher Education can coexist.\n"
-    "2. Different department names, authority names, or dates do NOT constitute a conflict.\n"
-    "3. Only flag a conflict when the POLICY SUBSTANCE directly contradicts.\n"
-    "   Example: Draft says 'approval is withdrawn' while existing says 'approval is granted' = contradictory.\n"
-    "   Example: Draft mentions 'School Education' while existing mentions 'Higher Education' = independent (NOT contradictory).\n"
-    "4. Administrative boilerplate (headers, dates, addresses, reference lists) must be IGNORED.\n\n"
-    "SEMANTIC HINTS (from automated pre-screening — use these to guide your analysis, \n"
-    "but YOU must make the final determination):\n"
+    "You are a senior Government Resolution policy analyst.\n\n"
+    "Compare ONE draft clause against multiple existing clauses.\n\n"
+    "For each candidate decide whether the relationship is:\n"
+    "compatible\n"
+    "independent\n"
+    "related\n"
+    "superseded\n"
+    "contradictory\n\n"
+    "A contradiction exists when BOTH clauses cannot legally remain valid simultaneously.\n\n"
+    "Treat the following as contradictions:\n"
+    "• responsibility transferred\n"
+    "• responsibility removed\n"
+    "• obligation reversed\n"
+    "• permission revoked\n"
+    "• mandatory becomes optional\n"
+    "• optional becomes mandatory\n"
+    "• eligible becomes ineligible\n"
+    "• ineligible becomes eligible\n"
+    "• reservation/category changes\n"
+    "• benefit withdrawn\n"
+    "• grant cancelled\n"
+    "• approval withdrawn\n"
+    "• financial entitlement changed\n"
+    "• legal definition changed\n\n"
+    "DO NOT treat these alone as contradictions:\n"
+    "• different department\n"
+    "• different authority\n"
+    "• different dates\n"
+    "• administrative wording\n"
+    "• formatting\n\n"
+    "Ignore headers, signatures, references and boilerplate.\n\n"
+    "Semantic hints:\n"
     "{hints}\n\n"
-    "If a candidate IS contradictory, assign one conflict_type from:\n"
-    + _CONFLICT_TYPES + "\n\n"
-    "Severity: Low | Medium | High | Critical\n\n"
-    "Return ONLY a JSON array. Include ONLY candidates classified as 'contradictory' or 'superseded'.\n"
-    "If NO candidates are contradictory or superseded, return an empty array: []\n\n"
-    "JSON schema (return ONLY this, no markdown):\n"
-    '[{"candidate_idx": 0, "relation": "contradictory", "conflict_type": "Policy Conflict", '
-    '"severity": "High", "confidence": 0.85, '
-    '"draft_quote": "exact text from draft clause", '
-    '"existing_quote": "exact text from existing clause", '
-    '"justification": "Explain WHY these clauses contradict each other."}]'
+    "Return ONLY contradictory or superseded clauses as JSON."
 )
 
 _SEMANTIC_CONFLICT_MR_SUFFIX = (
@@ -668,6 +733,75 @@ _UNIFIED_CONFLICT_SYSTEM_PROMPT_EN = _CONFLICT_BASE
 # bypass the LLM. They return hint strings that are injected into the
 # LLM prompt to guide its analysis.
 # =====================================================================
+
+# Lightweight lexical heuristics only. These helpers never decide
+# conflicts themselves. They only add advisory hints that guide the
+# final LLM judgment.
+def _hint_negation(draft: str, existing: str) -> Optional[str]:
+    """Detect possible legal obligation reversals with lightweight keywords."""
+    draft_lower = draft.lower()
+    existing_lower = existing.lower()
+
+    draft_has_negation = any(term in draft_lower for term in _NEGATION_WORDS)
+    existing_has_negation = any(term in existing_lower for term in _NEGATION_WORDS)
+
+    if draft_has_negation != existing_has_negation:
+        return "HINT: Possible obligation reversal or policy negation detected."
+    return None
+
+
+# Lightweight lexical heuristics only. These helpers never decide
+# conflicts themselves. They only add advisory hints that guide the
+# final LLM judgment.
+def _hint_responsibility(draft: str, existing: str) -> Optional[str]:
+    """Detect possible responsibility transfer or removal with simple matching."""
+    draft_lower = draft.lower()
+    existing_lower = existing.lower()
+
+    draft_has_responsibility = any(term in draft_lower for term in _RESPONSIBILITY_WORDS)
+    existing_has_responsibility = any(term in existing_lower for term in _RESPONSIBILITY_WORDS)
+    draft_has_negation = any(term in draft_lower for term in _NEGATION_WORDS)
+    existing_has_negation = any(term in existing_lower for term in _NEGATION_WORDS)
+
+    if draft_has_responsibility or existing_has_responsibility:
+        if draft_has_negation != existing_has_negation or draft_has_responsibility != existing_has_responsibility:
+            return "HINT: Possible responsibility transfer or removal detected."
+    return None
+
+
+# Lightweight lexical heuristics only. These helpers never decide
+# conflicts themselves. They only add advisory hints that guide the
+# final LLM judgment.
+def _hint_reservation(draft: str, existing: str) -> Optional[str]:
+    """Detect possible reservation or category reclassification with lightweight matching."""
+    draft_lower = draft.lower()
+    existing_lower = existing.lower()
+
+    draft_terms = [term for term in _RESERVATION_WORDS if term in draft_lower]
+    existing_terms = [term for term in _RESERVATION_WORDS if term in existing_lower]
+
+    if draft_terms and existing_terms and draft_terms != existing_terms:
+        return "HINT: Possible reservation/category reclassification detected."
+    return None
+
+
+# Lightweight lexical heuristics only. These helpers never decide
+# conflicts themselves. They only add advisory hints that guide the
+# final LLM judgment.
+def _hint_eligibility(draft: str, existing: str) -> Optional[str]:
+    """Detect possible eligibility criteria change with simple keyword matching."""
+    draft_lower = draft.lower()
+    existing_lower = existing.lower()
+
+    draft_terms = [term for term in _ELIGIBILITY_WORDS if term in draft_lower]
+    existing_terms = [term for term in _ELIGIBILITY_WORDS if term in existing_lower]
+    draft_has_negation = any(term in draft_lower for term in _NEGATION_WORDS)
+    existing_has_negation = any(term in existing_lower for term in _NEGATION_WORDS)
+
+    if draft_terms and existing_terms and (draft_terms != existing_terms or draft_has_negation != existing_has_negation):
+        return "HINT: Possible eligibility criteria change detected."
+    return None
+
 
 def _hint_authority(draft: str, existing: str) -> Optional[str]:
     """Generate a hint if different authority names are detected."""
@@ -754,7 +888,17 @@ def _hint_department(draft: str, existing: str) -> Optional[str]:
 def generate_semantic_hints(draft_clause: str, existing_clause: str) -> List[str]:
     """Run all hint generators and return the list of triggered hints."""
     hints = []
-    for fn in [_hint_authority, _hint_funding, _hint_timeline, _hint_monitoring, _hint_department]:
+    for fn in [
+        _hint_negation,
+        _hint_responsibility,
+        _hint_reservation,
+        _hint_eligibility,
+        _hint_authority,
+        _hint_funding,
+        _hint_timeline,
+        _hint_monitoring,
+        _hint_department,
+    ]:
         result = fn(draft_clause, existing_clause)
         if result:
             hints.append(result)
@@ -862,7 +1006,7 @@ def detect_conflicts(
                     hints = generate_semantic_hints(clause, hit.snippet)
                     all_hints.extend(hints)
                 unique_hints = list(dict.fromkeys(all_hints))
-                hints_text = "\n".join(unique_hints) if unique_hints else "No specific concerns detected."
+                hints_text = "\n".join(unique_hints)
 
             # Step 2: Build the prompt with hints and full clause text
             with perf("Prompt Build"):
