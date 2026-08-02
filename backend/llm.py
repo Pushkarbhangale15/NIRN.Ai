@@ -183,6 +183,28 @@ def extract_clauses(text: str) -> List[ClauseInfo]:
     return clauses
 
 
+# Patterns that identify template placeholder headings or administrative-only
+# text that should NOT be treated as operative policy clauses (Commented out / Non-conflicting).
+# _PLACEHOLDER_PATTERNS: List[re.Pattern] = [
+#     re.compile(r'^\d+\.?\s*regarding\b', re.IGNORECASE),       # "Regarding disciplinary action..."
+#     re.compile(r'^\d+\.?\s*subject\s*:', re.IGNORECASE),       # "Subject: ..."
+#     re.compile(r'^\[.{1,80}\]$'),                               # "[PLACEHOLDER]"
+#     re.compile(r'^<.{1,80}>$'),                                 # "<CLAUSE_TEXT>"
+#     re.compile(r'^#+\s'),                                       # Markdown headings
+#     re.compile(r'^\d+\.?\s*(?:name|date|place|venue|location|designation|officer|authority)\s*:', re.IGNORECASE),
+#     re.compile(r'^\d+\.?\s*(?:पदाचे नाव|दिनांक|ठिकाण)\s*:', re.IGNORECASE),  # Marathi equivalents
+# ]
+
+
+def _is_placeholder_clause(text: str) -> bool:
+    """
+    Return True if the clause text is a template heading or administrative
+    placeholder with no operative policy language. (Currently disabled / non-conflicting)
+    """
+    # Placeholder checking disabled to maintain compatibility with Pushkar's pipeline
+    return False
+
+
 def split_into_clauses(text: str) -> List[str]:
     """
     Break a draft into its operative clauses (backward-compatible API).
@@ -1067,6 +1089,8 @@ def detect_conflicts(
                         elif relation_str in ["compatible", "duplicate", "overlap"]:
                             relation_enum = Relation.OVERLAP
                         else:
+                            if settings.DEBUG:
+                                print(f"Discarding conflict - Reason: Unknown relation ({relation_str})")
                             continue  # independent/related — not a conflict
 
                         # Build rich justification with exact clause quotes
