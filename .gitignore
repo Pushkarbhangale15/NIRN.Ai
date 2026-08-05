@@ -24,7 +24,6 @@ vector_db/*.pkl
 # Frontend
 frontend/node_modules/
 frontend/dist/
-.env.example
 
 data/embeddings.npy
 frontend/.vite/
@@ -35,8 +34,15 @@ response.json
 *.db
 backend/data/*.db
 backend/data/*.faiss
+backend/data/*.faiss.*
+backend/data/*.bak
 backend/data/*.pkl
 backend/data/metadata.json
+backend/data/metadata.txt
+
+# Alternate/backup FAISS index builds (backend/build_ivfpq.py, build_ivfsq.py)
+backend/data/*.ivf*
+backend/data/index_*.faiss
 
 # Glossary Generator temporary & large review files
 glossary_generator/logs/

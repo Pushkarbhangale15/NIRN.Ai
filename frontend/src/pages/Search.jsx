@@ -210,7 +210,7 @@ export default function Search() {
         {!loading && hits !== null && (
           <>
             <p className="ri-sub" style={{ marginBottom: 14 }}>
-              {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')} · {tookMs} ms
+              {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')}
             </p>
              {hits.map((h, idx) => {
                const uniqueId = `${h.gr_id}_${idx}`;
@@ -224,7 +224,6 @@ export default function Search() {
                          {h.issued_on ? ` · ${h.issued_on}` : ""}
                        </div>
                      </div>
-                     <div className="hit-score">{(h.score * 100).toFixed(0)}%</div>
                    </div>
                    <div className="ri-sub" style={{ marginTop: 10 }}>{h.snippet}</div>
                    <div className="source-dropdown" onClick={(e) => e.stopPropagation()}>

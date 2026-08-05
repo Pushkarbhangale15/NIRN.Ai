@@ -1,14 +1,19 @@
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 //import { NavLink, Route, Routes } from "react-router-dom";
 import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
+import UploadGR from "./pages/UploadGR.jsx";
 import Chat from "./pages/Chat.jsx";
+import Login from "./pages/Login.jsx";
+import History from "./pages/History.jsx";
+import Admin from "./pages/Admin.jsx";
+import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
+import { useAuth } from "./AuthContext.jsx";
 import { DraftProvider } from "./DraftContext.jsx";
-import { useEffect } from "react";
 
 
 function PageWrapper({ children }) {
@@ -26,14 +31,59 @@ function PageWrapper({ children }) {
   );
 }
 
+// Login-required routes (Task 2: generating a draft; saving, history,
+// exports, admin). Anonymous visitors are sent to /login with a
+// returnTo so they land back where they were, not on the home page.
+function RequireAuth({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return null;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
+  }
+  return children;
+}
+
+// A non-admin hitting /admin directly is redirected home — never a
+// blank page, never a crash.
+function RequireAdmin({ children }) {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return null;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
+  }
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
+  const { officer, isAuthenticated, isAdmin, loading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // The red button is the single auth control now — it never opens
+  // chat. Logged out it routes to /login; logged in it signs out and
+  // returns home. Rendered only once loading resolves so it never
+  // flashes one label and swaps to the other.
+  const handleAuthClick = () => {
+    if (isAuthenticated) {
+      logout();
+      navigate("/");
+    } else {
+      navigate("/login");
+    }
+  };
 
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'color-mix(in srgb, var(--cream) 82%, transparent)', backdropFilter: 'blur(6px)', borderBottom: '1px solid var(--line)' }} className={siteLanguage === 'mr' ? 'lang-mr' : ''}>
       <div className="container">
         <nav className="nav" style={{ borderBottom: 'none', background: 'transparent', backdropFilter: 'none', top: 'auto', position: 'static' }}>
-          <NavLink to="/" className="brand">
+          <NavLink to="/" className="brand nav-cell-left">
             <img src={shasan} alt="Government of Maharashtra" className="brand-logo" />
             <span className="brand-marathi">
               <span className="brand-maha">महाराष्ट्र</span>
@@ -41,25 +91,46 @@ function Navbar() {
             </span>
           </NavLink>
 
-          <div className="nav-links">
+          <div className="nav-links nav-cell-center">
             <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
               {t('nav_home')}
             </NavLink>
             <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
               {t('nav_draft')}
             </NavLink>
+            <NavLink to="/upload-gr" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_upload_gr')}
+            </NavLink>
+            {/* Rendered only once the role is known, so nothing flashes
+                into view and then disappears once auth resolves. */}
+            {!loading && isAuthenticated && (
+              <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>
+                {t('nav_history')}
+              </NavLink>
+            )}
+            {!loading && isAdmin && (
+              <NavLink to="/admin" className={({ isActive }) => `nav-admin-link ${isActive ? "active" : ""}`}>
+                {t('nav_admin')}
+              </NavLink>
+            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div className="nav-cell-right">
             <button
               onClick={toggleLanguage}
               className="nav-lang-toggle"
             >
               {siteLanguage === 'en' ? 'मराठी' : 'English'}
             </button>
-            <NavLink to="/chat" className="nav-cta-primary">
-              {t('nav_ai_copilot')}
-            </NavLink>
+            {!loading && (
+              <button
+                onClick={handleAuthClick}
+                className="nav-cta-primary"
+                title={isAuthenticated ? officer?.name : undefined}
+              >
+                {isAuthenticated ? t('nav_logout') : t('nav_login')}
+              </button>
+            )}
           </div>
         </nav>
       </div>
@@ -99,7 +170,7 @@ function Footer() {
         <hr className="footer-divider" />
 
         <div className="footer-bottom">
-          <p className="footer-copy">© 2026 NIRN.AI | Developed for the Government of Maharashtra Hackathon</p>
+          <p className="footer-copy">© 2026 NIRN.Ai | Developed for the Government of Maharashtra Hackathon</p>
           <p className="footer-disclaimer">
             This project is an academic prototype developed at VJTI for research and
             demonstration purposes. It is not an official Government of Maharashtra service.
@@ -114,9 +185,13 @@ export default function App() {
   const location = useLocation();
   const { siteLanguage } = useLanguage();
 
+  // The login screen is full-viewport and self-contained — no site
+  // nav, no footer.
+  const isBareRoute = location.pathname === "/login";
+
   return (
     <DraftProvider>
-      <Navbar />
+      {!isBareRoute && <Navbar />}
 
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname + siteLanguage}>
@@ -129,11 +204,59 @@ export default function App() {
             }
           />
 
+          <Route path="/login" element={<Login />} />
+
           <Route
             path="/draft"
             element={
               <PageWrapper>
-                <Draft />
+                <RequireAuth>
+                  <Draft />
+                </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/upload-gr"
+            element={
+              <PageWrapper>
+                <RequireAuth>
+                  <UploadGR />
+                </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/upload"
+            element={
+              <PageWrapper>
+                <RequireAuth>
+                  <UploadGR />
+                </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/history"
+            element={
+              <PageWrapper>
+                <RequireAuth>
+                  <History />
+                </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <PageWrapper>
+                <RequireAdmin>
+                  <Admin />
+                </RequireAdmin>
               </PageWrapper>
             }
           />
@@ -158,7 +281,9 @@ export default function App() {
         </Routes>
       </AnimatePresence>
 
-      <Footer />
+      {!isBareRoute && <Footer />}
+
+      <ChatWidget />
     </DraftProvider>
   );
 }

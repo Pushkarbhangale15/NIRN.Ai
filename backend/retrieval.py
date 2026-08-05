@@ -48,15 +48,15 @@ def _load_faiss():
         # We load them once lazily when first needed.
         if _index is None:
             index_path = os.path.join(os.path.dirname(__file__), "data", "index.faiss")
-            if not os.path.exists(index_path):
-                index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "index.faiss")
             if os.path.exists(index_path):
                 _index = faiss.read_index(index_path)
+                # IVF-SQ8 index: set clusters-searched-per-query explicitly rather than relying
+                # on whatever value happened to be serialized into the file.
+                if hasattr(_index, "nprobe"):
+                    _index.nprobe = settings.FAISS_NPROBE
         
         if _chunks is None:
             chunks_path = os.path.join(os.path.dirname(__file__), "data", "chunks.pkl")
-            if not os.path.exists(chunks_path):
-                chunks_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_db", "chunks.pkl")
             if os.path.exists(chunks_path):
                 with open(chunks_path, "rb") as f:
                     _chunks = pickle.load(f)
@@ -162,7 +162,7 @@ def search(
         elif not query_is_marathi and chunk_lang == "en":
             norm_score = min(norm_score + LANG_BOOST, 1.0)
 
-        title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+        title = chunk.get("title") or f"GR {chunk.get('gr_id', 'Unknown')}"
         lang_path = "English" if chunk_lang == "en" else "Marathi"
         hit = CorpusHit(
             gr_id=chunk.get("gr_id", "Unknown"),
@@ -175,12 +175,80 @@ def search(
                 f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/"
                 f"{lang_path}/{chunk.get('gr_id', '')}.pdf"
             ),
+            gr_number=chunk.get("gr_number"),
+            cited_references=chunk.get("cited_references", []),
         )
         results.append(hit)
 
     # Re-sort by boosted score descending, then trim to top_k
     results.sort(key=lambda h: h.score, reverse=True)
     return results[:top_k]
+
+
+def search_within_department(
+    query: str,
+    department: str,
+    top_k: int = 4,
+) -> List[CorpusHit]:
+    """
+    Like search(), but guarantees results come from `department` specifically, instead of
+    relying on that department's chunks ranking within the natural (unscoped) top-K.
+
+    Needed because a clause can be phrased in a way that structurally resembles a DIFFERENT
+    department's boilerplate more closely than the substantively responsible department's own
+    writing style -- e.g. "permission is hereby granted to use X" reads similarly across many
+    departments' GRs, even when only one department actually has jurisdiction over X. Confirmed
+    directly: a real draft clause about using forest land returned zero Revenue_and_Forest_
+    Department hits in the top 30 unscoped results, despite that department holding 248k+ chunks
+    including GRs specifically about forest-land diversion approval.
+
+    Fetches a wide candidate pool and filters to the target department in Python, since the
+    IVF-SQ8 index has no native per-department metadata filtering.
+    """
+    model = _load_model()
+    _load_faiss()
+    if _index is None or _chunks is None:
+        return []
+
+    with _model_lock:
+        query_embedding = model.encode(["query: " + query], convert_to_numpy=True)
+    faiss.normalize_L2(query_embedding)
+
+    FETCH_K = 500  # wide net; department filtering happens after retrieval, not during it
+    distances, indices = _index.search(query_embedding, k=FETCH_K)
+
+    results = []
+    for i, idx in enumerate(indices[0]):
+        if idx < 0:
+            continue
+        chunk = _chunks[idx]
+        if chunk.get("department") != department:
+            continue
+
+        score = float(distances[0][i])
+        norm_score = min(max(score, 0.0), 1.0)
+        chunk_lang = chunk.get("language", "en")
+        title = chunk.get("title") or f"GR {chunk.get('gr_id', 'Unknown')}"
+        lang_path = "English" if chunk_lang == "en" else "Marathi"
+        results.append(CorpusHit(
+            gr_id=chunk.get("gr_id", "Unknown"),
+            title=title,
+            department=chunk.get("department", "Unknown"),
+            issued_on=chunk.get("issued_on"),
+            snippet=chunk.get("text", "")[:800],
+            score=norm_score,
+            source_url=(
+                f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/"
+                f"{lang_path}/{chunk.get('gr_id', '')}.pdf"
+            ),
+            gr_number=chunk.get("gr_number"),
+            cited_references=chunk.get("cited_references", []),
+        ))
+        if len(results) >= top_k:
+            break
+
+    return results
+
 
 def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
     # In FAISS we would need to iterate through chunks or have a separate metadata dict.
@@ -190,7 +258,7 @@ def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
         
     for chunk in _chunks:
         if chunk.get("gr_id") == gr_number:
-            title = chunk.get("title", f"GR {chunk.get('gr_id', 'Unknown')}")
+            title = chunk.get("title") or f"GR {chunk.get('gr_id', 'Unknown')}"
             lang_path = "English" if chunk.get("language") == "en" else "Marathi"
             return CorpusHit(
                 gr_id=chunk.get("gr_id", "Unknown"),
@@ -199,7 +267,9 @@ def lookup_by_gr_number(gr_number: str) -> Optional[CorpusHit]:
                 issued_on=chunk.get("issued_on"),
                 snippet=chunk.get("text", "")[:1000],
                 score=1.0,
-                source_url=f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang_path}/{chunk.get('gr_id', '')}.pdf"
+                source_url=f"https://gr.maharashtra.gov.in/Site/Upload/Government%20Resolutions/{lang_path}/{chunk.get('gr_id', '')}.pdf",
+                gr_number=chunk.get("gr_number"),
+                cited_references=chunk.get("cited_references", []),
             )
     return None
 
@@ -228,8 +298,8 @@ def get_full_ocr(gr_id: str, language: Optional[str] = None) -> Optional[dict]:
     department = "Unknown Department"
     title = f"GR {gr_id}"
     if gr_chunks:
-        department = gr_chunks[0].get("department", department)
-        title = gr_chunks[0].get("title", title)
+        department = gr_chunks[0].get("department") or department
+        title = gr_chunks[0].get("title") or title
 
     full_text = None
     if language:

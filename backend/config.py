@@ -70,13 +70,37 @@ class Settings(BaseSettings):
     # How many corpus chunks to return per user search query.
     TOP_K: int = 8
 
+    # FAISS IVF-SQ8 clusters searched per query (out of 4096 total). 512 measured at 99%
+    # recall@10 vs. exact search, ~120ms/query -- both keep rising past this with diminishing
+    # returns, so this is the sweet spot rather than a floor.
+    FAISS_NPROBE: int = 512
+
     # ---- Conflict detection tuning ----------------------------------------
     # How many clauses at most we analyse per draft (cost / latency guard).
-    MAX_CLAUSES_ANALYSED: int = 10
+    # Each unresolved clause->candidate pair costs one sequential local-LLM call
+    # (~6-10s observed with gemma3:4b via Ollama on this machine), so this and
+    # CANDIDATES_PER_CLAUSE together bound worst-case request latency: keep their
+    # product small to stay under the 30s target. Measured 23.8s-28.7s at these
+    # values on fresh (uncached) drafts.
+    MAX_CLAUSES_ANALYSED: int = 2
+
+    # How many of the leading clauses are eligible for LLM verification.
+    # The deterministic rule engine now runs over every extracted clause
+    # (cheap, local, no LLM call); this constant keeps the LLM-call volume
+    # identical to the previous MAX_CLAUSES_ANALYSED behaviour.
+    MAX_CLAUSES_FOR_LLM: int = 2
 
     # How many corpus candidates to retrieve per draft clause before the
-    # model judges the relationships.
-    CANDIDATES_PER_CLAUSE: int = 4
+    # model judges the relationships. This bounds LLM-call volume -- unchanged.
+    CANDIDATES_PER_CLAUSE: int = 2
+
+    # How many corpus candidates the (free, local, no-LLM) deterministic rule engine gets
+    # to inspect per clause. Wider than CANDIDATES_PER_CLAUSE on purpose: only the top
+    # CANDIDATES_PER_CLAUSE of this same pool (already score-sorted by retrieval.search)
+    # are ever passed to the LLM stage, so widening this has zero effect on LLM-call volume
+    # -- it only gives the rule engine more chances to find a deterministic match before
+    # falling through to (or past) the LLM budget. Local FAISS/embedding cost only.
+    RULE_ENGINE_CANDIDATES_PER_CLAUSE: int = 6
 
     # Minimum confidence for a conflict to be included in the final report.
     CONFLICT_CONFIDENCE_FLOOR: float = 0.45
@@ -84,6 +108,71 @@ class Settings(BaseSettings):
     # ---- Chunking ----------------------------------------------------------
     CHUNK_CHARS: int = 500
     CHUNK_OVERLAP: int = 100
+
+    # ---- Local database (PostgreSQL) ----------------------------------------
+    # asyncpg driver, used by the app at request time.
+    DATABASE_URL: str = Field(
+        default=os.getenv("DATABASE_URL", "postgresql+asyncpg://nirn_app:CHANGEME@localhost:5432/nirn_ai"),
+        alias="DATABASE_URL",
+    )
+    # Sync driver (psycopg2-style URL, "+asyncpg" stripped in alembic/env.py),
+    # used only by Alembic and only with superuser privileges for DDL.
+    ALEMBIC_DATABASE_URL: str = Field(
+        default=os.getenv("ALEMBIC_DATABASE_URL", "postgresql://postgres:CHANGEME@localhost:5432/nirn_ai"),
+        alias="ALEMBIC_DATABASE_URL",
+    )
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 5
+
+    # ---- Auth / JWT ----------------------------------------------------------
+    JWT_SECRET: str = Field(default=os.getenv("JWT_SECRET", "CHANGEME"), alias="JWT_SECRET")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 12  # 12 hours — a working shift
+    LOGIN_RATE_LIMIT: str = "5/minute"
+
+    # ---- Pagination ----------------------------------------------------------
+    DEFAULT_PAGE_SIZE: int = 20
+    MAX_PAGE_SIZE: int = 100
+
+    # ---- Department codes ----------------------------------------------------
+    # Used to compose provisional GR numbers: NIRN/<CODE>/<YYYY>/<seq>.
+    # Keys match the `value` field of the department <select> in
+    # DraftInputCard.jsx exactly. Anything not listed falls back to 'GEN'.
+    DEPARTMENT_CODES: dict = {
+        "Agriculture,_Dairy_Development,_Animal_Husbandry_and_Fisheries_Department": "AHD",
+        "Co-operation,_Textiles_and_Marketing_Department": "CTM",
+        "Environment_Department": "ENV",
+        "Finance_Department": "FIN",
+        "Food,_Civil_Supplies_and_Consumer_Protection_Department": "FCS",
+        "General_Administration_Department": "GAD",
+        "Higher_and_Technical_Education_Department": "HTE",
+        "Home_Department": "HD",
+        "Housing_Department": "HSG",
+        "Industries,_Energy_and_Labour_Department": "IEL",
+        "Information_Technology_Department": "IT",
+        "Law_and_Judiciary_Department": "LJD",
+        "Marathi_Language_Department": "MLD",
+        "Medical_Education_and_Drugs_Department": "MED",
+        "Minorities_Development_Department": "MD",
+        "Other_Backward_Bahujan_Welfare_Department": "OBW",
+        "Parliamentary_Affairs_Department": "PAD",
+        "Persons_with_Disabilities_Welfare_Department": "PWD",
+        "Planning_Department": "PLN",
+        "Public_Health_Department": "PHD",
+        "Public_Works_Department": "PWK",
+        "Revenue_and_Forest_Department": "RFD",
+        "Rural_Development_Department": "RD",
+        "Skill_Development_and_Entrepreneurship_Department": "SDE",
+        "School_Education_and_Sports_Department": "SES",
+        "Social_Justice_and_Special_Assistance_Department": "SJD",
+        "Soil_and_Water_Conservation_Department": "SWC",
+        "Tourism_and_Cultural_Affairs_Department": "TCA",
+        "Tribal_Development_Department": "TD",
+        "Urban_Development_Department": "UD",
+        "Water_Resources_Department": "WR",
+        "Water_Supply_and_Sanitation_Department": "WSS",
+        "Women_and_Child_Development_Department": "WCD",
+    }
 
     class Config:
         # Look for a .env file one level above backend/ (i.e. at the project root).

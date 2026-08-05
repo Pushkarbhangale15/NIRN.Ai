@@ -8,14 +8,27 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
 
 import { useLanguage } from '../../LanguageContext.jsx';
+import { api } from '../../api.js';
 import { convertGRToHTML } from '../../utils/grFormat.js';
 import { FontSize } from '../../utils/fontSizeExtension.js';
+import { generateGRDocumentPDF } from '../../utils/pdfExport.js';
 
 const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
 const DEFAULT_ESTIMATE_MS = 45000;
 
 const toDevanagariDigits = (value) => String(value).replace(/\d/g, (d) => '०१२३४५६७८९'[d]);
 const roundToNearest = (value, step) => Math.max(step, Math.round(value / step) * step);
+
+// The stored department value is machine-formatted
+// ("Higher_and_Technical_Education_Department"); display-only.
+const formatDepartmentName = (value) => {
+  if (!value) return 'Government of Maharashtra';
+  return value
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : word))
+    .join(' ');
+};
 
 const IconSave = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
@@ -278,6 +291,17 @@ export default function DraftViewer({
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
+  // Dirty/saved state (Task 5c): compares current editor HTML against
+  // the last content we know is persisted server-side.
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const savedHtmlRef = useRef(null);
+
+  // Export state (Task 5b) — both buttons disabled while either export
+  // is in flight, to prevent double-clicks.
+  const [exporting, setExporting] = useState(null); // null | 'pdf' | 'docx'
+  const [exportError, setExportError] = useState('');
+
   // Track draft ID to prevent overwriting user edits on parent state updates
   const loadedDraftIdRef = useRef(null);
 
@@ -327,19 +351,42 @@ export default function DraftViewer({
       FontSize,
     ],
     content: '',
+    onUpdate: ({ editor: ed }) => {
+      setIsDirty(savedHtmlRef.current !== null && ed.getHTML() !== savedHtmlRef.current);
+    },
   });
 
   // Only load initial document content when a NEW draft is passed in
   useEffect(() => {
     if (!editor || !draft?.body_text) return;
 
-    const currentDraftKey = draft.draft_id || draft.title || draft.body_text.slice(0, 30);
+    // Including _rev means a server-driven content overwrite (e.g. accepting
+    // a conflict resolution) forces a reload even though draft_id is
+    // unchanged — see handleResolveAllConflicts in Draft.jsx.
+    const currentDraftKey = `${draft.draft_id || draft.title || draft.body_text.slice(0, 30)}:${draft._rev || 0}`;
     if (loadedDraftIdRef.current !== currentDraftKey) {
       loadedDraftIdRef.current = currentDraftKey;
       const formattedHtml = convertGRToHTML(draft.body_text, draft.language);
       editor.commands.setContent(formattedHtml);
+      savedHtmlRef.current = formattedHtml;
+      setIsDirty(false);
+      setLastSavedAt(null);
     }
   }, [draft, editor]);
+
+  // Warn on navigating away with unsaved changes — covers tab close,
+  // refresh, and typing a new URL. In-app SPA navigation isn't
+  // interceptable here (this app uses a plain BrowserRouter, not a
+  // data router with useBlocker), so this is the browser-level net.
+  useEffect(() => {
+    const handler = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   // Explicit Manual Save Click Handler
   const handleManualSave = async () => {
@@ -355,6 +402,9 @@ export default function DraftViewer({
       if (onSaveDraft) {
         await onSaveDraft(htmlContent, textContent);
       }
+      savedHtmlRef.current = htmlContent;
+      setIsDirty(false);
+      setLastSavedAt(new Date());
       setToast({ message: 'Document saved successfully! ✓', type: 'success' });
     } catch (err) {
       console.error("Save error:", err);
@@ -385,20 +435,44 @@ export default function DraftViewer({
     });
   };
 
-  const handleDownloadTxt = () => {
-    if (!editor) return;
-    const text = editor.getText();
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `GR_Draft_${draft?.gr_id || 'NIRN'}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handlePrint = () => {
     window.print();
+  };
+
+  // Exports the CURRENT editor content (editor.getHTML()), not the
+  // original AI output, so the officer's edits are always included.
+  const handleExportPdf = async () => {
+    if (!editor || exporting) return;
+    setExportError('');
+    setExporting('pdf');
+    try {
+      await generateGRDocumentPDF(draft, editor.getHTML());
+    } catch (err) {
+      console.error('PDF export error:', err);
+      setExportError(t('export_error'));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!draft?.draft_id || exporting) return;
+    setExportError('');
+    setExporting('docx');
+    try {
+      const { blob, filename } = await api.exportDocx(draft.draft_id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('DOCX export error:', err);
+      setExportError(err.message || t('export_error'));
+    } finally {
+      setExporting(null);
+    }
   };
 
   const isMarathi = draft?.language?.toLowerCase().includes('marathi') || draft?.language === 'mr';
@@ -475,61 +549,86 @@ export default function DraftViewer({
       <div className="gr-editor-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="official-badge">{t('draft_official')}</span>
-          <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--ink)' }}>
-            {draft.department || 'Government of Maharashtra'}
+          <span className="gr-editor-dept-name">
+            {formatDepartmentName(draft.department)}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+        <div className="gr-editor-header-actions">
           {toast && (
             <span className={toast.type === 'success' ? 'saved-badge' : 'error-badge'}>
               {toast.message}
             </span>
           )}
+          {!toast && isDirty && (
+            <span className="error-badge" style={{ background: '#fff3d6', color: '#9a6b00', borderColor: 'var(--yellow)' }}>
+              {t('save_unsaved_indicator')}
+            </span>
+          )}
+          {!toast && !isDirty && lastSavedAt && (
+            <span className="saved-badge">
+              {t('save_saved_at')} {lastSavedAt.toLocaleTimeString(isMr ? 'mr-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          {exportError && <span className="error-badge">{exportError}</span>}
 
-          {/* EXPLICIT MANUAL SAVE BUTTON */}
-          <button
-            type="button"
-            onClick={handleManualSave}
-            disabled={isSaving}
-            className="action-btn save-btn"
-            title="Save Document"
-          >
-            {isSaving ? (
-              <>
-                <span className="spinner-small" /> Saving...
-              </>
-            ) : (
-              <>
-                <IconSave /> Save
-              </>
-            )}
-          </button>
+          <div className="gr-editor-btn-group">
+            {/* EXPLICIT MANUAL SAVE BUTTON */}
+            <button
+              type="button"
+              onClick={handleManualSave}
+              disabled={isSaving}
+              className="action-btn save-btn"
+              title="Save Document"
+            >
+              {isSaving ? (
+                <>
+                  <span className="spinner-small" /> Saving...
+                </>
+              ) : (
+                <>
+                  <IconSave /> Save
+                </>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="action-btn print-btn"
-            title="Print Document"
-          >
-            <IconPrint /> Print
-          </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="action-btn print-btn"
+              title="Print Document"
+            >
+              <IconPrint /> Print
+            </button>
 
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="action-btn"
-          >
-            {copied ? <><IconCheck /> {t('draft_copied')}</> : <><IconCopy /> {t('draft_copy')}</>}
-          </button>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="action-btn"
+            >
+              {copied ? <><IconCheck /> {t('draft_copied')}</> : <><IconCopy /> {t('draft_copy')}</>}
+            </button>
 
-          <button
-            type="button"
-            onClick={handleDownloadTxt}
-            className="action-btn"
-          >
-            <IconDownload /> {t('draft_download_txt')}
-          </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={Boolean(exporting)}
+              className="action-btn"
+              title={t('export_download_pdf')}
+            >
+              {exporting === 'pdf' ? <><span className="spinner-small" /> {t('export_exporting')}</> : <><IconDownload /> {t('export_download_pdf')}</>}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportDocx}
+              disabled={Boolean(exporting)}
+              className="action-btn"
+              title={t('export_download_docx')}
+            >
+              {exporting === 'docx' ? <><span className="spinner-small" /> {t('export_exporting')}</> : <><IconDownload /> {t('export_download_docx')}</>}
+            </button>
+          </div>
         </div>
       </div>
 

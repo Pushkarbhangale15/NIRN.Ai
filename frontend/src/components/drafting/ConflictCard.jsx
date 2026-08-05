@@ -14,6 +14,11 @@ const IconDownload = () => (
     <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
   </svg>
 );
+const IconCheckCircle = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 14.6-4.4-4.4 1.4-1.4 3 3 6-6 1.4 1.4-7.4 7.4Z" />
+  </svg>
+);
 
 export default function ConflictCard({
   conflicts = [],
@@ -24,12 +29,22 @@ export default function ConflictCard({
   templateIssues = [],
   references = [],
   summary = null,
+  onResolveAll,
+  resolvingAll = false,
+  resolveProgress = null,
+  resolvedInfo = {},
+  onResolveOne,
+  resolvingConflictId = null,
 }) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
   const [generatingFull, setGeneratingFull] = useState(false);
   const [generatingIdx, setGeneratingIdx] = useState(null);
+
+  const resolvableConflicts = conflicts.filter(c => c.conflict_id);
+  const allResolved = resolvableConflicts.length > 0 &&
+    resolvableConflicts.every(c => resolvedInfo[c.conflict_id]);
 
   const handleDownloadFullReport = async () => {
     if (generatingFull) return;
@@ -155,39 +170,70 @@ export default function ConflictCard({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <button
-                type="button"
-                onClick={handleDownloadFullReport}
-                disabled={generatingFull}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '14px 18px',
-                  minHeight: '48px',
-                  fontSize: isMr ? '16px' : '15px',
-                  fontWeight: 'bold',
-                  background: 'var(--blue)',
-                  color: '#fff',
-                  border: '2px solid var(--ink)',
-                  borderRadius: '8px',
-                  boxShadow: '0 3px 0 var(--ink)',
-                  cursor: generatingFull ? 'wait' : 'pointer',
-                  opacity: generatingFull ? 0.85 : 1
-                }}
-              >
-                <IconDownload />
-                {generatingFull ? t('draft_generating_pdf') : t('draft_download_full_conflict_report')}
-              </button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadFullReport}
+                  disabled={generatingFull}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    flex: '1 1 220px',
+                    padding: '14px 18px',
+                    minHeight: '48px',
+                    fontSize: isMr ? '16px' : '15px',
+                    fontWeight: 'bold',
+                    background: 'var(--blue)',
+                    color: '#fff',
+                    border: '2px solid var(--ink)',
+                    borderRadius: '8px',
+                    boxShadow: '0 3px 0 var(--ink)',
+                    cursor: generatingFull ? 'wait' : 'pointer',
+                    opacity: generatingFull ? 0.85 : 1
+                  }}
+                >
+                  <IconDownload />
+                  {generatingFull ? t('draft_generating_pdf') : t('draft_download_full_conflict_report')}
+                </button>
+
+                {onResolveAll && (
+                  <button
+                    type="button"
+                    onClick={onResolveAll}
+                    disabled={resolvingAll || allResolved}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      flex: '1 1 220px',
+                      padding: '14px 18px',
+                      minHeight: '48px',
+                      fontSize: isMr ? '16px' : '15px',
+                      fontWeight: 'bold',
+                      background: '#16a34a',
+                      color: '#fff',
+                      border: '2px solid var(--ink)',
+                      borderRadius: '8px',
+                      boxShadow: '0 3px 0 var(--ink)',
+                      cursor: resolvingAll ? 'wait' : (allResolved ? 'default' : 'pointer'),
+                      opacity: resolvingAll ? 0.85 : (allResolved ? 0.9 : 1)
+                    }}
+                  >
+                    <IconCheckCircle />
+                    {resolvingAll
+                      ? `${t('draft_resolving_conflicts')}${resolveProgress ? ` (${resolveProgress.done}/${resolveProgress.total})` : '...'}`
+                      : allResolved
+                        ? t('draft_all_conflicts_resolved')
+                        : t('draft_resolve_all_conflicts')}
+                  </button>
+                )}
+              </div>
 
               {conflicts.map((item, idx) => {
-                const isHigh = item.severity === 'Critical' || item.severity === 'High' || item.confidence >= 0.8;
-                const isMed = item.severity === 'Medium' || (item.confidence >= 0.6 && item.confidence < 0.8);
-                const badgeColor = isHigh ? 'var(--red)' : isMed ? 'var(--yellow)' : 'var(--blue)';
-                const textColor = isHigh ? '#fff' : 'var(--ink)';
-
+                const resolution = item.conflict_id ? resolvedInfo[item.conflict_id] : null;
                 return (
                   <div key={idx} style={{
                     border: '2px solid var(--ink)',
@@ -209,19 +255,35 @@ export default function ConflictCard({
                       }}>
                         {item.conflict_type || 'Policy Conflict'}
                       </span>
-                      <span style={{
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        background: badgeColor,
-                        color: textColor,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--ink)',
-                        textTransform: 'uppercase'
-                      }}>
-                        {item.severity || (isHigh ? 'High Risk' : 'Medium Risk')}
-                      </span>
+                      {resolution && (
+                        <span style={{
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          background: '#16a34a',
+                          color: '#fff',
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          border: '1px solid var(--ink)'
+                        }}>
+                          ✓ {t('draft_resolved_badge')}
+                        </span>
+                      )}
                     </div>
+
+                    {resolution && (
+                      <div style={{
+                        fontSize: '13.5px',
+                        fontWeight: 'bold',
+                        background: '#f0fdf4',
+                        border: '1.5px solid #86efac',
+                        color: '#166534',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        marginBottom: '10px'
+                      }}>
+                        ✓ {t('draft_resolved_conflict_with')} {resolution.grLabel}
+                      </div>
+                    )}
 
                     {/* Department and Conflicting GR Metadata */}
                     <div style={{ fontSize: '14.5px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
@@ -240,10 +302,24 @@ export default function ConflictCard({
                       marginBottom: '10px'
                     }}>
                       <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
-                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Draft Clause Text:</span>
-                        <div style={{ background: '#fffbe6', padding: '6px 8px', borderLeft: '3px solid var(--yellow)', marginTop: '4px', borderRadius: '3px', fontStyle: 'italic' }}>
-                          "{item.draft_clause}"
+                        <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>
+                          {resolution ? t('draft_updated_clause_text') : 'Draft Clause Text:'}
+                        </span>
+                        <div style={{
+                          background: resolution ? '#dcfce7' : '#fffbe6',
+                          padding: '6px 8px',
+                          borderLeft: resolution ? '3px solid #16a34a' : '3px solid var(--yellow)',
+                          marginTop: '4px',
+                          borderRadius: '3px',
+                          fontStyle: 'italic'
+                        }}>
+                          "{resolution ? resolution.revisedClause : item.draft_clause}"
                         </div>
+                        {resolution && (
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic' }}>
+                            {t('draft_original_clause_text')} "{resolution.originalClause}"
+                          </div>
+                        )}
                       </div>
                       <div style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
                         <span style={{ fontWeight: 'bold', color: 'var(--ink)' }}>Conflicting Reference Text (GR #{item.existing_gr_id}):</span>
@@ -271,7 +347,53 @@ export default function ConflictCard({
                       <strong>Recommendation:</strong> Refer to GAD guidelines or align the drafting clause parameters.
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    {!resolution && item.resolution_status === 'attempted_still_conflicting' && (
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#92400e',
+                        marginBottom: '10px'
+                      }}>
+                        ⚠ {t('draft_still_conflicting')}
+                      </div>
+                    )}
+                    {!resolution && item.resolution_status === 'attempted_error' && (
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--red)',
+                        marginBottom: '10px'
+                      }}>
+                        ⚠ {t('draft_resolve_error')}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+                      {!resolution && onResolveOne && item.conflict_id && (
+                        <button
+                          type="button"
+                          onClick={() => onResolveOne(item)}
+                          disabled={resolvingConflictId === item.conflict_id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 12px',
+                            minHeight: '32px',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            background: '#16a34a',
+                            color: '#fff',
+                            border: '1.5px solid var(--ink)',
+                            borderRadius: '6px',
+                            cursor: resolvingConflictId === item.conflict_id ? 'wait' : 'pointer',
+                            opacity: resolvingConflictId === item.conflict_id ? 0.7 : 1
+                          }}
+                        >
+                          <IconCheckCircle />
+                          {resolvingConflictId === item.conflict_id ? t('draft_resolving_conflicts') : t('draft_resolve_one')}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleDownloadOneReport(item, idx)}

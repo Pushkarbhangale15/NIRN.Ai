@@ -27,11 +27,6 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-function formatConfidence(confidence) {
-  const pct = Math.round((Number(confidence) || 0) * 100);
-  return `${pct}%`;
-}
-
 function relationLabel(relation) {
   if (!relation) return "Conflict";
   const key = String(relation).toLowerCase();
@@ -99,13 +94,18 @@ const REPORT_STYLES = `
     border-radius: 3px;
   }
   .nirn-pdf-report .nirn-body-text {
+    /* white-space: pre-wrap preserves the raw draft's embedded line
+       breaks verbatim. Combined with text-align: justify, browsers
+       justify EACH of those forced-break lines independently — a
+       five-word line gets stretched with huge gaps to fill the full
+       width. Left-aligned is what pre-wrap text needs here. */
     white-space: pre-wrap;
     background: #fafafa;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     padding: 14px 16px;
     font-size: 13px;
-    text-align: justify;
+    text-align: left;
   }
   .nirn-pdf-report .nirn-summary-row {
     display: flex;
@@ -228,7 +228,6 @@ function conflictBlockHtml(conflict, index, headingPrefix = "Conflict") {
 
       <div class="nirn-tag-row">
         <span class="nirn-tag">Relation: ${escapeHtml(relationLabel(conflict.relation))}</span>
-        <span class="nirn-tag">Confidence: ${formatConfidence(conflict.confidence)}</span>
         ${conflict.severity ? `<span class="nirn-tag">Severity: ${escapeHtml(conflict.severity)}</span>` : ""}
       </div>
 
@@ -312,9 +311,6 @@ function buildIndividualReportHtml(draftText, conflict, metadata, now) {
 }
 
 function buildFullReportHtml(draftText, conflicts, metadata, now) {
-  const highestConfidence = metadata.summary?.highest_conflict_confidence
-    ?? conflicts.reduce((max, c) => Math.max(max, Number(c.confidence) || 0), 0);
-
   return `
     <div class="nirn-pdf-report">
       <style>${REPORT_STYLES}</style>
@@ -337,10 +333,6 @@ function buildFullReportHtml(draftText, conflicts, metadata, now) {
         <div class="nirn-summary-box">
           <div class="nirn-num">${conflicts.length}</div>
           <div class="nirn-label">Total Conflicts Found</div>
-        </div>
-        <div class="nirn-summary-box">
-          <div class="nirn-num">${formatConfidence(highestConfidence)}</div>
-          <div class="nirn-label">Highest Confidence Score</div>
         </div>
       </div>
 
@@ -428,6 +420,94 @@ export async function generateConflictPDF(draftText, conflicts, metadata = {}) {
     : `NIRN-Conflict-${(Array.isArray(conflicts) ? conflicts[0] : conflicts)?.existing_gr_id || "GR"}-${filenameTimestamp(now)}.pdf`;
 
   await renderHtmlToPdf(html, filename, isFull ? "NIRN.Ai | Confidential Draft Analysis" : null);
+  return filename;
+}
+
+// =====================================================================
+// GR document export (Task 5b) — the draft itself, not the conflict
+// report. Deliberately mirrors backend/export_docx.py's layout (same
+// header block, margins, signature block) so the PDF and DOCX exports
+// of the same draft look like the same document.
+// =====================================================================
+
+// Mirrors index.css's .lang-marathi/.lang-english .ProseMirror rules exactly (same
+// font-family/size/line-height/color, same heading/paragraph/list/strong/underline rules) --
+// bodyHtml below is literally the same HTML the Tiptap editor holds (see convertGRToHTML /
+// editor.getHTML()), which already contains the FULL document: header, references, body, and
+// signature. It must render with identical typography here, not a second reimplementation.
+const GR_DOC_STYLES = `
+  * { box-sizing: border-box; }
+  .nirn-gr-doc {
+    width: 720px;
+    padding: 4px;
+    color: #111827;
+  }
+  .nirn-gr-doc.nirn-english {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .nirn-gr-doc.nirn-marathi {
+    font-family: 'Tiro Devanagari Marathi', 'Noto Sans Devanagari', serif;
+    font-size: 17px;
+    line-height: 1.8;
+  }
+  .nirn-gr-doc h1, .nirn-gr-doc h2, .nirn-gr-doc h3 {
+    font-weight: bold;
+    margin-top: 12px;
+    margin-bottom: 10px;
+  }
+  .nirn-gr-doc p { margin-bottom: 8px; }
+  .nirn-gr-doc ol, .nirn-gr-doc ul { padding-left: 28px; margin-bottom: 12px; }
+  .nirn-gr-doc strong, .nirn-gr-doc b { font-weight: 700; }
+  .nirn-gr-doc u { text-decoration: underline; }
+`;
+
+function buildGrDocumentHtml({ isMarathi, bodyHtml }) {
+  return `
+    <div class="nirn-gr-doc ${isMarathi ? "nirn-marathi" : "nirn-english"}">
+      <style>${GR_DOC_STYLES}</style>
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+/**
+ * Exports the CURRENT editor content as a PDF. bodyHtml already IS the complete document
+ * (header, references, body, signature -- see convertGRToHTML/editor.getHTML()), so this
+ * renders it as-is with matching Tiptap typography rather than wrapping it in a second,
+ * separately-built header/signature -- doing the latter previously produced a duplicated
+ * header and a stray/empty references block in the PDF (bodyHtml's own header rendered
+ * right after this function's own header). Margins mirror backend/export_docx.py: top 1",
+ * bottom 1", left 1.25", right 1".
+ *
+ * @param {object} draft - { title, gr_number, draft_id, language }
+ * @param {string} bodyHtml - editor.getHTML() — the user's current edits.
+ */
+export async function generateGRDocumentPDF(draft, bodyHtml) {
+  const isMarathi = (draft.language || "").toLowerCase().startsWith("mr") || (draft.language || "").toLowerCase() === "marathi";
+
+  const html = buildGrDocumentHtml({ isMarathi, bodyHtml });
+
+  const container = document.createElement("div");
+  container.style.background = "#fff";
+  container.innerHTML = html;
+
+  const safeTitle = (draft.title || "GR_Draft").replace(/[^\w\- ]+/g, "").slice(0, 60).trim() || "GR_Draft";
+  const filename = `${safeTitle}_${draft.gr_number || draft.draft_id || "NIRN"}.pdf`;
+
+  await html2pdf()
+    .set({
+      margin: [25.4, 31.75, 25.4, 25.4], // [top, left, bottom, right] mm — matches export_docx.py
+      filename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },
+    })
+    .from(container)
+    .save();
+
   return filename;
 }
 

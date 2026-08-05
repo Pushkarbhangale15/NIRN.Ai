@@ -53,7 +53,7 @@ const REVIEW_TABS = [
 ];
 
 export default function Draft() {
-  const { t, siteLanguage } = useLanguage();
+  const { t } = useLanguage();
   const {
     prompt, setPrompt,
     language, setLanguage,
@@ -61,8 +61,8 @@ export default function Draft() {
     loading,
     analysisLoading,
     currentStage,
-    draftResult,
-    analysisReport,
+    draftResult, setDraftResult,
+    analysisReport, setAnalysisReport,
     error,
     activeReviewTab, setActiveReviewTab,
     handleGenerate,
@@ -70,8 +70,35 @@ export default function Draft() {
     handleSaveDraft
   } = useDraft();
 
+  const [resolvingAll, setResolvingAll] = useState(false);
+  const [resolveProgress, setResolveProgress] = useState(null);
+  // conflict_id -> { revisedClause, originalClause, grLabel }. Derived from
+  // the server's persisted resolution_status/resolved_clause_text on every
+  // analysisReport change below — NOT recomputed locally-only — so a page
+  // reload shows the same resolved state without re-running resolution.
+  const [resolvedInfo, setResolvedInfo] = useState({});
+
   // Filter conflicts into cross-departmental vs own-department
   const allConflicts = analysisReport?.conflicts || [];
+
+  // Source of truth for "is this conflict resolved": the persisted
+  // resolution_status field on each conflict, not a client-only flag —
+  // this is what makes resolved state survive a page reload.
+  useEffect(() => {
+    const derived = {};
+    for (const c of allConflicts) {
+      if (c.conflict_id && c.resolution_status === "resolved") {
+        derived[c.conflict_id] = {
+          revisedClause: c.resolved_clause_text || "",
+          originalClause: c.draft_clause,
+          grLabel: c.existing_gr_title || c.existing_gr_id,
+          grId: c.existing_gr_id,
+        };
+      }
+    }
+    setResolvedInfo(derived);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisReport]);
   const normDraft = (draftResult?.department || department || "").toLowerCase().replace(/_/g, " ").trim();
   
   const ownDeptConflicts = allConflicts.filter(c => {
@@ -84,6 +111,84 @@ export default function Draft() {
     return normDraft && normExist && normDraft !== normExist;
   });
 
+  const handleResolveAllConflicts = async () => {
+    const draftId = draftResult?.draft_id;
+    // Skip conflicts the server already durably marked resolved — retrying
+    // these would regenerate against stale original-clause text (already
+    // replaced in the draft by the earlier accept) and fail every time.
+    const resolvable = allConflicts.filter(c => c.conflict_id && c.resolution_status !== "resolved");
+    if (!draftId || resolvingAll || resolvable.length === 0) return;
+
+    setResolvingAll(true);
+    setResolveProgress({ done: 0, total: resolvable.length });
+    let failedCount = 0;
+
+    // "reword" alone often can't fix a substantive funding/scope conflict —
+    // it only rephrases wording. Fall back to "add_carve_out" (explicitly
+    // excludes the overlapping scope) before giving up on a conflict, since
+    // that's far more likely to genuinely clear it.
+    const STRATEGIES = ["reword", "add_carve_out"];
+
+    for (const conflict of resolvable) {
+      let clearedThisConflict = false;
+      try {
+        for (const strategy of STRATEGIES) {
+          const result = await api.resolveConflict(conflict.conflict_id, strategy);
+          if (result.cleared) {
+            await api.acceptConflictResolution(conflict.conflict_id, result.revised_clause);
+            clearedThisConflict = true;
+            setResolvedInfo(prev => ({
+              ...prev,
+              [conflict.conflict_id]: {
+                revisedClause: result.revised_clause,
+                originalClause: result.original_clause,
+                grLabel: conflict.existing_gr_title || conflict.existing_gr_id,
+                grId: conflict.existing_gr_id,
+              },
+            }));
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn("Resolve conflict failed:", conflict.conflict_id, err);
+      }
+      if (!clearedThisConflict) failedCount += 1;
+      setResolveProgress(prev => ({ done: (prev?.done || 0) + 1, total: resolvable.length }));
+    }
+
+    // Refresh the editor content and re-run full analysis. Safe to re-run
+    // conflict detection now: resolved conflicts are read from their
+    // persisted resolution_status/resolved_clause_text and merged back
+    // into the response server-side, so they no longer vanish from the
+    // list just because their (now-fixed) clause stops matching live.
+    try {
+      const updatedDraft = await api.getDraftDetail(draftId);
+      // _rev is a server-driven-overwrite marker: DraftViewer only reloads
+      // Tiptap's content when this changes, so the accepted resolution
+      // shows up in the editor without resetting cursor/undo on every
+      // unrelated re-render (e.g. after the user's own manual save).
+      setDraftResult(prev => prev ? {
+        ...prev,
+        body_text: updatedDraft.content,
+        _rev: (prev._rev || 0) + 1,
+      } : prev);
+      const report = await api.runFullAnalysis(draftId);
+      setAnalysisReport(report);
+    } catch (err) {
+      console.warn("Post-resolve refresh warning:", err);
+    }
+
+    setResolvingAll(false);
+    setResolveProgress(null);
+
+    if (failedCount > 0) {
+      window.alert(
+        `${resolvable.length - failedCount} of ${resolvable.length} conflicts resolved automatically. ` +
+        `${failedCount} could not be cleared and still need manual review.`
+      );
+    }
+  };
+
   return (
     <main className="container">
       <header className="page-head">
@@ -94,10 +199,7 @@ export default function Draft() {
 
       <div className="copilot-panel-area" style={{ marginTop: '20px' }}>
         <div style={{ width: '100%' }}>
-          {/* 1. Workflow Stepper at the very top */}
-          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
-
-          {/* 2. Horizontal Parameter & Brief Header */}
+          {/* 1. Horizontal Parameter & Brief Header */}
           <DraftInputCard
             prompt={prompt}
             setPrompt={setPrompt}
@@ -109,6 +211,10 @@ export default function Draft() {
             loading={loading}
             onReset={handleReset}
           />
+
+          {/* 2. Workflow Stepper — directly below the brief/generate
+              action it tracks, above the generated result. */}
+          <WorkflowStepper currentStage={currentStage} isGenerating={loading} />
 
           {/* 3. 2-Column Side-by-Side Workspace */}
           <div className="draft-workspace-two-col">
@@ -139,7 +245,7 @@ export default function Draft() {
             </div>
 
             {/* Right Column: Legible & Tabbed Compliance/Review Dashboard */}
-            <div style={{
+            <div className="draft-review-panel" style={{
               background: 'var(--paper)',
               border: '2px solid var(--ink)',
               borderRadius: '12px',
@@ -149,15 +255,9 @@ export default function Draft() {
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* Tab Selection Header */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                borderBottom: '2px solid var(--ink)',
-                paddingBottom: '16px',
-                marginBottom: '24px',
-                flexWrap: 'wrap'
-              }}>
+              {/* Tab Selection Header — nowrap + horizontal scroll so
+                  all five tabs stay on one line instead of wrapping. */}
+              <div className="draft-tabs-row">
                 {REVIEW_TABS.map(tab => {
                   const isActive = activeReviewTab === tab.id;
                   const Icon = tab.Icon;
@@ -165,37 +265,11 @@ export default function Draft() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveReviewTab(tab.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: isActive ? 'var(--blue)' : '#fff',
-                        color: isActive ? '#fff' : 'var(--ink)',
-                        border: '2px solid var(--ink)',
-                        borderRadius: '6px',
-                        padding: '10px 18px',
-                        minHeight: '44px',
-                        fontWeight: 'bold',
-                        fontSize: siteLanguage === 'mr' ? '17px' : '15px',
-                        cursor: 'pointer',
-                        boxShadow: isActive ? 'none' : '0 2px 0 var(--ink)',
-                        transform: isActive ? 'translateY(2px)' : 'none',
-                        transition: 'all 0.1s'
-                      }}
+                      className={`draft-tab-btn${isActive ? ' is-active' : ''}`}
                     >
                       <Icon /> {t(tab.labelKey)}
                       {tab.id === "conflicts" && allConflicts.length > 0 && (
-                        <span style={{
-                          background: '#dc2626',
-                          color: '#ffffff',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          borderRadius: '12px',
-                          padding: '2px 8px',
-                          marginLeft: '4px',
-                          border: '1px solid var(--ink)',
-                          boxShadow: '0 1px 0 var(--ink)'
-                        }}>
+                        <span className="draft-tab-badge">
                           {allConflicts.length}
                         </span>
                       )}
@@ -229,6 +303,10 @@ export default function Draft() {
                     templateIssues={analysisReport?.template_issues}
                     references={analysisReport?.references}
                     summary={analysisReport?.summary}
+                    onResolveAll={handleResolveAllConflicts}
+                    resolvingAll={resolvingAll}
+                    resolveProgress={resolveProgress}
+                    resolvedInfo={resolvedInfo}
                   />
                 )}
                 {activeReviewTab === "references" && (

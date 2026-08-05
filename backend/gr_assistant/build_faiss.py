@@ -1,3 +1,6 @@
+# DEPRECATED: reads from stale relative paths (data/embeddings.npy, data/chunks.json) that no
+# longer match the pipeline. The FAISS index is now built by kaggle/build_gr_index.ipynb from the
+# full mahGRs corpus. Not imported by the running backend — safe to delete once confirmed unused.
 import json
 import pickle
 import numpy as np
@@ -22,13 +25,13 @@ index.add(embeddings)
 print("Vectors in Index:", index.ntotal)
 
 # Save index
-faiss.write_index(index, "vector_db/index.faiss")
+faiss.write_index(index, "backend/data/index.faiss")
 
 # Save metadata (chunks)
 with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
-with open("vector_db/chunks.pkl", "wb") as f:
+with open("backend/data/chunks.pkl", "wb") as f:
     pickle.dump(chunks, f)
 
 print("FAISS index saved.")

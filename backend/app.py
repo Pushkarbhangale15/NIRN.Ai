@@ -17,11 +17,17 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 import llm
 import retrieval
+from admin_routes import router as admin_router
+from auth_routes import router as auth_router
 from config import settings
+from export_docx import router as export_router
 from knowledge import get_knowledge_service
+from rate_limit import limiter
 from routes import router
 from schemas import HealthResponse
 
@@ -61,7 +67,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# slowapi rate limiting — currently only /api/auth/login opts in
+# (5/minute per IP, see auth_routes.py), guarding against credential
+# brute-forcing.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.include_router(router)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(export_router)
 
 @app.get("/", tags=["health"])
 def root():

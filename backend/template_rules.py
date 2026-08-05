@@ -391,6 +391,68 @@ def _check_mop014_no_personal_pronouns(text: str) -> Optional[TemplateIssue]:
 
 
 # =========================================================================
+# LLM formatting-artifact cleanup — strips markdown code fences the model
+# sometimes wraps its output in (common when asked for structured text,
+# e.g. it emits "```marathi\n...\n```" around the whole GR). Must run
+# before the draft is treated as final, ahead of placeholder-leak
+# detection below so a stray fence doesn't get flagged twice.
+# =========================================================================
+
+_LEADING_FENCE_RE = re.compile(r"^```[a-zA-Z]*\s*\n?")
+_TRAILING_FENCE_RE = re.compile(r"\n?```\s*$")
+
+
+def strip_llm_formatting_artifacts(text: str) -> str:
+    """Strip a leading/trailing triple-backtick code fence (with or
+    without a language tag) from LLM output. Confirmed cause: drafts
+    generated wrapped in ```marathi ... ``` with the fences saved
+    verbatim as part of the "final" document text.
+    """
+    stripped = text.strip()
+    stripped = _LEADING_FENCE_RE.sub("", stripped, count=1)
+    stripped = _TRAILING_FENCE_RE.sub("", stripped, count=1)
+    return stripped.strip()
+
+
+# =========================================================================
+# Placeholder-leak detection — runs on every generated draft before it's
+# returned, independent of the MOP rule registry below (this is a
+# correctness gate, not a style/structure check).
+# =========================================================================
+
+_PLACEHOLDER_PATTERNS = [
+    r"\[DD Month,?\s*YYYY\]",
+    r"\bTODO\b",
+    r"\bFIXME\b",
+    r"```",  # any surviving code fence — same class of "strip before final" artifact
+    r"\[[^\]\n]{1,80}\]",  # any leftover bracketed placeholder, e.g. "[official name]"
+]
+
+# Bare "Month"/"Year" only count as leaks when they appear where a real date
+# should be (immediately after the दिनांक:/Dated: label) — matching them
+# anywhere in the body would false-positive on ordinary prose.
+_DATE_LABEL_LEAK_PATTERN = (
+    r"(?:दिनांक|dated?)\s*[:\s]+[^\n]*\b(?:month|year)\b"
+)
+
+
+def find_placeholder_leaks(text: str) -> List[str]:
+    """Return the list of unrendered placeholder tokens found in `text`.
+
+    Empty list means the draft is clean. Callers should treat any hit as a
+    generation failure — the placeholder must be substituted with a real
+    value, never shipped to the user.
+    """
+    leaks: List[str] = []
+    for pattern in _PLACEHOLDER_PATTERNS:
+        leaks.extend(re.findall(pattern, text, re.IGNORECASE))
+    date_leak = re.search(_DATE_LABEL_LEAK_PATTERN, text, re.IGNORECASE)
+    if date_leak:
+        leaks.append(date_leak.group(0).strip())
+    return leaks
+
+
+# =========================================================================
 # Rule registry — add new check functions here to activate them.
 # =========================================================================
 

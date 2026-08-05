@@ -14,33 +14,35 @@ Design principles used here:
     relevant (bilingual support).
 """
 
+from datetime import date
 from typing import Dict
 
+_DEVANAGARI_DIGITS = str.maketrans("0123456789", "०१२३४५६७८९")
 
-# -------------------------------------------------------------------------
-# Objective 1 — Cross-departmental conflict detection
-# -------------------------------------------------------------------------
+_MARATHI_MONTHS = [
+    "जानेवारी", "फेब्रुवारी", "मार्च", "एप्रिल", "मे", "जून",
+    "जुलै", "ऑगस्ट", "सप्टेंबर", "ऑक्टोबर", "नोव्हेंबर", "डिसेंबर",
+]
 
-CONFLICT_DETECTION = (
-    "You are a senior legal analyst for the Government of Maharashtra. "
-    "Your task is to compare a DRAFT CLAUSE from a new Government Resolution "
-    "against a numbered list of EXISTING CLAUSES from other GRs.\n\n"
+_ENGLISH_MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
 
-    "For each existing clause, classify the relationship with the draft clause "
-    "as exactly ONE of:\n"
-    "  - conflict   : the two clauses cannot both be complied with simultaneously\n"
-    "  - overlap    : they cover the same subject matter without contradiction\n"
-    "  - supersedes : the draft clause clearly replaces or amends the existing one\n"
-    "  - unrelated  : they have no meaningful subject-matter overlap\n\n"
 
-    "Rules:\n"
-    "  1. Be conservative — only mark 'conflict' when there is a genuine legal "
-    "contradiction, not merely a thematic similarity.\n"
-    "  2. Quote specific words from both clauses to justify your classification.\n"
-    "  3. Return ONLY a JSON array — no markdown fences, no preamble:\n"
-    '[{"candidate_idx": 0, "relation": "conflict", "confidence": 0.85, '
-    '"justification": "Draft caps intake at 15% whereas existing clause fixes it at 10%."}]'
-)
+def format_generation_date(today: date = None) -> Dict[str, str]:
+    """Render the real generation date in both official formats.
+
+    Computed server-side so the model never has to guess "today" or
+    localize digits itself — it is handed the exact string to copy into
+    the दिनांक:/Dated: line of the header.
+    """
+    today = today or date.today()
+    marathi_day = str(today.day).zfill(2).translate(_DEVANAGARI_DIGITS)
+    marathi_year = str(today.year).translate(_DEVANAGARI_DIGITS)
+    english = f"{today.day:02d} {_ENGLISH_MONTHS[today.month - 1]}, {today.year}"
+    marathi = f"{marathi_day} {_MARATHI_MONTHS[today.month - 1]}, {marathi_year}"
+    return {"english": english, "marathi": marathi}
 
 
 # -------------------------------------------------------------------------
@@ -81,7 +83,7 @@ def build_terminology_message(text: str, glossary: Dict[str, str]) -> str:
 # -------------------------------------------------------------------------
 
 COPILOT_CHAT = (
-    "You are NIRN.AI Copilot, an expert administrative assistant for the "
+    "You are NIRN.Ai Copilot, an expert administrative assistant for the "
     "Government of Maharashtra. "
     "Your role is to answer officer queries by referencing the provided "
     "Government Resolution context chunks only.\n\n"
@@ -175,7 +177,10 @@ COPILOT_DRAFT = (
     "• GR number format for English: PREFIX-YEAR/CR.NNN/DESK-N\n"
     "• Address for Marathi: हुतात्मा राजगुरु चौक, मादाम कामा मार्ग, मंत्रालय मुंबई-३२\n"
     "• Address for English: Hutatma Rajguru Chowk, Madam Cama Road, Mantralaya Mumbai-32\n"
-    "• Use today's date for 'दिनांक:' / 'Dated:'\n"
+    "• CRITICAL: The exact 'दिनांक:' / 'Dated:' value is supplied in the input as "
+    "'Generation Date'. Copy it verbatim into the header — never write the literal "
+    "words 'Month' or 'Year', never invent a different date, and never leave the "
+    "'[DD Month, YYYY]' placeholder unfilled.\n"
     "• CRITICAL: Generate text ONLY using English (Latin script) or Marathi (Devanagari script). Absolutely NEVER output Chinese, Japanese, Korean, Cyrillic, or any foreign scripts.\n\n"
 
 
@@ -204,10 +209,17 @@ COPILOT_DRAFT = (
     "═══════════════════════════════════════════════════\n"
     "RETRIEVAL BEHAVIOUR\n"
     "═══════════════════════════════════════════════════\n"
-    "• Use retrieved GR examples only for subject matter and terminology context.\n"
+    "• Use retrieved GR examples for subject matter and terminology context.\n"
     "• Do NOT copy text verbatim from retrieved examples.\n"
     "• Preserve the administrative meaning and drafting style from retrieved context.\n"
-    "• Always generate a plausible GR number, date, and department specific to the subject.\n\n"
+    "• For the NEW draft's own GR number and date (in its header), always generate a plausible "
+    "one specific to the subject — never leave the header blank.\n"
+    "• For the 'Read:'/'वाचा:' citation list ONLY: cite the retrieved examples using their EXACT "
+    "'GR Number' and 'Date' fields as given in the Retrieved Context below. If an example has no "
+    "'GR Number' or no 'Date' line, that field is unavailable for it — do NOT invent one; use the "
+    "placeholder from the HALLUCINATION POLICY for that field instead. Never fabricate a citation "
+    "number or date, and never write out the words 'not available' or similar in the final "
+    "document — substitute the placeholder silently.\n\n"
 
     "═══════════════════════════════════════════════════\n"
     "HALLUCINATION POLICY\n"
@@ -229,6 +241,65 @@ COPILOT_DRAFT = (
     "Do NOT use markdown formatting (no **, no #, no ---).\n"
     "The output must be plain text formatted exactly as shown in the templates above."
 )
+
+
+# -------------------------------------------------------------------------
+# Resolve Conflict — single-clause revision (Objective 1 follow-up action)
+# -------------------------------------------------------------------------
+
+_RESOLUTION_STRATEGY_INSTRUCTIONS = {
+    "reword": (
+        "REWORD the clause so it no longer overlaps with the conflicting GR's provision. "
+        "Preserve the clause's original intent and administrative meaning as much as "
+        "possible, but change the specific wording that creates the conflict."
+    ),
+    "add_citation": (
+        "Keep the clause's substance, but ADD AN EXPLICIT CITATION to the conflicting GR "
+        "(its GR number/title as given) making clear how this clause relates to or "
+        "supersedes it, so the relationship is stated rather than implied."
+    ),
+    "add_carve_out": (
+        "Keep the clause's substance, but ADD AN EXPLICIT CARVE-OUT that excludes the "
+        "scope covered by the conflicting GR (e.g. 'except in respect of ...'), so the "
+        "two provisions can no longer be read as contradictory."
+    ),
+}
+
+CONFLICT_RESOLUTION = (
+    "You are an expert drafting officer for the Government of Maharashtra, revising a "
+    "single clause of a draft Government Resolution to resolve a flagged conflict with "
+    "an existing GR.\n\n"
+    "You will be given: the flagged draft clause, the conflicting clause from the "
+    "existing GR, the original conflict justification, and a resolution strategy to "
+    "apply. Rewrite ONLY the flagged clause according to the strategy.\n\n"
+    "Rules:\n"
+    "• Output ONLY the revised clause text — no explanation, no markdown, no preamble.\n"
+    "• Preserve the clause's numbering/prefix and formal administrative register "
+    "(same language as the input clause).\n"
+    "• Do not touch any other part of the document — you are only given one clause.\n"
+    "• The revision must be substantive enough to genuinely address the conflict, not "
+    "a cosmetic rewording that leaves the same contradiction intact."
+)
+
+
+def build_conflict_resolution_message(
+    strategy: str,
+    draft_clause: str,
+    conflicting_clause: str,
+    conflicting_gr_label: str,
+    justification: str,
+) -> str:
+    """Build the user message for a single-clause conflict resolution request."""
+    strategy_instruction = _RESOLUTION_STRATEGY_INSTRUCTIONS.get(
+        strategy, _RESOLUTION_STRATEGY_INSTRUCTIONS["reword"]
+    )
+    return (
+        f"STRATEGY: {strategy_instruction}\n\n"
+        f"FLAGGED DRAFT CLAUSE:\n{draft_clause}\n\n"
+        f"CONFLICTING GR ({conflicting_gr_label}):\n{conflicting_clause}\n\n"
+        f"ORIGINAL CONFLICT JUSTIFICATION:\n{justification}\n\n"
+        f"Return only the revised clause."
+    )
 
 
 # -------------------------------------------------------------------------

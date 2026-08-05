@@ -549,7 +549,7 @@ export default function Home() {
             {!loading && hits !== null && (
               <div style={{ marginBottom: '40px' }}>
                 <p className="ri-sub" style={{ marginBottom: 14, textAlign: 'left', fontWeight: 'bold' }}>
-                  {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')} · {tookMs} ms
+                  {hits.length} {hits.length === 1 ? t('search_result') : t('search_results')}
                 </p>
                 {hits.map((h, idx) => {
                   const uniqueId = `${h.gr_id}_${idx}`;
@@ -563,7 +563,6 @@ export default function Home() {
                             {h.issued_on ? ` · ${h.issued_on}` : ""}
                           </div>
                         </div>
-                        <div className="hit-score" style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--blue)' }}>{(h.score * 100).toFixed(0)}%</div>
                       </div>
                       <div className="ri-sub" style={{ marginTop: 10, fontSize: '14px', color: '#444' }}>{h.snippet}</div>
                       <div className="source-dropdown" onClick={(e) => e.stopPropagation()} style={{ marginTop: '12px', position: 'relative', display: 'inline-block' }}>

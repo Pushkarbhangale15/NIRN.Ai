@@ -1,3 +1,7 @@
+# DEPRECATED: embeds queries with paraphrase-multilingual-MiniLM-L12-v2, a different model than
+# retrieval.py uses (intfloat/multilingual-e5-base) — incompatible with the real index's vector
+# space. Standalone CLI debug script, not imported by the running backend. Do not point this at
+# backend/data/index.faiss; safe to delete once confirmed unused.
 import faiss
 import json
 import pickle
@@ -9,10 +13,10 @@ model = SentenceTransformer(
 )
 
 # Load FAISS index
-index = faiss.read_index("vector_db/index.faiss")
+index = faiss.read_index("backend/data/index.faiss")
 
 # Load chunk metadata
-with open("vector_db/chunks.pkl", "rb") as f:
+with open("backend/data/chunks.pkl", "rb") as f:
     chunks = pickle.load(f)
 
 query = input("Ask a question: ")
