@@ -1,12 +1,15 @@
+import logging
 import re
 from typing import List, Optional
 
 import retrieval
 from config import settings
 
-from .models import ConflictReportItem
+from .models import ClauseRetrievalTrace, ConflictReportItem, RetrievalCandidateTrace
 from .rule_engine import check_deterministic_conflicts, _RULES_CONFIG
 from .llm_verifier import verify_conflict_with_llm
+
+logger = logging.getLogger("nirn.conflict_detection")
 
 # Categories whose existing rules_config.json keyword lists double as a cheap signal for
 # "this clause is likely high-value" when picking which clauses get the limited LLM budget
@@ -192,6 +195,7 @@ def _priority_score(clause: str) -> int:
 def detect_cross_department_conflicts(
     body_text: str,
     draft_language: Optional[str] = None,
+    trace: Optional[List[ClauseRetrievalTrace]] = None,
 ) -> List[ConflictReportItem]:
     """
     Two-stage pipeline to detect policy, funding, authority, timeline, and operational
@@ -205,6 +209,11 @@ def detect_cross_department_conflicts(
 
     draft_language: 'mr' or 'en'. Passed through to retrieval.search() so Marathi drafts get
     the language-matching score boost toward Marathi corpus chunks.
+
+    trace: optional list to append a ClauseRetrievalTrace to for every extracted clause
+    (including boilerplate-skipped ones and clauses outside the LLM budget) -- observability
+    only, does not change return value/type or any retrieval/filtering behavior. Pass a list
+    to opt in; existing callers that don't pass one are completely unaffected.
     """
     clauses = _extract_operative_clauses(body_text)
     if not clauses:
@@ -212,10 +221,21 @@ def detect_cross_department_conflicts(
 
     conflicts: List[ConflictReportItem] = []
 
-    # Which clauses get the limited LLM-verification budget: ranked by _priority_score
-    # (descending), ties broken by original document order (ascending index) so clauses
-    # of equal priority are never reordered relative to each other. Rule-engine coverage
-    # below is unconditional for every clause regardless of this ranking.
+    # MAX_CLAUSES_FOR_LLM is now a safety ceiling (see config.py), not a
+    # coverage budget -- every clause is LLM-eligible unless a draft is
+    # pathologically large. Ranked by _priority_score purely to decide WHICH
+    # clauses get dropped in that rare case (ties broken by document order),
+    # not to pick "the 2 that matter" out of a normal-sized draft anymore.
+    if len(clauses) > settings.MAX_CLAUSES_FOR_LLM:
+        logger.warning(
+            "Draft has %d operative clauses, exceeding MAX_CLAUSES_FOR_LLM safety "
+            "ceiling (%d) -- %d clause(s) will only get rule-engine coverage, not "
+            "LLM verification. This is the same coverage gap the ceiling exists to "
+            "prevent unbounded LLM calls for; consider raising the ceiling if this "
+            "draft size is expected to recur.",
+            len(clauses), settings.MAX_CLAUSES_FOR_LLM,
+            len(clauses) - settings.MAX_CLAUSES_FOR_LLM,
+        )
     llm_eligible_indices = set(
         sorted(range(len(clauses)), key=lambda i: (-_priority_score(clauses[i]), i))[
             :settings.MAX_CLAUSES_FOR_LLM
@@ -223,9 +243,10 @@ def detect_cross_department_conflicts(
     )
 
     # Process every extracted clause: the deterministic rule engine (cheap,
-    # local, no LLM call) now covers all of them. LLM verification stays
-    # capped at MAX_CLAUSES_FOR_LLM so LLM-call volume is unchanged from
-    # before this loop was widened.
+    # local, no LLM call) covers all of them, and so does the LLM stage now
+    # that MAX_CLAUSES_FOR_LLM is a safety ceiling rather than a fixed budget
+    # (see above) -- LLM-call volume scales with actual clause count instead
+    # of being flat-capped at a small constant.
     for clause_index, clause in enumerate(clauses):
         # Boilerplate clauses (generic fund-disbursement procedure, committee
         # evaluation process, standard closing formula) are excluded from
@@ -235,6 +256,17 @@ def detect_cross_department_conflicts(
         # there's nothing left for a downgrade rule to be inconsistent
         # about.
         if _is_boilerplate_clause(clause):
+            if trace is not None:
+                trace.append(ClauseRetrievalTrace(
+                    clause_index=clause_index,
+                    clause_preview=clause[:120],
+                    boilerplate_skipped=True,
+                    llm_eligible_clause=clause_index in llm_eligible_indices,
+                    top_k=settings.RULE_ENGINE_CANDIDATES_PER_CLAUSE,
+                    candidates_per_clause_budget=settings.CANDIDATES_PER_CLAUSE,
+                    candidates_returned=0,
+                    candidates=[],
+                ))
             continue
 
         # Single retrieval call, fetched wide (RULE_ENGINE_CANDIDATES_PER_CLAUSE) so the rule
@@ -254,6 +286,7 @@ def detect_cross_department_conflicts(
         # have missed entirely (see JURISDICTION_KEYWORD_DEPARTMENTS above). These hits were
         # already LLM-eligible before this step and remain so -- unchanged.
         seen_keys = {(h.gr_id, h.snippet) for h in candidates}
+        jurisdiction_keys = set()
         for department, focused_query in _jurisdiction_hits_for(clause):
             for hit in retrieval.search_within_department(focused_query, department, top_k=2):
                 key = (hit.gr_id, hit.snippet)
@@ -261,6 +294,10 @@ def detect_cross_department_conflicts(
                     seen_keys.add(key)
                     candidates.append(hit)
                     llm_eligible_keys.add(key)
+                jurisdiction_keys.add(key)
+
+        clause_is_llm_eligible = clause_index in llm_eligible_indices
+        candidate_traces: List[RetrievalCandidateTrace] = []
 
         for hit in candidates:
             # Stage 1: Deterministic Rule Engine
@@ -274,18 +311,31 @@ def detect_cross_department_conflicts(
                 source_url=hit.source_url,
             )
 
-            if det_conflict:
-                conflicts.append(det_conflict)
-                continue
-
-            # Stage 2: LLM Verification for semantic ambiguity -- gated on BOTH:
+            key = (hit.gr_id, hit.snippet)
+            # Stage 2 eligibility -- gated on BOTH:
             # (a) clause_index in llm_eligible_indices (MAX_CLAUSES_FOR_LLM budget, Step 2), and
             # (b) this hit being in llm_eligible_keys (top CANDIDATES_PER_CLAUSE of the widened
             #     pool, or a jurisdiction hit) -- so the wider RULE_ENGINE_CANDIDATES_PER_CLAUSE
             #     pool never reaches the LLM beyond what CANDIDATES_PER_CLAUSE already allowed.
-            if clause_index not in llm_eligible_indices:
+            # An LLM call only actually happens if the rule engine didn't already resolve it.
+            would_be_llm_eligible = clause_is_llm_eligible and key in llm_eligible_keys
+            reached_llm = would_be_llm_eligible and not det_conflict
+
+            if trace is not None:
+                candidate_traces.append(RetrievalCandidateTrace(
+                    gr_id=hit.gr_id,
+                    department=hit.department,
+                    score=hit.score,
+                    source="jurisdiction" if key in jurisdiction_keys else "top_k",
+                    reached_llm=reached_llm,
+                    rule_engine_result="conflict" if det_conflict else "no_conflict",
+                ))
+
+            if det_conflict:
+                conflicts.append(det_conflict)
                 continue
-            if (hit.gr_id, hit.snippet) not in llm_eligible_keys:
+
+            if not would_be_llm_eligible:
                 continue
 
             llm_conflict = verify_conflict_with_llm(
@@ -301,5 +351,17 @@ def detect_cross_department_conflicts(
 
             if llm_conflict:
                 conflicts.append(llm_conflict)
+
+        if trace is not None:
+            trace.append(ClauseRetrievalTrace(
+                clause_index=clause_index,
+                clause_preview=clause[:120],
+                boilerplate_skipped=False,
+                llm_eligible_clause=clause_is_llm_eligible,
+                top_k=settings.RULE_ENGINE_CANDIDATES_PER_CLAUSE,
+                candidates_per_clause_budget=settings.CANDIDATES_PER_CLAUSE,
+                candidates_returned=len(candidates),
+                candidates=candidate_traces,
+            ))
 
     return conflicts

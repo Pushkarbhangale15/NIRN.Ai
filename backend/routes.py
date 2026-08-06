@@ -39,7 +39,7 @@ import template_rules
 import template_rules_marathi
 from conflict_detection import detect_cross_department_conflicts
 from conflict_detection.llm_verifier import verify_conflict_with_llm
-from conflict_detection.models import ConflictReportItem
+from conflict_detection.models import ClauseRetrievalTrace, ConflictReportItem
 from lookup import get_adapter
 from config import settings
 from db.base import get_session
@@ -299,6 +299,32 @@ async def get_draft_conflicts(
         logger.exception("Database error loading conflicts for draft %s", draft_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
     return [ConflictOut.model_validate(c) for c in rows]
+
+
+@router.get(
+    "/api/drafts/{draft_id}/retrieval-trace",
+    response_model=List[ClauseRetrievalTrace],
+    tags=["drafts"],
+)
+async def get_draft_retrieval_trace(
+    draft_id: uuid.UUID,
+    officer: Officer = Depends(get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> List[ClauseRetrievalTrace]:
+    """
+    Observability endpoint: per-clause retrieval detail (top_k used, every
+    candidate's GR id/department/score, whether it reached the LLM or was
+    filtered out earlier) from the most recent conflict-detection run
+    against this draft. Present even when 0 conflicts were found — that's
+    the whole point: distinguishes "checked N candidates, none conflicted"
+    from "no relevant candidates were ever retrieved" for a clause.
+
+    Empty list if analysis (POST /api/analysis/{draft_id} or
+    /api/analysis/{draft_id}/conflicts) hasn't been run yet for this draft.
+    """
+    row = await _load_row(draft_id, session)
+    _ensure_can_access_draft(row, officer)
+    return [ClauseRetrievalTrace.model_validate(c) for c in (row.retrieval_trace or [])]
 
 
 @router.patch("/api/conflicts/{conflict_id}/dismiss", response_model=ConflictOut, tags=["drafts"])
@@ -637,9 +663,23 @@ async def run_conflict_detection(
     draft = await _load(draft_id, session, officer)
     draft_lang = "mr" if draft.language == Language.MARATHI else "en"
 
-    report_items = detect_cross_department_conflicts(draft.body_text, draft_language=draft_lang)
+    retrieval_trace: List[ClauseRetrievalTrace] = []
+    report_items = detect_cross_department_conflicts(
+        draft.body_text, draft_language=draft_lang, trace=retrieval_trace
+    )
     report_items = [item for item in report_items
                      if item.confidence >= settings.CONFLICT_CONFIDENCE_FLOOR]
+
+    # Persist the retrieval trace so a "0 conflicts" result stays traceable
+    # after the fact (candidates checked-and-cleared vs. never retrieved vs.
+    # filtered before the LLM) without needing to re-run detection. Overwrite,
+    # not append -- this always reflects the most recent analysis run.
+    try:
+        draft_row = await _load_row(draft_id, session)
+        draft_row.retrieval_trace = [c.model_dump() for c in retrieval_trace]
+        await session.flush()
+    except SQLAlchemyError:
+        logger.exception("Database error persisting retrieval trace for draft %s", draft_id)
 
     # Persist so each conflict gets a real conflict_id — needed for the
     # Resolve Conflict follow-up action, which operates on a specific ID.

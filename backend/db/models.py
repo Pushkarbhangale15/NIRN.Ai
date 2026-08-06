@@ -37,7 +37,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum
-from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
@@ -147,6 +147,13 @@ class GeneratedDraft(Base):
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     template_score: Mapped[object | None] = mapped_column(Numeric(5, 2), nullable=True)
+    # Per-clause retrieval observability (list[ClauseRetrievalTrace], JSON-encoded) --
+    # top_k/candidates/scores/LLM-eligibility for the most recent conflict-detection
+    # run against this draft, so a "0 conflicts" result is traceable back to
+    # "candidates checked and cleared" vs. "nothing relevant was ever retrieved" vs.
+    # "candidates were filtered out before reaching the LLM" without re-running
+    # detection. Overwritten (not appended) each time analysis re-runs.
+    retrieval_trace: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[object] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )

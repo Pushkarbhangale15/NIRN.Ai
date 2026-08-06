@@ -1,0 +1,97 @@
+{
+  "brief": "राज्यातील सौर ऊर्जेचा वापर वाढवण्यासाठी एक व्यापक आर्थिक सहाय्य योजना जाहीर करावी. या योजनेअंतर्गत (अ) महानगरपालिका क्षेत्रात वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य द्यावे, (ब) ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान द्यावे, आणि (क) विकेंद्रित कृषी वीज वाहिनीवर आधारित सौर ऊर्जा प्रकल्प उभारणाऱ्या ग्रामपंचायतींना प्रोत्साहनात्मक आर्थिक मदत द्यावी. या तिन्ही घटकांसाठी पात्रता निकष, निधी वितरणाची कार्यपद्धती आणि अंमलबजावणीचा कालमर्यादा नमूद करावा.",
+  "department": "General_Administration_Department",
+  "draft_id": "f019df03-1621-45de-81e3-5372ac492b8e",
+  "draft_department_stored": "General_Administration_Department",
+  "draft_content_gaps": [],
+  "placeholder_artifacts": [],
+  "conflicts": [
+    {
+      "conflict_id": "76e4829b-9633-4981-8757-5c772e374247",
+      "matched_gr_id": "202504291630372425",
+      "matched_department": "Urban_Development_Department",
+      "relation": "conflict",
+      "severity": "high",
+      "justification": "Draft: 'ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे.'; Matched: 'महानगरपालिका क्षेत्रात मुलभुत सोई सुविधांचा विकास व वैशिष्ट्ट्यपूर्ण या योजनांतर्गत नागरी स्थानिक स्वराज्य संस्थांच्या वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारणे या कामाचा समावेश करून सदर प्रकल्प प्राधान्याने मंजूर करण्याचा शासनाने निर्णय घेतलेला आहे.' The draft clause outlines a general objective of providing financial assistance for solar energy projects in municipal areas to reduce electricity bills. The matched GR specifically prioritizes the approval of solar energy projects within municipal areas under a scheme focused on basic amenities, including reducing electricity bills. This indicates a distinct and potentially contradictory approach to funding - one is a broad objective, while the other defines a specific prioritized project with particular funding criteria.",
+      "draft_excerpt": "शासनाच्या विचाराधीन बाब होती की राज्यातील सौर ऊर्जेचा वापर वाढवण्यासाठी प्रोत्साहन देणे. ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे. खालीलप्रमाणे आदेश देण्यात येत आहेत.",
+      "conflicting_text": "[Urban Development Department | वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यासाठी अर्थसहाय्य करण्याबाबतचे धोरण निश्चित करणेबाबत. | -संकिर्ण-२०२५/प्र.क्र.१९/नवि-१६ (ई-९३१९६४) | 2025-04-29]\n\nप उभारण्यासाठी\nअर्थसहाय्य करण्याबाबत धोरण निश्चित करण्याचे ठरले आहे. या अनुषंगाने नागरी स्थानिक स्वराज्य\nसंस्थांना सौर ऊर्जा प्रकल्प मंजूर करण्याचे धोरण निश्चित करण्याची बाब शासनाच्या विचाराधीन\nहोती.\nशासन निर्णय :-\nमहानगरपालिका क्षेत्रात मुलभुत सोई सुविधांचा विकास व वैशिष्ट्ट्यपूर्ण या योजनांतर्गत नागरी\nस्थानिक स्वराज्य संस्थांच्या वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारणे या कामाचा\nसमावेश करून सदर प्रकल्प प्राधान्याने मंजूर करण्याचा शासनाने निर्णय घेतलेला आहे. सौर ऊर्जा\nप्रकल्पाच्या अं",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": true,
+        "strategy_used": "add_carve_out"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "शासनाच्या विचाराधीन बाब होती की राज्यातील सौर ऊर्जेचा वापर वाढवण्यासाठी प्रोत्साहन देणे. ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात, मूलभूत सोईसुविधांच्या विकास योजनांतर्गत वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे, तथापि या संदर्भात शासनाच्या ‘मुलभूत सोईसुविधांच्या विकास व वैशिष्ट्यपूर्ण योजना’ अंतर्गत मंजूर केलेल्या प्रकल्पांचा समावेश करण्यात येऊ नये. खालीलप्रमाणे आदेश देण्यात येत आहेत."
+        },
+        "after_wait": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "शासनाच्या विचाराधीन बाब होती की राज्यातील सौर ऊर्जेचा वापर वाढवण्यासाठी प्रोत्साहन देणे. ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात, मूलभूत सोईसुविधांच्या विकास योजनांतर्गत वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे, तथापि या संदर्भात शासनाच्या ‘मुलभूत सोईसुविधांच्या विकास व वैशिष्ट्यपूर्ण योजना’ अंतर्गत मंजूर केलेल्या प्रकल्पांचा समावेश करण्यात येऊ नये. खालीलप्रमाणे आदेश देण्यात येत आहेत."
+        },
+        "persisted_immediately": true,
+        "persisted_after_wait": true,
+        "regression_detected": false
+      }
+    },
+    {
+      "conflict_id": "ce7e53d2-265e-4553-8c4d-278401773f65",
+      "matched_gr_id": "202603312200460310",
+      "matched_department": "Industries,_Energy_and_Labour_Department",
+      "relation": "conflict",
+      "severity": "high",
+      "justification": "Draft: ‘...ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे.’ Matched: ‘... रु.२६.९० कोटी इतका निधी महावितरण कंपनीस रोखीने वितरीत करणेबाबत.’ The draft clause outlines a general policy of providing financial assistance to Gram Panchayats and Municipalities for solar energy projects, without specifying the amount or mechanism. The matched GR details a specific disbursement of ₹26.90 crore to Maharashtra State Electricity Distribution Company Limited (MSEB) for ‘मुख्यमंत्री सौर कृषी वाहिनी योजना २.०’, directly contradicting the broad policy outlined in the draft clause regarding general funding support.",
+      "draft_excerpt": "शासनाच्या विचाराधीन बाब होती की राज्यातील सौर ऊर्जेचा वापर वाढवण्यासाठी प्रोत्साहन देणे. ग्रामपंचायतींना सौर ऊर्जा आधारित पथदिव्यांच्या स्थापनेसाठी अनुदान तसेच महानगरपालिका क्षेत्रात वीज देयकात बचत करण्यासाठी सौर ऊर्जा प्रकल्प उभारण्यास आर्थिक सहाय्य देणे हे शासनाचे प्रमुख उद्दिष्ट आहे. खालीलप्रमाणे आदेश देण्यात येत आहेत.",
+      "conflicting_text": "[Industries, Energy and Labour Department | “मुख्यमंत्री सौर कृषी वाहिनी योजना २.० अभियानांतर्गत ग्रामपंचायतींना प्रोत्साहनात्मक आर्थिक सहाय्य रु.२६.९० कोटी इतका निधी महावितरण कंपनीस रोखीने वितरीत करणेबाबत. (मागणी क्र. के-६ लेखाशीर्ष क्र.२८१००१२३) |  | 2026-03-31]\n\nल्प निर्माण\nकरण्यात येणार आहे. तद्नंतर, संदर्भाधिन क्रमांक २ येथील शासन निर्णयान्वये मिशन मोड २०२५ च्या\nसौर ऊर्जा निर्मिती क्षमतेचे उद्दिष्ट्ट वाढवून ९००० मेगावॅट अधिक उर्वरित ७००० मेगावॅट असे एकूण\n१६००० मेगावॅट विकेंद्रीत सौर ऊर्जा क्षमता निर्मितीचे उद्दिष्ट्टास मान्यता देण्यात आली आहे. या\nअभियानांतर्गत उभारण्यात योणाऱ्या विकेंद्रित वीज वाहिनीवर आधारित सौर ऊर्जा प्रकल्पांमुळे स्थानिक\nविकास आणि अर्थव्यवस्थेला हातभार लागत असल्याने त्या ग्रामपंचायतींना प्रोत्साहित करण्यासाठी राज्य\nशासनाकडून प्रकल्",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": false,
+        "error": "Client error '409 Conflict' for url 'http://localhost:8000/api/conflicts/ce7e53d2-265e-4553-8c4d-278401773f65/resolve/accept'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "after_wait": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "persisted_immediately": false,
+        "persisted_after_wait": false,
+        "regression_detected": false
+      }
+    }
+  ],
+  "errors": [],
+  "known_gaps": [
+    "DraftConflict has no persisted 'relation' (conflict/overlap) column — the relation used for self_contradicting classification comes from the live /api/analysis/{draft_id}/conflicts response captured during this run, not from a durable DB field. A conflict inspected on a later run without re-running analysis would not have this field available.",
+    "DraftConflict has no persisted structured beneficiary_match/scope_match fields (those exist only transiently in ConflictReportItem during LLM verification) — self_contradicting detection here is a regex heuristic over the free-text justification, not a structured check.",
+    "DraftConflict has no persisted 'category'/conflict_type column — conflict_type shown in the UI is only available from the live analysis response, not reconstructable from the DB alone for a conflict from a past run."
+  ],
+  "summary": {
+    "total_conflicts": 2,
+    "cross_department": 2,
+    "same_department": 0,
+    "likely_false_positive_self_contradicting": 0,
+    "likely_false_positive_boilerplate": 0,
+    "resolve_attempts": 2,
+    "resolve_succeeded_and_persisted": 1,
+    "persistence_regressions_detected": 0,
+    "placeholder_artifacts_found": false
+  }
+}

@@ -84,15 +84,29 @@ class Settings(BaseSettings):
     # values on fresh (uncached) drafts.
     MAX_CLAUSES_ANALYSED: int = 2
 
-    # How many of the leading clauses are eligible for LLM verification.
-    # The deterministic rule engine now runs over every extracted clause
-    # (cheap, local, no LLM call); this constant keeps the LLM-call volume
-    # identical to the previous MAX_CLAUSES_ANALYSED behaviour.
-    MAX_CLAUSES_FOR_LLM: int = 2
+    # SAFETY CEILING, not a coverage budget: every clause with at least one
+    # retrieved candidate is LLM-eligible up to this many clauses per draft.
+    # Previously a flat 2-clause cap regardless of draft size -- confirmed
+    # (retrieval-observability validation, nutrition/health test draft) that
+    # this silently excluded high-similarity candidates (0.89-0.93) in
+    # Public Health / Rural Development clauses from ever reaching the LLM,
+    # purely because they ranked below 2 other clauses in the same draft, not
+    # because retrieval or the rule engine filtered them out.
+    #
+    # Set well above observed real-world clause counts (most recent 20
+    # drafts: max 5, avg 3.35 -- see conflict_detection._extract_operative_clauses
+    # output against the drafts table) so it is not a practical constraint for
+    # any typical draft; a warning is logged if it's ever actually hit (see
+    # detect_cross_department_conflicts), so an unusually large draft hitting
+    # it is visible rather than silently reintroducing the same coverage gap.
+    MAX_CLAUSES_FOR_LLM: int = 12
 
-    # How many corpus candidates to retrieve per draft clause before the
-    # model judges the relationships. This bounds LLM-call volume -- unchanged.
-    CANDIDATES_PER_CLAUSE: int = 2
+    # How many of the top-ranked retrieved candidates (out of
+    # RULE_ENGINE_CANDIDATES_PER_CLAUSE) each LLM-eligible clause is verified
+    # against. Raised from 2 to 3 -- both changes together increase worst-case
+    # LLM-call volume per draft; see the latency remeasurement in
+    # test_runs/ for the actual impact of this change.
+    CANDIDATES_PER_CLAUSE: int = 3
 
     # How many corpus candidates the (free, local, no-LLM) deterministic rule engine gets
     # to inspect per clause. Wider than CANDIDATES_PER_CLAUSE on purpose: only the top

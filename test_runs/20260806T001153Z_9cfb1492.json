@@ -1,0 +1,167 @@
+{
+  "brief": "आदिवासी बहुल भागातील आरोग्य सुविधा बळकट करण्यासाठी सर्वसमावेशक योजना जाहीर करावी. या योजनेअंतर्गत (अ) आदिवासी उपयोजनांतर्गत प्राथमिक आरोग्य केंद्रांचे बांधकाम व श्रेणीवाढ करावी, (ब) सार्वजनिक आरोग्य विभागामार्फत या केंद्रांना वैद्यकीय कर्मचारी व साधनसामग्री पुरवावी, आणि (क) आदिवासी संशोधन व प्रशिक्षण संस्थेमार्फत स्थानिक आरोग्य कर्मचाऱ्यांना प्रशिक्षण द्यावे. पात्रता निकष, निधी वितरण आणि अंमलबजावणी कालमर्यादा नमूद करावा.",
+  "department": "General_Administration_Department",
+  "draft_id": "9cfb1492-8a91-4799-8067-667a09d34935",
+  "draft_department_stored": "General_Administration_Department",
+  "draft_content_gaps": [],
+  "placeholder_artifacts": [],
+  "conflicts": [
+    {
+      "conflict_id": "168946ca-6e36-4df1-b941-687eb987efd7",
+      "matched_gr_id": "201809121052567524",
+      "matched_department": "Tribal_Development_Department",
+      "relation": "overlap",
+      "severity": "medium",
+      "justification": "[Auto-downgraded: no beneficiary or scope overlap per model's own analysis] Draft: 'निधी वितरणाची मर्यादा आदिवासी विकास विभागाने निश्चित करावी'. Matched: 'सदर मार्गदर्शक सूचनांनुसार वितरीत तरतूदींच्या मर्यादेत योजना राबविण्याबाबत'. The draft clause explicitly mandates the Tribal Development Department to determine the limit for fund distribution. The matched GR directs that the plan should be implemented within the limits of funds distributed as per guidelines – this creates a direct contradiction regarding *who* is responsible for setting the funding limits, potentially leading to overlapping or conflicting decisions.",
+      "draft_excerpt": "०२. या योजनेच्या अंमलबजावणीसाठी खालील निकष निश्चित करण्यात येतील:\n    (i) पात्र आरोग्य केंद्रांची निवड पात्रता निकषांनुसार केली जाईल.\n    (ii) निधी वितरणाची मर्यादा आदिवासी विकास विभागाने निश्चित करावी.\n    (iii) योजनेची अंमलबजावणी कालमर्यादेत (अठ्ठावीस महिन्यांत) पूर्ण करावी.",
+      "conflicting_text": "[Tribal Development Department | आदिवासी विकास विभागाच्या अधिनस्त आश्रमशाळांमधील विद्यार्थ्यांसाठी आरोग्य तपासणी सुविधा पुरविण्याच्या प्रकल्पाच्या मार्गदर्शक तत्वांना मंजूरी देणेबाबत | केंद्रीय-२०१८/प्र.क्र.६१/का-१९ | ]\n\n२. सदर मार्गदर्शक सूचनांनुसार वितरीत तरतूदींच्या मर्यादेत योजना राबविण्याबाबत त्वरीत कार्यवाही करण्यात यावी व त्याचे उपयोगिता प्रमाणपत्र आर्थिक व भौतिक प्रगती अहवालासह शासनास सादर करण्याची दक्षता घ्यावी.\nपृष्ठ ३ पैकी २\n\nशासन निर्णय क्रमांक: केंद्रीय-२०१८/प्र.क्र.६१/का-१९",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": true,
+        "strategy_used": "reword"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "०२. या योजनेच्या अंमलबजावणीसाठी खालील निकष निश्चित करण्यात येतील:\n    (i) पात्र आरोग्य केंद्रांची निवड पात्रता निकषांनुसार केली जाईल.\n    (ii) आदिवासी विकास विभाग योजनेसाठी आवश्यक निधीची रक्कम निश्चित करेल.\n    (iii) योजनेची अंमलबजावणी कालमर्यादेत (अठ्ठावीस महिन्यांत) पूर्ण करावी."
+        },
+        "after_wait": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "०२. या योजनेच्या अंमलबजावणीसाठी खालील निकष निश्चित करण्यात येतील:\n    (i) पात्र आरोग्य केंद्रांची निवड पात्रता निकषांनुसार केली जाईल.\n    (ii) आदिवासी विकास विभाग योजनेसाठी आवश्यक निधीची रक्कम निश्चित करेल.\n    (iii) योजनेची अंमलबजावणी कालमर्यादेत (अठ्ठावीस महिन्यांत) पूर्ण करावी."
+        },
+        "persisted_immediately": true,
+        "persisted_after_wait": true,
+        "regression_detected": false
+      }
+    },
+    {
+      "conflict_id": "31c6ecff-c85d-41aa-8c63-2ca105f1cc2c",
+      "matched_gr_id": "201807261242113124",
+      "matched_department": "Tribal_Development_Department",
+      "relation": "overlap",
+      "severity": "low",
+      "justification": "[Auto-downgraded: no beneficiary or scope overlap per model's own analysis] Draft: 'निधी वितरणाची मर्यादा आदिवासी विकास विभागाने निश्चित करावी'. Matched: 'सदर मार्गदर्शक सूचनांनुसार वितरीत तरतूदींच्या मर्यादेत योजना राबविण्याबाबत'. Both clauses explicitly address the limit of funds allocated for a scheme. The draft clause mandates that the Tribal Development Department define this limit, while the matched GR focuses on implementing the plan within the limits of distributed provisions under the guidelines, implying a shared understanding and potential constraint on expenditure.",
+      "draft_excerpt": "०२. या योजनेच्या अंमलबजावणीसाठी खालील निकष निश्चित करण्यात येतील:\n    (i) पात्र आरोग्य केंद्रांची निवड पात्रता निकषांनुसार केली जाईल.\n    (ii) निधी वितरणाची मर्यादा आदिवासी विकास विभागाने निश्चित करावी.\n    (iii) योजनेची अंमलबजावणी कालमर्यादेत (अठ्ठावीस महिन्यांत) पूर्ण करावी.",
+      "conflicting_text": "[Tribal Development Department | आदिवासी विकास विभागाच्या अधिनस्त शासकीय आश्रमशाळांमधील विद्यार्थ्यांसाठी रुग्णवाहिका व आयुष डॉक्टरांची सुविधा पुरविण्याच्या प्रकल्पाच्या मार्गदर्शक तत्वांना मंजूरी देणेबाबत. | केंद्रीय-२०१८/प्र.क्र.८/का-१९ | ]\n\n२. सदर मार्गदर्शक सूचनांनुसार वितरीत तरतूदींच्या मर्यादेत योजना राबविण्याबाबत त्वरीत कार्यवाही करण्यात यावी व त्याचे उपयोगिता प्रमाणपत्र आर्थिक व भौतिक अहवालासह शासनास सादर करण्याची दक्षता घ्यावी.\nपृष्ठ १३ पैकी २\n\nशासन निर्णय क्रमांक: केंद्रीय-२०१८/प्र.क्र.८/का-१९",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": false,
+        "error": "Client error '409 Conflict' for url 'http://localhost:8000/api/conflicts/31c6ecff-c85d-41aa-8c63-2ca105f1cc2c/resolve/accept'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "after_wait": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "persisted_immediately": false,
+        "persisted_after_wait": false,
+        "regression_detected": false
+      }
+    },
+    {
+      "conflict_id": "8faf614f-9099-42c5-8c78-0d250d101dcb",
+      "matched_gr_id": "201803282056360624",
+      "matched_department": "Tribal_Development_Department",
+      "relation": "overlap",
+      "severity": "low",
+      "justification": "[Auto-downgraded: no beneficiary or scope overlap per model's own analysis] Draft: ‘नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजनांनुसार कार्यवाही करावी तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली योजनेत समन्वय साधावा.’ Matched: ‘नियंत्रण अधिकारी / विभाग प्रमुख यांनी नियम प्रचलित कार्यपध्दती व सध्याच्या शासकीय धोरणास अनुसरुन चालू योजनांवर खर्च करावा.’ The draft clause dictates expenditure aligned with ‘आदिवासी उपयोजनांनुसार’ (tribal sub-schemes), implying a specific allocation. The matched clause mandates expenditure adhering to 'प्रolithic कार्यपध्दती व सध्याच्या शासकीय धोरणास' (prevailing procedures and current government policies) without specifying any particular scheme or sub-scheme, creating a potential conflict over how funds should be utilized.",
+      "draft_excerpt": "०३. नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजनांनुसार कार्यवाही करावी तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली योजनेत समन्वय साधावा.",
+      "conflicting_text": "[Tribal Development Department | आदिवासी क्षेत्र उपयोजनेअंतर्गत सन २०१७-१८ करीता पाटबंधारे प्रकल्पास निधी वितरण करणेबाबत | बीयुडी-२०१७/प्र.क्र.२२/कार्यासन.६ | ]\n\n६. नियंत्रण अधिकारी / विभाग प्रमुख यांनी नियम प्रचलित कार्यपध्दती व सध्याच्या शासकीय धोरणास अनुसरुन चालू योजनांवर खर्च करावा. हे आदेश फक्त अंमलबजावणी / नियंत्रक अधिका-यांच्या अधिनस्त ठेवलेल्या तरतुदीस प्रशासकीय दृष्ट्या मान्य केलेल्या चालू योजनांवर खर्च करण्यासाठी आहे. याची अंमलबजावणी अधिका-यांनी नोंद घ्यावी.",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": true,
+        "strategy_used": "reword"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "०३. नियंत्रण अधिकारी व विभाग प्रमुख यांनी योजनेच्या अंमलबजावणीसाठी प्रचलित शासकीय धोरणांचा आणि कार्यपद्धतीचा अवलंब करावा, तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली समन्वय साधावा."
+        },
+        "after_wait": {
+          "resolution_status": "resolved",
+          "is_resolved": true,
+          "resolved_clause_text": "०३. नियंत्रण अधिकारी व विभाग प्रमुख यांनी योजनेच्या अंमलबजावणीसाठी प्रचलित शासकीय धोरणांचा आणि कार्यपद्धतीचा अवलंब करावा, तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली समन्वय साधावा."
+        },
+        "persisted_immediately": true,
+        "persisted_after_wait": true,
+        "regression_detected": false
+      }
+    },
+    {
+      "conflict_id": "bf1a112a-5e14-4516-aefb-30e326986703",
+      "matched_gr_id": "201803282056360624",
+      "matched_department": "Tribal_Development_Department",
+      "relation": "overlap",
+      "severity": "medium",
+      "justification": "[Auto-downgraded: no beneficiary or scope overlap per model's own analysis] Draft: 'नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजनांनुसार कार्यवाही करावी तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली योजनेत समन्वय साधावा.'; Matched: 'नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजना क्षेत्रात अतिरिक्त आदिवासी उपयोजना क्षेत्रात तसेच आदिवासी उपयोजने क्षेत्राबाहेरील क्षेत्रातील योजनांवर केलेला खर्च स्वतंत्रपणे नोंदविला जाईल याची दक्षता घ्यावी.' Semantic contradiction detected by AI.",
+      "draft_excerpt": "०३. नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजनांनुसार कार्यवाही करावी तसेच प्रकल्प अधिकाऱ्यांच्या मार्गदर्शनाखाली योजनेत समन्वय साधावा.",
+      "conflicting_text": "[Tribal Development Department | आदिवासी क्षेत्र उपयोजनेअंतर्गत सन २०१७-१८ करीता पाटबंधारे प्रकल्पास निधी वितरण करणेबाबत | बीयुडी-२०१७/प्र.क्र.२२/कार्यासन.६ | ]\n\n५. नियंत्रण अधिकारी व विभाग प्रमुख यांनी आदिवासी उपयोजना क्षेत्रात अतिरिक्त आदिवासी उपयोजना क्षेत्रात तसेच आदिवासी उपयोजने क्षेत्राबाहेरील क्षेत्रातील योजनांवर केलेला खर्च स्वतंत्रपणे नोंदविला जाईल याची दक्षता घ्यावी. जेणेकरुन शासनाला आदिवासी क्षेत्रातील व उपयोजने क्षेत्राबाहेरील योजनांवर होणा-या खर्चावर लक्ष ठेवता येईल व तो केंद्रशासनाला कळविता येईल.",
+      "flags": {
+        "cross_department": true,
+        "self_contradicting": false,
+        "boilerplate_only": false
+      },
+      "resolve_attempted": true,
+      "resolve_result": {
+        "cleared": false,
+        "error": "Client error '409 Conflict' for url 'http://localhost:8000/api/conflicts/bf1a112a-5e14-4516-aefb-30e326986703/resolve/accept'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409"
+      },
+      "persistence_check": {
+        "immediate": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "after_wait": {
+          "resolution_status": "not_attempted",
+          "is_resolved": false,
+          "resolved_clause_text": null
+        },
+        "persisted_immediately": false,
+        "persisted_after_wait": false,
+        "regression_detected": false
+      }
+    }
+  ],
+  "errors": [],
+  "known_gaps": [
+    "DraftConflict has no persisted 'relation' (conflict/overlap) column — the relation used for self_contradicting classification comes from the live /api/analysis/{draft_id}/conflicts response captured during this run, not from a durable DB field. A conflict inspected on a later run without re-running analysis would not have this field available.",
+    "DraftConflict has no persisted structured beneficiary_match/scope_match fields (those exist only transiently in ConflictReportItem during LLM verification) — self_contradicting detection here is a regex heuristic over the free-text justification, not a structured check.",
+    "DraftConflict has no persisted 'category'/conflict_type column — conflict_type shown in the UI is only available from the live analysis response, not reconstructable from the DB alone for a conflict from a past run."
+  ],
+  "summary": {
+    "total_conflicts": 4,
+    "cross_department": 4,
+    "same_department": 0,
+    "likely_false_positive_self_contradicting": 0,
+    "likely_false_positive_boilerplate": 0,
+    "resolve_attempts": 4,
+    "resolve_succeeded_and_persisted": 2,
+    "persistence_regressions_detected": 0,
+    "placeholder_artifacts_found": false
+  }
+}

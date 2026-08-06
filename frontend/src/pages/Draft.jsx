@@ -129,6 +129,23 @@ export default function Draft() {
     // that's far more likely to genuinely clear it.
     const STRATEGIES = ["reword", "add_carve_out"];
 
+    // _rev is a server-driven-overwrite marker: DraftViewer only reloads
+    // Tiptap's content when this changes, so an accepted resolution shows up
+    // in the editor without resetting cursor/undo on every unrelated
+    // re-render (e.g. after the user's own manual save).
+    const refreshEditorContent = async () => {
+      try {
+        const updatedDraft = await api.getDraftDetail(draftId);
+        setDraftResult(prev => prev ? {
+          ...prev,
+          body_text: updatedDraft.content,
+          _rev: (prev._rev || 0) + 1,
+        } : prev);
+      } catch (err) {
+        console.warn("Editor refresh failed:", err);
+      }
+    };
+
     for (const conflict of resolvable) {
       let clearedThisConflict = false;
       try {
@@ -146,6 +163,9 @@ export default function Draft() {
                 grId: conflict.existing_gr_id,
               },
             }));
+            // Reflect this resolution in the editor immediately — don't
+            // wait for the rest of the batch to finish.
+            await refreshEditorContent();
             break;
           }
         }
@@ -156,26 +176,15 @@ export default function Draft() {
       setResolveProgress(prev => ({ done: (prev?.done || 0) + 1, total: resolvable.length }));
     }
 
-    // Refresh the editor content and re-run full analysis. Safe to re-run
-    // conflict detection now: resolved conflicts are read from their
-    // persisted resolution_status/resolved_clause_text and merged back
-    // into the response server-side, so they no longer vanish from the
-    // list just because their (now-fixed) clause stops matching live.
+    // Final re-run of full analysis. Safe now that resolved conflicts are
+    // read from their persisted resolution_status/resolved_clause_text and
+    // merged back into the response server-side, so they no longer vanish
+    // from the list just because their (now-fixed) clause stops matching live.
     try {
-      const updatedDraft = await api.getDraftDetail(draftId);
-      // _rev is a server-driven-overwrite marker: DraftViewer only reloads
-      // Tiptap's content when this changes, so the accepted resolution
-      // shows up in the editor without resetting cursor/undo on every
-      // unrelated re-render (e.g. after the user's own manual save).
-      setDraftResult(prev => prev ? {
-        ...prev,
-        body_text: updatedDraft.content,
-        _rev: (prev._rev || 0) + 1,
-      } : prev);
       const report = await api.runFullAnalysis(draftId);
       setAnalysisReport(report);
     } catch (err) {
-      console.warn("Post-resolve refresh warning:", err);
+      console.warn("Post-resolve analysis refresh warning:", err);
     }
 
     setResolvingAll(false);
