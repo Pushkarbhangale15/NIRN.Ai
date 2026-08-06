@@ -54,3 +54,7 @@ backend/data/glossary/review_candidates.json
 backend/data/gr_uploads/
 
 
+data/chunks.pkl
+data/index.faiss
+data/index.faiss.flat.bak
+data/metadata.txt
