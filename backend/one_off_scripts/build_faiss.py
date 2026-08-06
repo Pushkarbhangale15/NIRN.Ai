@@ -1,6 +1,7 @@
 # DEPRECATED: reads from stale relative paths (data/embeddings.npy, data/chunks.json) that no
 # longer match the pipeline. The FAISS index is now built by kaggle/build_gr_index.ipynb from the
 # full mahGRs corpus. Not imported by the running backend — safe to delete once confirmed unused.
+# Moved here (backend/one_off_scripts/) from backend/gr_assistant/ — see this folder's README.md.
 import json
 import pickle
 import numpy as np

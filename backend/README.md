@@ -130,6 +130,28 @@ other than your own machine.**
   `admin_*` wrapper functions) — a route that forgot the dependency
   still can't reach the data.
 
+## Conflict resolution
+
+`POST /api/conflicts/{id}/resolve` revises a single flagged clause (one
+LLM call) and re-verifies it (a second call) — never the whole draft, and
+never the full conflict batch. `POST /api/conflicts/{id}/resolve/accept`
+commits it: patches only that clause into the draft's content and marks
+the conflict `resolved`. `resolution_status` (`not_attempted` / `resolved`
+/ `attempted_still_conflicting` / `attempted_error`) is a durable column
+on `draft_conflicts` (see `backend/alembic/versions/`), not recomputed on
+each page load — a resolved conflict stays resolved across reloads and
+fresh analysis runs, and a repeat resolve on an already-resolved conflict
+short-circuits instead of regenerating against stale clause text.
+
+## File upload (text-based only)
+
+`POST /api/upload-gr/parse-file` extracts text from an uploaded
+`.pdf`/`.docx`/`.txt` (`_extract_text_from_file` in `routes.py`, via
+`pypdf`/`python-docx`). Scanned/image PDFs with no embedded text layer are
+explicitly out of scope — no OCR is attempted; the endpoint returns a 400
+if extraction comes back empty, and the frontend additionally flags a
+near-empty result as likely-scanned.
+
 ## What's deliberately out of scope
 
 - `store.py` still backs chat sessions and the official-GR-URL cache

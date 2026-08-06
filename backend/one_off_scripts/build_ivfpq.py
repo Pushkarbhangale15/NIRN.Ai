@@ -10,19 +10,25 @@ scanning all 2.95M vectors, fixing both the memory pressure and the raw compute 
 Reconstructs vectors directly from the existing index.faiss -- no re-embedding needed.
 """
 import time
+from pathlib import Path
+
 import numpy as np
 import faiss
+
+# Resolved from this file's own location, not the caller's cwd -- see this
+# folder's README.md for why (moved out of backend/ into one_off_scripts/).
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 t_start = time.time()
 
 print("Loading flat index (mmap mode)...")
 t0 = time.time()
 try:
-    index = faiss.read_index("data/index.faiss", faiss.IO_FLAG_MMAP)
+    index = faiss.read_index(str(DATA_DIR / "index.faiss"), faiss.IO_FLAG_MMAP)
     print(f"  loaded with mmap in {time.time()-t0:.1f}s")
 except Exception as e:
     print(f"  mmap load failed ({e}); falling back to normal load")
-    index = faiss.read_index("data/index.faiss")
+    index = faiss.read_index(str(DATA_DIR / "index.faiss"))
     print(f"  loaded (no mmap) in {time.time()-t0:.1f}s")
 
 d = index.d
@@ -85,7 +91,7 @@ assert ivfpq.ntotal == n, "vector count mismatch after add!"
 
 ivfpq.nprobe = 32  # clusters searched per query -- tunable recall/speed tradeoff
 
-out_path = "data/index_ivfpq.faiss"
+out_path = str(DATA_DIR / "index_ivfpq.faiss")
 faiss.write_index(ivfpq, out_path)
 print(f"\nSaved {out_path}")
 

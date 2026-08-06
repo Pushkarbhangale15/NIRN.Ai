@@ -1,3 +1,18 @@
+# Full pip-freeze lockfile for the backend virtualenv (Python 3.14).
+# This includes transitive dependencies, not just what backend/*.py
+# imports directly — the direct, load-bearing pieces are:
+#   fastapi, uvicorn, sqlalchemy, asyncpg, psycopg2-binary, alembic  (API + Postgres)
+#   sentence-transformers, faiss-cpu                                (embeddings + vector search)
+#   langchain-text-splitters                                        (corpus chunking)
+#   python-jose, passlib, python-multipart, slowapi                 (auth + rate limiting)
+#   pypdf, python-docx                                               (file upload / DOCX export)
+# torch/transformers/scikit-learn/scipy/langchain-core/rich/typer
+# are pulled in transitively by sentence-transformers/huggingface_hub
+# and are not imported directly anywhere in backend/.
+#
+# Regenerate after installing new packages with:
+#   pip freeze > requirements.txt   (then re-add this header)
+
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.3
 aiosignal==1.4.0
@@ -12,7 +27,9 @@ certifi==2026.7.22
 charset-normalizer==3.4.9
 click==8.4.2
 colorama==0.4.6
+Deprecated==1.3.1
 distro==1.9.0
+ecdsa==0.19.2
 faiss-cpu==1.14.3
 fastapi==0.139.2
 filelock==3.32.0
@@ -25,8 +42,8 @@ h2==4.4.0
 hf-xet==1.5.2
 hpack==4.2.0
 httpcore==1.0.9
-httpx==0.28.1
 httpx-sse==0.4.3
+httpx==0.28.1
 huggingface_hub==1.24.0
 hyperframe==6.1.0
 idna==3.18
@@ -37,6 +54,7 @@ jsonpointer==3.1.1
 langchain-core==1.5.1
 langchain-protocol==0.0.18
 langchain-text-splitters==1.1.2
+langsmith==0.10.16
 limits==5.8.0
 lxml==6.1.1
 Mako==1.3.12
@@ -56,27 +74,30 @@ portalocker==3.2.0
 propcache==0.5.2
 protobuf==7.35.1
 psycopg2-binary==2.9.12
-pydantic==2.13.4
+pyasn1==0.6.4
 pydantic-settings==2.14.2
+pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
+pypdf==6.14.2
 python-dateutil==2.9.0.post0
 python-docx==1.2.0
 python-dotenv==1.2.2
 python-jose==3.5.0
 python-multipart==0.0.32
-pypdf==6.14.2
 PyYAML==6.0.3
 regex==2026.7.19
-requests==2.34.2
 requests-toolbelt==1.0.0
+requests==2.34.2
 rich==15.0.0
+rsa==4.9.1
 safetensors==0.8.0
 scikit-learn==1.9.0
 scipy==1.18.0
 sentence-transformers==5.6.1
 setuptools==83.0.0
 shellingham==1.5.4
+six==1.17.0
 slowapi==0.1.10
 sniffio==1.3.1
 SQLAlchemy==2.0.51
@@ -95,6 +116,7 @@ urllib3==2.7.0
 uuid_utils==0.17.0
 uvicorn==0.51.0
 websockets==15.0.1
+wrapt==2.3.0
 xxhash==3.8.1
 yarl==1.24.5
 zstandard==0.25.0

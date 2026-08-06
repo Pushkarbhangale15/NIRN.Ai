@@ -6,14 +6,20 @@ much more similarity fidelity since it quantizes each dimension independently ra
 replacing sub-vectors with codebook entries.
 """
 import time
+from pathlib import Path
+
 import numpy as np
 import faiss
+
+# Resolved from this file's own location, not the caller's cwd -- see this
+# folder's README.md for why (moved out of backend/ into one_off_scripts/).
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 t_start = time.time()
 
 print("Loading flat index (mmap mode)...")
 t0 = time.time()
-index = faiss.read_index("data/index.faiss", faiss.IO_FLAG_MMAP)
+index = faiss.read_index(str(DATA_DIR / "index.faiss"), faiss.IO_FLAG_MMAP)
 print(f"  loaded in {time.time()-t0:.1f}s")
 
 d = index.d
@@ -61,7 +67,7 @@ assert ivfsq.ntotal == n
 
 ivfsq.nprobe = 32
 
-out_path = "data/index_ivfsq.faiss"
+out_path = str(DATA_DIR / "index_ivfsq.faiss")
 faiss.write_index(ivfsq, out_path)
 
 import os
