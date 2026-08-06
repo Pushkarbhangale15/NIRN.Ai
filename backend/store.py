@@ -1,19 +1,18 @@
 """
-store.py — persistent SQLite store for chat sessions and the official-URL
-cache only.
+store.py — persistent SQLite store for the official-URL cache.
 
 Draft persistence (create/list/get/update/delete, plus conflicts and
 references) moved to the local PostgreSQL database — see
-db/repositories/drafts.py and db/repositories/conflicts.py. Chat
-sessions and the official-URL cache stay here because they aren't part
-of the officers/drafts schema (Task 1) and don't need officer
-attribution, an audit trail, or relational integrity.
+db/repositories/drafts.py and db/repositories/conflicts.py. The
+official-URL cache stays here because it isn't part of the
+officers/drafts schema (Task 1) and doesn't need officer attribution,
+an audit trail, or relational integrity.
 """
 
 import os
 import sqlite3
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 
 _DB_PATH = os.path.join(os.path.dirname(__file__), "data", "nirn_store.db")
 
@@ -28,16 +27,6 @@ def _get_conn():
 def _init_db():
     with _get_conn() as conn:
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS chat_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_session_id ON chat_sessions(session_id)")
-        conn.execute("""
             CREATE TABLE IF NOT EXISTS official_url_cache (
                 gr_number TEXT PRIMARY KEY,
                 department TEXT,
@@ -51,26 +40,6 @@ def _init_db():
 
 _init_db()
 
-
-def get_session(session_id: str) -> List[dict]:
-    """Get all messages for a chat session from SQLite."""
-    with _get_conn() as conn:
-        rows = conn.execute(
-            "SELECT role, content FROM chat_sessions WHERE session_id = ? ORDER BY id ASC",
-            (session_id,)
-        ).fetchall()
-        return [{"role": r["role"], "content": r["content"]} for r in rows]
-
-
-def add_message(session_id: str, message: dict):
-    """Add a message turn to a chat session in SQLite."""
-    now_iso = datetime.now(timezone.utc).isoformat()
-    with _get_conn() as conn:
-        conn.execute(
-            "INSERT INTO chat_sessions (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-            (session_id, message.get("role", "user"), message.get("content", ""), now_iso)
-        )
-        conn.commit()
 
 def get_cached_official_url(gr_number: str) -> Optional[dict]:
     with _get_conn() as conn:

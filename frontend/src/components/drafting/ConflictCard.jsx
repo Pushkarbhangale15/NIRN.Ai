@@ -255,6 +255,24 @@ export default function ConflictCard({
                       }}>
                         {item.conflict_type || 'Policy Conflict'}
                       </span>
+                      {item.source_ocr_low_confidence && (
+                        <span
+                          title={isMr
+                            ? 'हा संघर्ष कमी-विश्वासार्हतेच्या OCR मजकुरावर आधारित आहे — कदाचित चुकीचे वाचन असू शकते.'
+                            : "This conflict's source clause came from a low-confidence OCR block — it may be a misread, not a real match."}
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            background: '#fff7ed',
+                            color: '#92400e',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            border: '1.5px solid var(--yellow)'
+                          }}
+                        >
+                          ⚠ {isMr ? 'कमी-विश्वासार्हता OCR' : 'Low-confidence OCR'}
+                        </span>
+                      )}
                       {resolution && (
                         <span style={{
                           fontSize: '12px',

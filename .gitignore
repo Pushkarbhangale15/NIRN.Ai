@@ -49,4 +49,8 @@ glossary_generator/logs/
 glossary_generator/checkpoint.json
 backend/data/glossary/review_candidates.json
 
+# Raw scanned-GR upload files (ocr_ingest/storage.py) — user-uploaded
+# binaries, not source; the queryable OCR results live in Postgres instead.
+backend/data/gr_uploads/
+
 

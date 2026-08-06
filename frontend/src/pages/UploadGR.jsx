@@ -24,6 +24,16 @@ export default function UploadGR() {
   const [resolvingConflictId, setResolvingConflictId] = useState(null);
   const [resolvedInfo, setResolvedInfo] = useState({});
 
+  // Scanned GR (OCR) upload — separate from the text-based PDF path above:
+  // this one is async (background OCR job) rather than instant, so it gets
+  // its own control and a poll-driven status instead of populating the
+  // textarea synchronously.
+  const [ocrUploading, setOcrUploading] = useState(false);
+  const [ocrUploadId, setOcrUploadId] = useState(null);
+  const [ocrStatus, setOcrStatus] = useState(null); // null | pending | processing | needs_review | complete | failed
+  const [ocrError, setOcrError] = useState("");
+  const [ocrBlockConfidences, setOcrBlockConfidences] = useState([]);
+
   // Source of truth for "is this conflict resolved": the persisted
   // resolution_status field on each conflict, not a client-only flag —
   // mirrors Draft.jsx so resolved state here also survives a page reload.
@@ -42,6 +52,72 @@ export default function UploadGR() {
     }
     setResolvedInfo(derived);
   }, [analysisReport]);
+
+  // Poll the OCR job while it's pending/processing. Stops itself once the
+  // status is terminal (complete/needs_review/failed) or the upload is
+  // cleared.
+  useEffect(() => {
+    if (!ocrUploadId || (ocrStatus !== "pending" && ocrStatus !== "processing")) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const result = await api.getGrUploadStatus(ocrUploadId);
+        setOcrStatus(result.status);
+        setOcrBlockConfidences(result.block_confidences || []);
+
+        if (result.status === "complete" || result.status === "needs_review") {
+          clearInterval(interval);
+          const draft = await api.getDraftDetail(result.generated_draft_id);
+          setBodyText(draft.content);
+          setDraftId(result.generated_draft_id);
+          setHasAnalyzed(true);
+          const report = await api.runFullAnalysis(result.generated_draft_id);
+          setAnalysisReport(report);
+        } else if (result.status === "failed") {
+          clearInterval(interval);
+          setOcrError(result.error_message || "OCR processing failed.");
+        }
+      } catch (err) {
+        console.warn("OCR status poll failed:", err);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [ocrUploadId, ocrStatus]);
+
+  const handleScannedUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setError("");
+    setOcrError("");
+    setUploadWarning("");
+    setOcrBlockConfidences([]);
+    setOcrUploading(true);
+    try {
+      const result = await api.uploadScannedGr(file);
+      setOcrUploadId(result.upload_id);
+      setOcrStatus(result.status);
+      if (result.status === "complete" || result.status === "needs_review") {
+        // Dedup hit on an already-fully-processed upload — same terminal
+        // handling as the poll loop above, just reached immediately.
+        const draft = await api.getDraftDetail(result.generated_draft_id);
+        setBodyText(draft.content);
+        setDraftId(result.generated_draft_id);
+        setHasAnalyzed(true);
+        setOcrBlockConfidences(result.block_confidences || []);
+        const report = await api.runFullAnalysis(result.generated_draft_id);
+        setAnalysisReport(report);
+      } else if (result.status === "failed") {
+        setOcrError(result.error_message || "OCR processing failed.");
+      }
+    } catch (err) {
+      setOcrError(err.message || "Failed to upload scanned document.");
+    } finally {
+      setOcrUploading(false);
+    }
+  };
 
   // Unsaved changes protection
   const isDirty = bodyText.trim().length > 0 && !hasAnalyzed;
@@ -64,6 +140,10 @@ export default function UploadGR() {
     setError("");
     setUploadWarning("");
     setDraftId(null);
+    setOcrUploadId(null);
+    setOcrStatus(null);
+    setOcrError("");
+    setOcrBlockConfidences([]);
   };
 
   const handleRunAnalysis = async (e) => {
@@ -280,6 +360,111 @@ export default function UploadGR() {
               {isMr ? 'फक्त निवडण्यायोग्य मजकूर असलेल्या पीडीएफसाठी' : 'Text-based PDFs only (no scanned/image PDFs)'}
             </span>
           </div>
+
+          {/* Scanned GR (OCR) — a separate, async path: an image or a
+              scanned PDF with no text layer. Distinct control from the
+              text-PDF one above since this one runs a background OCR job
+              (30s-3min) instead of returning instantly. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+            marginBottom: '16px',
+            padding: '12px 14px',
+            background: '#f0f9ff',
+            border: '1.5px dashed #7dd3fc',
+            borderRadius: '8px'
+          }}>
+            <label
+              htmlFor="upload-scanned-input"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 14px',
+                fontSize: '13.5px',
+                fontWeight: 'bold',
+                background: ocrUploading ? '#e5e7eb' : '#fff',
+                color: 'var(--ink)',
+                border: '1.5px solid var(--ink)',
+                borderRadius: '6px',
+                cursor: ocrUploading ? 'wait' : 'pointer',
+                opacity: ocrUploading ? 0.7 : 1
+              }}
+            >
+              {ocrUploading ? <span className="spinner-small" /> : null}
+              {ocrUploading ? t('upload_ocr_uploading') : t('upload_ocr_label')}
+            </label>
+            <input
+              id="upload-scanned-input"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+              onChange={handleScannedUpload}
+              disabled={ocrUploading}
+              style={{ display: 'none' }}
+            />
+            <span style={{ fontSize: '12.5px', color: '#6b7280' }}>
+              {isMr ? 'स्कॅन केलेल्या प्रतिमा/पीडीएफसाठी (OCR)' : 'For scanned images/PDFs (OCR)'}
+            </span>
+          </div>
+
+          {ocrUploadId && (ocrStatus === "pending" || ocrStatus === "processing") && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: '#eff6ff',
+              border: '1.5px solid var(--blue)',
+              color: '#1e40af',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              marginBottom: '16px'
+            }}>
+              <span className="spinner-small" />
+              {ocrStatus === "pending" ? t('upload_ocr_status_pending') : t('upload_ocr_status_processing')}
+            </div>
+          )}
+
+          {ocrError && (
+            <div style={{
+              background: '#fee2e2',
+              border: '1.5px solid var(--red)',
+              color: 'var(--red)',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              marginBottom: '16px'
+            }}>
+              ⚠️ {ocrError}
+            </div>
+          )}
+
+          {ocrBlockConfidences.filter(b => b.needs_review).length > 0 && (
+            <div style={{
+              background: '#fff7ed',
+              border: '1.5px solid var(--yellow)',
+              color: '#92400e',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>
+                ⚠️ {t('upload_ocr_low_confidence_title')} ({ocrBlockConfidences.filter(b => b.needs_review).length})
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '18px', lineHeight: '1.6' }}>
+                {ocrBlockConfidences.filter(b => b.needs_review).slice(0, 8).map((b, i) => (
+                  <li key={i}>
+                    "{b.text_preview}{b.text_preview?.length >= 80 ? '…' : ''}" — {Math.round(b.confidence)}%
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {uploadWarning && (
             <div style={{

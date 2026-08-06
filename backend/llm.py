@@ -513,55 +513,6 @@ def map_terminology(text: str, language: Language) -> List[TermMapping]:
 
 
 # =====================================================================
-# Combined chat call — answer + suggestions in ONE API round-trip
-# =====================================================================
-
-def call_chat(
-    system_prompt: str,
-    user_message: str,
-    fallback_suggestions: Optional[List[str]] = None,
-) -> tuple[str, List[str]]:
-    """
-    Ask the model to return both the answer and follow-up suggestions in
-    a single JSON response, cutting chat LLM calls from 3 → 1.
-
-    Returns (answer_text, suggestions_list).
-    """
-    combined_system = (
-        system_prompt
-        + "\n\nReturn your final response strictly as a JSON object with two keys:\n"
-        '{"answer": "<your full detailed response text>", '
-        '"suggestions": ["short follow-up question 1", "short follow-up question 2", "short follow-up question 3"]}\n'
-        "Output ONLY the JSON object with no preamble."
-    )
-
-    raw = call_model(combined_system, user_message)
-
-    # 1. Direct JSON parse (works when model returns pure JSON or format: json is set)
-    parsed = parse_json_reply(raw)
-    if isinstance(parsed, dict):
-        answer = parsed.get("answer")
-        suggestions = parsed.get("suggestions", [])
-        if answer and isinstance(answer, str) and len(answer.strip()) > 5:
-            valid_sug = [str(s) for s in suggestions if isinstance(s, str)] if isinstance(suggestions, list) else []
-            if not valid_sug:
-                valid_sug = fallback_suggestions or [
-                    "What are the implications?",
-                    "Show me related resolutions.",
-                    "Summarize the rules.",
-                ]
-            return answer.strip(), valid_sug[:3]
-
-    # 2. Fallback: use raw text if JSON parsing failed
-    _default = fallback_suggestions or [
-        "What are the implications?",
-        "Show me related resolutions.",
-        "Summarize the rules.",
-    ]
-    return raw, _default
-
-
-# =====================================================================
 # Health check
 # =====================================================================
 

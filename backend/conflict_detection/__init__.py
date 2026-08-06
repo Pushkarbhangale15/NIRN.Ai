@@ -8,6 +8,7 @@ from config import settings
 from .models import ClauseRetrievalTrace, ConflictReportItem, RetrievalCandidateTrace
 from .rule_engine import check_deterministic_conflicts, _RULES_CONFIG
 from .llm_verifier import verify_conflict_with_llm
+from .reranker import rerank_candidates
 
 logger = logging.getLogger("nirn.conflict_detection")
 
@@ -269,18 +270,12 @@ def detect_cross_department_conflicts(
                 ))
             continue
 
-        # Single retrieval call, fetched wide (RULE_ENGINE_CANDIDATES_PER_CLAUSE) so the rule
-        # engine gets a bigger pool -- no second/duplicate retrieval call for a "narrow" pool.
-        # retrieval.search() already returns results sorted by score descending, so the top
-        # CANDIDATES_PER_CLAUSE of this same list is exactly what a separate narrow call would
-        # have returned; slicing it here keeps LLM-call volume unchanged from before this pool
-        # was widened.
+        # Single retrieval call, fetched wide (RULE_ENGINE_CANDIDATES_PER_CLAUSE=15).
+        # The cross-encoder reranker (below) selects the top CANDIDATES_PER_CLAUSE from
+        # this pool -- so LLM-call volume is still bounded by CANDIDATES_PER_CLAUSE.
         candidates = retrieval.search(
             clause, top_k=settings.RULE_ENGINE_CANDIDATES_PER_CLAUSE, draft_language=draft_language
         )
-        llm_eligible_keys = {
-            (h.gr_id, h.snippet) for h in candidates[:settings.CANDIDATES_PER_CLAUSE]
-        }
 
         # Guarantee coverage for jurisdiction-sensitive departments the unscoped search might
         # have missed entirely (see JURISDICTION_KEYWORD_DEPARTMENTS above). These hits were
@@ -293,8 +288,14 @@ def detect_cross_department_conflicts(
                 if key not in seen_keys:
                     seen_keys.add(key)
                     candidates.append(hit)
-                    llm_eligible_keys.add(key)
                 jurisdiction_keys.add(key)
+
+        # Rerank the full pool (vector-search + jurisdiction hits) with the cross-encoder.
+        # The reranker scores each candidate's snippet jointly with the clause text, so it
+        # can promote semantically conflicting entries that the bi-encoder ranked lower.
+        # llm_eligible_keys is now built from the reranked top-K, not the raw bi-encoder slice.
+        reranked_top = rerank_candidates(clause, candidates, top_k=settings.CANDIDATES_PER_CLAUSE)
+        llm_eligible_keys = {(h.gr_id, h.snippet) for h in reranked_top}
 
         clause_is_llm_eligible = clause_index in llm_eligible_indices
         candidate_traces: List[RetrievalCandidateTrace] = []

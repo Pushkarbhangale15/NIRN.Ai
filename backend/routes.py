@@ -21,11 +21,12 @@ import io
 import logging
 import re
 import time
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, File, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status, File, UploadFile
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +39,8 @@ import store
 import template_rules
 import template_rules_marathi
 from conflict_detection import detect_cross_department_conflicts
+from ocr_ingest.pipeline import run_ocr_pipeline
+from ocr_ingest.storage import save_upload_bytes
 from conflict_detection.llm_verifier import verify_conflict_with_llm
 from conflict_detection.models import ClauseRetrievalTrace, ConflictReportItem
 from lookup import get_adapter
@@ -47,6 +50,7 @@ from db.base import engine as db_engine
 from db.models import Officer, OfficerRole
 from db.repositories import conflicts as conflicts_repo
 from db.repositories import drafts as drafts_repo
+from db.repositories import gr_uploads as gr_uploads_repo
 from deps import get_current_officer, optional_auth
 from schemas import (
     Language,
@@ -57,6 +61,7 @@ from schemas import (
     ConflictHit,
     ConflictOut,
     DismissConflictRequest,
+    GrUploadResponse,
     ResolveConflictRequest,
     ResolveConflictResponse,
     ReverificationResult,
@@ -76,9 +81,6 @@ from schemas import (
     Severity,
     TemplateIssue,
     TermMapping,
-    ChatMessage,
-    ChatRequest,
-    ChatResponse,
     DraftGenerateRequest,
     DraftGenerateResponse,
     ComparisonRequest,
@@ -749,6 +751,7 @@ async def run_conflict_detection(
             severity=item.severity,
             resolution_status=(row_by_id[conflict_id].resolution_status if conflict_id in row_by_id else "not_attempted"),
             resolved_clause_text=(row_by_id[conflict_id].resolved_clause_text if conflict_id in row_by_id else None),
+            source_ocr_low_confidence=(row_by_id[conflict_id].source_ocr_low_confidence if conflict_id in row_by_id else False),
         )
         for item, conflict_id in zip(report_items, conflict_ids)
     ]
@@ -775,12 +778,41 @@ async def run_conflict_detection(
             severity=row.severity.value if hasattr(row.severity, "value") else row.severity,
             resolution_status=row.resolution_status,
             resolved_clause_text=row.resolved_clause_text,
+            source_ocr_low_confidence=row.source_ocr_low_confidence,
         )
         for row in existing_rows
         if row.is_resolved and row.conflict_id not in covered_ids
     ]
 
-    return live_hits + resolved_hits
+    # Detection is LLM-based and not perfectly deterministic run-to-run — a
+    # clause the OCR upload pipeline (or an earlier analysis pass) already
+    # flagged as an open conflict shouldn't vanish just because this
+    # particular fresh pass didn't happen to re-surface it. Anything still
+    # open (not resolved, not dismissed) and not already covered by
+    # live_hits above is carried forward rather than silently dropped.
+    stale_open_hits = [
+        ConflictHit(
+            conflict_id=row.conflict_id,
+            draft_clause=row.draft_excerpt or "",
+            existing_gr_id=row.conflicting_gr_id or "",
+            existing_gr_title=row.source_gr_title or "",
+            existing_department=row.source_of_conflict or "",
+            existing_clause=row.conflicting_text or "",
+            relation=Relation.OVERLAP,
+            confidence=1.0,
+            justification=row.justification,
+            source_url=None,
+            conflict_type="Policy Conflict",
+            severity=row.severity.value if hasattr(row.severity, "value") else row.severity,
+            resolution_status=row.resolution_status,
+            resolved_clause_text=row.resolved_clause_text,
+            source_ocr_low_confidence=row.source_ocr_low_confidence,
+        )
+        for row in existing_rows
+        if not row.is_resolved and not row.is_dismissed and row.conflict_id not in covered_ids
+    ]
+
+    return live_hits + resolved_hits + stale_open_hits
 
 
 @router.post("/api/analysis/{draft_id}/terminology",
@@ -1001,60 +1033,6 @@ async def health_db() -> HealthDbResponse:
         return HealthDbResponse(status="error", connected=False, latency_ms=None)
     latency_ms = (time.perf_counter() - started) * 1000
     return HealthDbResponse(status="ok", connected=True, latency_ms=round(latency_ms, 2))
-
-
-@router.post("/api/copilot/chat", response_model=ChatResponse, tags=["copilot"])
-def copilot_chat(payload: ChatRequest) -> ChatResponse:
-    session_id = payload.session_id or uuid.uuid4().hex[:12]
-    history = store.get_session(session_id)
-
-    # 1. Build search query from last user turn if history exists
-    if history:
-        last_user = next(
-            (m["content"] for m in reversed(history) if m["role"] == "user"), ""
-        )
-        search_query = f"{last_user} {payload.query}".strip()[-200:]
-    else:
-        search_query = payload.query
-
-    # 2. Retrieval grounding — filter out noise below similarity score 0.81
-    hits = retrieval.search(search_query, top_k=3, min_score=0.81)
-    if hits:
-        context_str = "\n\n".join(
-            f"Source GR {hit.gr_id} ({hit.department}):\n{hit.snippet[:300]}"
-            for hit in hits
-        )
-    else:
-        context_str = "No specific GR chunks found for this general query."
-
-    # 3. Compact system & conversation context
-    system_prompt = (
-        "You are NIRN.Ai Copilot, expert administrative assistant for Government of Maharashtra. "
-        "Answer professional administrative questions using GR context when available. "
-        "Maintain a helpful, bilingual (Marathi/English) administrative tone."
-    )
-    history_context = "\n".join(
-        f"{m['role']}: {m['content'][:120]}" for m in history[-2:]
-    )
-    user_msg = (
-        f"GR CONTEXT:\n{context_str}\n\n"
-        f"RECENT CHAT:\n{history_context}\n\n"
-        f"QUERY: {payload.query}"
-    )
-
-    # 4. Single combined call: answer + suggestions in one round-trip
-    answer, suggestions = llm.call_chat(system_prompt, user_msg)
-
-    # 5. Save history
-    store.add_message(session_id, {"role": "user", "content": payload.query})
-    store.add_message(session_id, {"role": "model", "content": answer})
-
-    return ChatResponse(
-        answer=answer,
-        session_id=session_id,
-        references=hits,
-        follow_up_suggestions=suggestions,
-    )
 
 
 @router.post("/api/copilot/draft", response_model=DraftGenerateResponse, tags=["copilot"])
@@ -1335,3 +1313,120 @@ async def parse_uploaded_gr_file(file: UploadFile = File(...)):
         "character_count": char_count,
         "text": text
     }
+
+
+# =====================================================================
+# Scanned GR upload — OCR ingestion (images + scanned PDFs)
+#
+# Distinct from /api/upload-gr/parse-file above: that endpoint reads an
+# existing text layer (pypdf) and fails on a scan with none. This path
+# assumes there's no text layer at all, OCRs it (Tesseract, eng+mar), and
+# routes the result through the *same* detect_cross_department_conflicts()
+# typed drafts use — see ocr_ingest/pipeline.py.
+# =====================================================================
+
+_OCR_ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif")
+
+
+@router.post("/api/gr/upload", response_model=GrUploadResponse, status_code=status.HTTP_202_ACCEPTED, tags=["ocr-upload"])
+async def upload_scanned_gr(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    officer: Officer = Depends(get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> GrUploadResponse:
+    """
+    Accepts a scanned GR image/PDF, stores it, and schedules OCR + conflict
+    detection as a background task — processing can take 30s-3min for a
+    multi-page scan, so this returns immediately with a pending record
+    rather than blocking the request. Poll GET /api/gr/upload/{upload_id}
+    for status.
+    """
+    if not file or not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file provided.")
+
+    lower_name = file.filename.lower()
+    if not any(lower_name.endswith(ext) for ext in _OCR_ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file format '{file.filename}'. Allowed: .pdf, .png, .jpg, .jpeg, .tiff",
+        )
+    file_type = lower_name.rsplit(".", 1)[-1]
+    if file_type == "tif":
+        file_type = "tiff"
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded file is empty (0 bytes).")
+
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds the {settings.MAX_UPLOAD_SIZE_MB} MB limit.",
+        )
+
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    # Dedup: a byte-identical file already has a record (any status) —
+    # return it as-is rather than re-OCRing. If it's still processing, the
+    # caller just starts polling this same upload_id.
+    try:
+        existing = await gr_uploads_repo.get_by_hash(session, file_hash)
+    except SQLAlchemyError:
+        logger.exception("Database error checking upload dedup for hash %s", file_hash)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
+    if existing is not None:
+        return GrUploadResponse.model_validate(existing)
+
+    try:
+        upload = await gr_uploads_repo.create_pending_upload(
+            session,
+            file_hash=file_hash,
+            original_filename=file.filename,
+            file_type=file_type,
+            file_size_bytes=len(content),
+            uploaded_by=officer.officer_id,
+        )
+    except SQLAlchemyError:
+        logger.exception("Database error creating gr_uploads row")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
+
+    # Raw bytes go to disk, not Postgres — see ocr_ingest/storage.py.
+    save_upload_bytes(file_hash, file_type, content)
+
+    # Explicit commit here, ahead of get_session's usual end-of-request
+    # commit: BackgroundTasks can start running before that automatic
+    # commit fires (dependency cleanup and background-task execution
+    # aren't strictly ordered the way you'd assume), and the task opens
+    # its OWN session — it won't see this row at all until it's committed.
+    await session.commit()
+
+    background_tasks.add_task(run_ocr_pipeline, upload.upload_id)
+
+    return GrUploadResponse.model_validate(upload)
+
+
+@router.get("/api/gr/upload/{upload_id}", response_model=GrUploadResponse, tags=["ocr-upload"])
+async def get_scanned_gr_upload(
+    upload_id: uuid.UUID,
+    officer: Officer = Depends(get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> GrUploadResponse:
+    """Poll target for the background OCR job. Once status is
+    complete/needs_review, generated_draft_id is set and the frontend
+    switches to the ordinary draft endpoints (GET /api/drafts/{id},
+    GET /api/drafts/{id}/conflicts, etc.) — unchanged by this feature."""
+    try:
+        upload = await gr_uploads_repo.get_by_id(session, upload_id)
+    except SQLAlchemyError:
+        logger.exception("Database error loading gr_upload %s", upload_id)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    # Same ownership gate as drafts: uploader, or admin/reviewer.
+    if officer.role not in (OfficerRole.ADMIN, OfficerRole.REVIEWER) and upload.uploaded_by != officer.officer_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have access to this upload.")
+
+    return GrUploadResponse.model_validate(upload)

@@ -85,12 +85,6 @@ export const api = {
     request(`/api/official-gr/${grId}?department=${encodeURIComponent(department)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}`),
 
   // ── Copilot ──────────────────────────────────────────────────
-  copilotChat: (query, sessionId = null) =>
-    request("/api/copilot/chat", {
-      method: "POST",
-      body: JSON.stringify({ query, session_id: sessionId }),
-    }),
-
   copilotDraft: (prompt, language = "english", department = null) =>
     request("/api/copilot/draft", {
       method: "POST",
@@ -252,6 +246,36 @@ export const api = {
     }
     return res.json();
   },
+
+  // ── Scanned GR upload (OCR ingestion) ──────────────────────────
+  // Distinct from uploadGrFile above: that one reads an existing text
+  // layer synchronously. This one OCRs an image/scanned PDF and runs
+  // async — the backend returns 202 immediately with a pending record;
+  // poll getGrUploadStatus until it reaches a terminal status.
+  uploadScannedGr: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers = {};
+    if (_authToken) headers["Authorization"] = `Bearer ${_authToken}`;
+    const res = await fetch("/api/gr/upload", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      let detail = `Upload failed (${res.status})`;
+      try {
+        const body = await res.json();
+        if (body.detail) {
+          detail = typeof body.detail === "string" ? body.detail : "File upload validation error.";
+        }
+      } catch {}
+      throw new Error(detail);
+    }
+    return res.json();
+  },
+
+  getGrUploadStatus: (uploadId) => request(`/api/gr/upload/${uploadId}`),
 };
 
 

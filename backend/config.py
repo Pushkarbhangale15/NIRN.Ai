@@ -108,16 +108,31 @@ class Settings(BaseSettings):
     # test_runs/ for the actual impact of this change.
     CANDIDATES_PER_CLAUSE: int = 3
 
-    # How many corpus candidates the (free, local, no-LLM) deterministic rule engine gets
-    # to inspect per clause. Wider than CANDIDATES_PER_CLAUSE on purpose: only the top
-    # CANDIDATES_PER_CLAUSE of this same pool (already score-sorted by retrieval.search)
-    # are ever passed to the LLM stage, so widening this has zero effect on LLM-call volume
-    # -- it only gives the rule engine more chances to find a deterministic match before
-    # falling through to (or past) the LLM budget. Local FAISS/embedding cost only.
-    RULE_ENGINE_CANDIDATES_PER_CLAUSE: int = 6
+    # How many corpus candidates the initial vector search fetches per clause.
+    # Widened to 15 to give the cross-encoder reranker a meaningful pool to work over.
+    # The reranker then selects the top CANDIDATES_PER_CLAUSE from this pool before
+    # any rule-engine or LLM calls are made -- so LLM-call volume is still bounded
+    # by CANDIDATES_PER_CLAUSE, not this number. Local FAISS/embedding cost only.
+    RULE_ENGINE_CANDIDATES_PER_CLAUSE: int = 15
+
+    # Cross-encoder model used to rerank the RULE_ENGINE_CANDIDATES_PER_CLAUSE pool.
+    # BAAI/bge-reranker-v2-m3 is multilingual (handles English and Marathi) and
+    # lightweight enough to run on CPU in <200ms for 15-20 candidates.
+    RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
 
     # Minimum confidence for a conflict to be included in the final report.
     CONFLICT_CONFIDENCE_FLOOR: float = 0.45
+
+    # ---- Scanned GR upload / OCR ingestion ----------------------------------
+    MAX_UPLOAD_SIZE_MB: int = 10
+
+    # 0-100 scale (pytesseract's per-word/line confidence, averaged per block).
+    # A block below this is flagged needs_review but still proceeds through
+    # cleaning/clause-splitting/conflict detection -- this is a review flag,
+    # not a gate. Tune after real-world testing; Marathi text may warrant a
+    # separate/lower threshold if the false-flag rate is high in the first
+    # week of use (Devanagari OCR is inherently noisier than Latin script).
+    OCR_CONFIDENCE_THRESHOLD: int = 78
 
     # ---- Chunking ----------------------------------------------------------
     CHUNK_CHARS: int = 500

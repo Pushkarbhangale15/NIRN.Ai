@@ -138,6 +138,7 @@ async def _insert_conflicts(session: AsyncSession, draft_id: uuid.UUID, conflict
             severity=c.get("severity", "medium"),
             justification=c["justification"],
             detected_by=c.get("detected_by", "llm_verifier"),
+            source_ocr_low_confidence=c.get("source_ocr_low_confidence", False),
         )
         session.add(row)
         rows.append(row)

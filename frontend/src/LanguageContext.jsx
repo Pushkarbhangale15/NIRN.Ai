@@ -7,12 +7,9 @@ const translations = {
     nav_home: "Home",
     nav_draft: "Draft GR",
     nav_upload_gr: "Upload GR",
-    nav_chat: "NIRN.Ai Chat",
     nav_conflicts: "Conflict Detection",
     nav_search: "Search",
     nav_analyze: "Analyze",
-    nav_copilot: "NIRN.Ai Chat",
-    nav_ai_copilot: "NIRN.Ai Chat →",
     nav_history: "History",
     nav_admin: "Admin",
     nav_login: "Officer Sign In",
@@ -177,7 +174,12 @@ const translations = {
     upload_clear_btn: "Clear & Start Over",
     upload_pdf_label: "Upload GR PDF",
     upload_pdf_uploading: "Extracting text...",
-    upload_pdf_scanned_warning: "This PDF appears to be a scanned document — please paste the text manually. Image/scanned PDF support is not yet available.",
+    upload_pdf_scanned_warning: "This PDF appears to be a scanned document — try 'Upload Scanned GR' below instead, or paste the text manually.",
+    upload_ocr_label: "Upload Scanned GR",
+    upload_ocr_uploading: "Uploading...",
+    upload_ocr_status_pending: "Queued for OCR processing...",
+    upload_ocr_status_processing: "Running OCR and conflict detection — this can take a few minutes for multi-page scans...",
+    upload_ocr_low_confidence_title: "Low-confidence OCR — please double-check",
     upload_unsaved_warning: "You have unanalyzed or modified text. Are you sure you want to leave?",
 
 
@@ -258,8 +260,6 @@ const translations = {
     analyze_fix: "Fix:",
 
     // Copilot
-    copilot_chat_placeholder: "Ask anything about Government Resolutions...",
-    copilot_clear_chat: "Clear chat",
     copilot_brief_title: "Your Brief",
     copilot_describe_label: "Describe the GR you need",
     copilot_describe_placeholder: "Describe the Government Resolution you would like to draft...",
@@ -332,21 +332,6 @@ const translations = {
     draft_still_conflicting: "Still conflicting — needs manual review",
     draft_resolve_error: "Resolution attempt failed — needs manual review",
 
-    // Chat page
-    chat_eyebrow: "Ask anything",
-    chat_title: "NIRN.Ai Chat",
-    chat_sub: "Your intelligent assistant for querying and understanding Government Resolutions of Maharashtra.",
-    chat_empty_title: "NIRN.Ai Copilot",
-    chat_empty_sub: "Ask any question about Maharashtra Government Resolutions. I ground every answer in the actual GR corpus.",
-    chat_starter_1: "What is the policy on lateral entry in technical colleges?",
-    chat_starter_2: "Summarise the rules for government employee leave.",
-    chat_starter_3: "Which department handles scholarship grievances?",
-    chat_sources_used: "Sources used:",
-
-    // Floating chat widget
-    chat_widget_tooltip: "Ask NIRN.Ai",
-    chat_widget_close: "Close chat",
-
     // Workflow stepper, mobile compact form
     draft_stage_compact_prefix: "Step",
     draft_stage_compact_of: "of",
@@ -356,12 +341,9 @@ const translations = {
     nav_home: "मुख्य पृष्ठ",
     nav_draft: "मसुदा तयार करा",
     nav_upload_gr: "जीआर अपलोड करा",
-    nav_chat: "निर्णि.आय चॅट",
     nav_conflicts: "संघर्ष शोधन",
     nav_search: "शोध",
     nav_analyze: "विश्लेषण",
-    nav_copilot: "निर्णि.आय चॅट",
-    nav_ai_copilot: "निर्णि.आय चॅट →",
     nav_history: "इतिहास",
     nav_admin: "प्रशासन",
     nav_login: "अधिकारी लॉगिन",
@@ -526,7 +508,12 @@ const translations = {
     upload_clear_btn: "हटवा आणि पुन्हा सुरू करा",
     upload_pdf_label: "जीआर पीडीएफ अपलोड करा",
     upload_pdf_uploading: "मजकूर काढला जात आहे...",
-    upload_pdf_scanned_warning: "ही पीडीएफ स्कॅन केलेली दिसते — कृपया मजकूर स्वहस्ते पेस्ट करा. स्कॅन केलेल्या पीडीएफसाठी अद्याप सुविधा उपलब्ध नाही.",
+    upload_pdf_scanned_warning: "ही पीडीएफ स्कॅन केलेली दिसते — खालील 'स्कॅन केलेला जीआर अपलोड करा' वापरून पहा, किंवा मजकूर स्वहस्ते पेस्ट करा.",
+    upload_ocr_label: "स्कॅन केलेला जीआर अपलोड करा",
+    upload_ocr_uploading: "अपलोड होत आहे...",
+    upload_ocr_status_pending: "OCR प्रक्रियेसाठी रांगेत...",
+    upload_ocr_status_processing: "OCR आणि संघर्ष तपासणी सुरू आहे — बहु-पृष्ठ स्कॅनसाठी काही मिनिटे लागू शकतात...",
+    upload_ocr_low_confidence_title: "कमी विश्वासार्हतेचे OCR — कृपया पुन्हा तपासा",
     upload_unsaved_warning: "तुमच्याकडे विश्लेषित न केलेला किंवा सुधारित मजकूर आहे. तुम्हाला नक्की बाहेर पडायचे आहे का?",
 
 
@@ -607,8 +594,6 @@ const translations = {
     analyze_fix: "दुरुस्त करा:",
 
     // Copilot
-    copilot_chat_placeholder: "शासन निर्णयांबद्दल काहीही विचारा...",
-    copilot_clear_chat: "चॅट साफ करा",
     copilot_brief_title: "तुमचा मसुदा",
     copilot_describe_label: "तुमचा शासन निर्णय थोडक्यात मांडा",
     copilot_describe_placeholder: "तयार करावयाच्या शासन निर्णयाचे संक्षिप्त वर्णन येथे लिहा...",
@@ -680,21 +665,6 @@ const translations = {
     draft_resolve_one: "निराकरण करा",
     draft_still_conflicting: "अद्याप संघर्ष कायम — मॅन्युअल तपासणी आवश्यक",
     draft_resolve_error: "निराकरणाचा प्रयत्न अयशस्वी — मॅन्युअल तपासणी आवश्यक",
-
-    // Chat page
-    chat_eyebrow: "काहीही विचारा",
-    chat_title: "निर्णि.आय चॅट",
-    chat_sub: "महाराष्ट्राच्या शासन निर्णयांबद्दल चौकशी करण्यासाठी व समजून घेण्यासाठी तुमचा बुद्धिमान सहाय्यक.",
-    chat_empty_title: "निर्णि.आय कोपायलट",
-    chat_empty_sub: "महाराष्ट्र शासन निर्णयांबद्दल कोणताही प्रश्न विचारा. मी प्रत्येक उत्तर वास्तविक शासन निर्णय संग्रहावर आधारित देतो.",
-    chat_starter_1: "तांत्रिक महाविद्यालयांमध्ये लॅटरल एंट्रीबाबत धोरण काय आहे?",
-    chat_starter_2: "शासकीय कर्मचाऱ्यांच्या रजेच्या नियमांचा सारांश द्या.",
-    chat_starter_3: "शिष्यवृत्ती तक्रारी कोणता विभाग हाताळतो?",
-    chat_sources_used: "वापरलेले स्रोत:",
-
-    // Floating chat widget
-    chat_widget_tooltip: "NIRN.Ai ला विचारा",
-    chat_widget_close: "चॅट बंद करा",
 
     // Workflow stepper, mobile compact form
     draft_stage_compact_prefix: "पायरी",

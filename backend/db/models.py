@@ -77,6 +77,18 @@ class ReferenceScript(str, enum.Enum):
     DEVANAGARI = "devanagari"
 
 
+class GrUploadStatus(str, enum.Enum):
+    """Lifecycle of a scanned GR upload, tracked independently of
+    GeneratedDraft.status since a gr_uploads row exists before any draft
+    does (OCR must succeed before there's clean text/department to create
+    one with)."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    NEEDS_REVIEW = "needs_review"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
 def _pg_enum(enum_cls, name: str):
     """
     Plain PgEnum(SomeEnum, name=...) binds the Python member's NAME
@@ -213,6 +225,12 @@ class DraftConflict(Base):
     # "attempted_still_conflicting" | "attempted_error".
     resolution_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_attempted")
     resolved_clause_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # True when this conflict's draft_clause was correlated (see
+    # ocr_ingest/pipeline.py) with an OCR block that scored below
+    # settings.OCR_CONFIDENCE_THRESHOLD -- lets the frontend flag "this
+    # conflict might be a misread, not a real match" distinctly from a
+    # normal-confidence one. Always False for typed/pasted drafts.
+    source_ocr_low_confidence: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[object] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
@@ -276,6 +294,60 @@ class DraftVersion(Base):
 
     __table_args__ = (
         UniqueConstraint("generated_draft_id", "version_number", name="uq_draft_versions_draft_number"),
+    )
+
+
+class GrUpload(Base):
+    """
+    One row per scanned GR upload (image/PDF, OCR'd) — tracks the OCR job
+    lifecycle independently of GeneratedDraft, since this row must exist
+    (status=pending) before OCR has even run, and GeneratedDraft requires
+    NOT NULL content/department that don't exist yet at that point.
+
+    Once OCR + cleaning + metadata extraction succeed, a normal
+    GeneratedDraft is created from cleaned_text and generated_draft_id is
+    set here -- from then on this row is purely an audit/status record;
+    every downstream action (view, edit, conflict resolve) goes through
+    the ordinary draft endpoints unmodified.
+    """
+
+    __tablename__ = "gr_uploads"
+
+    upload_id: Mapped[uuid.UUID] = _uuid_pk()
+    file_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(400), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("officers.officer_id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[GrUploadStatus] = mapped_column(
+        _pg_enum(GrUploadStatus, "gr_upload_status"),
+        nullable=False,
+        default=GrUploadStatus.PENDING,
+        index=True,
+    )
+    raw_ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cleaned_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # list[{block_index, text_preview, confidence, needs_review}]
+    block_confidences: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # {gr_number, date, department, subject, extraction_method}
+    extracted_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    generated_draft_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("generated_drafts.generated_draft_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[object] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[object] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
 

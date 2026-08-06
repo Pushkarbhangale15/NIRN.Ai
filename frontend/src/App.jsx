@@ -6,11 +6,9 @@ import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
 import UploadGR from "./pages/UploadGR.jsx";
-import Chat from "./pages/Chat.jsx";
 import Login from "./pages/Login.jsx";
 import History from "./pages/History.jsx";
 import Admin from "./pages/Admin.jsx";
-import ChatWidget from "./components/ChatWidget.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
 import { DraftProvider } from "./DraftContext.jsx";
@@ -261,29 +259,10 @@ export default function App() {
             }
           />
 
-          <Route
-            path="/chat"
-            element={
-              <PageWrapper>
-                <Chat />
-              </PageWrapper>
-            }
-          />
-
-          <Route
-            path="/copilot"
-            element={
-              <PageWrapper>
-                <Chat />
-              </PageWrapper>
-            }
-          />
         </Routes>
       </AnimatePresence>
 
       {!isBareRoute && <Footer />}
-
-      <ChatWidget />
     </DraftProvider>
   );
 }

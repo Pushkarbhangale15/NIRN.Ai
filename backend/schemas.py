@@ -128,6 +128,7 @@ class ConflictHit(BaseModel):
     severity: Optional[str] = "High"
     resolution_status: str = "not_attempted"
     resolved_clause_text: Optional[str] = None
+    source_ocr_low_confidence: bool = False
 
 
 class TermMapping(BaseModel):
@@ -197,24 +198,6 @@ class OfficialSourceResponse(BaseModel):
     status: str
     url: Optional[str] = None
 
-
-# ---------------------------------------------------------------------
-# Copilot / Chat
-# ---------------------------------------------------------------------
-
-class ChatMessage(BaseModel):
-    role: str  # "user" or "model"
-    content: str
-
-class ChatRequest(BaseModel):
-    query: str
-    session_id: Optional[str] = None
-
-class ChatResponse(BaseModel):
-    answer: str
-    session_id: str
-    references: List[CorpusHit] = []
-    follow_up_suggestions: List[str] = []
 
 class DraftGenerateRequest(BaseModel):
     prompt: str
@@ -386,6 +369,7 @@ class ConflictOut(BaseModel):
     resolved_reason: Optional[str] = None
     resolution_status: str = "not_attempted"
     resolved_clause_text: Optional[str] = None
+    source_ocr_low_confidence: bool = False
     created_at: datetime
 
 
@@ -491,3 +475,21 @@ class AdminSummaryCounts(BaseModel):
     total_unresolved_conflicts: int
     active_officers: int
     drafts_last_7_days: int
+
+
+# ---------------------------------------------------------------------
+# Scanned GR upload / OCR ingestion
+# ---------------------------------------------------------------------
+
+class GrUploadResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    upload_id: uuid.UUID
+    status: str
+    original_filename: str
+    file_type: str
+    extracted_metadata: Optional[dict] = None
+    block_confidences: Optional[List[dict]] = None
+    generated_draft_id: Optional[uuid.UUID] = None
+    error_message: Optional[str] = None
+    created_at: datetime
