@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -5,10 +6,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";
-import UploadGR from "./pages/UploadGR.jsx";
+import CheckConflicts from "./pages/CheckConflicts.jsx";
 import Login from "./pages/Login.jsx";
 import History from "./pages/History.jsx";
 import Admin from "./pages/Admin.jsx";
+import Approval from "./pages/Approval.jsx";
 import { useLanguage } from "./LanguageContext.jsx";
 import { useAuth } from "./AuthContext.jsx";
 import { DraftProvider } from "./DraftContext.jsx";
@@ -32,14 +34,31 @@ function PageWrapper({ children }) {
 // Login-required routes (Task 2: generating a draft; saving, history,
 // exports, admin). Anonymous visitors are sent to /login with a
 // returnTo so they land back where they were, not on the home page.
+//
+// Redirects fire from a useEffect keyed on the actual auth booleans,
+// not by rendering <Navigate> directly. <Navigate>'s own effect has no
+// dependency array — it re-fires on every render of the component that
+// returns it — and while a guarded page is unmounting under
+// AnimatePresence's exit transition (see PageWrapper), framer-motion
+// re-renders that subtree many times per second, which was re-invoking
+// navigate() dozens of times a second and tripping React's "Maximum
+// update depth exceeded" safeguard. Tying the redirect to an effect
+// with real dependencies makes it fire once, when the auth state
+// actually changes, regardless of how many extra times the component
+// re-renders during exit.
 function RequireAuth({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  if (loading) return null;
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
-  }
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate("/login", { state: { returnTo: location.pathname }, replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAuthenticated]);
+
+  if (loading || !isAuthenticated) return null;
   return children;
 }
 
@@ -48,20 +67,47 @@ function RequireAuth({ children }) {
 function RequireAdmin({ children }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  if (loading) return null;
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
-  }
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) {
+      navigate("/login", { state: { returnTo: location.pathname }, replace: true });
+    } else if (!isAdmin) {
+      navigate("/", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAuthenticated, isAdmin]);
+
+  if (loading || !isAuthenticated || !isAdmin) return null;
+  return children;
+}
+
+// The Approval tab is only for the Reviewing Officer / Approving
+// Authority roles. A Drafting Officer or anonymous visitor hitting
+// /approval directly is redirected home — never a blank page.
+function RequireReviewerOrAdmin({ children }) {
+  const { isAuthenticated, isAdmin, isReviewer, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) {
+      navigate("/login", { state: { returnTo: location.pathname }, replace: true });
+    } else if (!isAdmin && !isReviewer) {
+      navigate("/", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isAuthenticated, isAdmin, isReviewer]);
+
+  if (loading || !isAuthenticated || (!isAdmin && !isReviewer)) return null;
   return children;
 }
 
 function Navbar() {
   const { t, siteLanguage, toggleLanguage } = useLanguage();
-  const { officer, isAuthenticated, isAdmin, loading, logout } = useAuth();
+  const { officer, isAuthenticated, isAdmin, isReviewer, loading, logout } = useAuth();
   const navigate = useNavigate();
 
   // The red button is the single auth control now — it never opens
@@ -96,14 +142,21 @@ function Navbar() {
             <NavLink to="/draft" className={({ isActive }) => (isActive ? "active" : "")}>
               {t('nav_draft')}
             </NavLink>
-            <NavLink to="/upload-gr" className={({ isActive }) => (isActive ? "active" : "")}>
-              {t('nav_upload_gr')}
+            <NavLink to="/check-conflicts" className={({ isActive }) => (isActive ? "active" : "")}>
+              {t('nav_check_conflicts')}
             </NavLink>
             {/* Rendered only once the role is known, so nothing flashes
                 into view and then disappears once auth resolves. */}
             {!loading && isAuthenticated && (
               <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>
                 {t('nav_history')}
+              </NavLink>
+            )}
+            {/* Approval tab: Reviewing Officer / Approving Authority only —
+                hidden for Drafting Officer and anonymous visitors. */}
+            {!loading && (isReviewer || isAdmin) && (
+              <NavLink to="/approval" className={({ isActive }) => (isActive ? "active" : "")}>
+                {t('nav_approval')}
               </NavLink>
             )}
             {!loading && isAdmin && (
@@ -216,26 +269,21 @@ export default function App() {
           />
 
           <Route
-            path="/upload-gr"
+            path="/check-conflicts"
             element={
               <PageWrapper>
                 <RequireAuth>
-                  <UploadGR />
+                  <CheckConflicts />
                 </RequireAuth>
               </PageWrapper>
             }
           />
 
-          <Route
-            path="/upload"
-            element={
-              <PageWrapper>
-                <RequireAuth>
-                  <UploadGR />
-                </RequireAuth>
-              </PageWrapper>
-            }
-          />
+          {/* Legacy paths from before the "Upload GR" -> "Check Conflicts"
+              rename — kept working via redirect rather than breaking
+              anyone's bookmark or in-flight link. */}
+          <Route path="/upload-gr" element={<Navigate to="/check-conflicts" replace />} />
+          <Route path="/upload" element={<Navigate to="/check-conflicts" replace />} />
 
           <Route
             path="/history"
@@ -244,6 +292,17 @@ export default function App() {
                 <RequireAuth>
                   <History />
                 </RequireAuth>
+              </PageWrapper>
+            }
+          />
+
+          <Route
+            path="/approval"
+            element={
+              <PageWrapper>
+                <RequireReviewerOrAdmin>
+                  <Approval />
+                </RequireReviewerOrAdmin>
               </PageWrapper>
             }
           />

@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from config import settings
+from db.integrity import hash_content
 from db.models import (
     DraftConflict,
     DraftReference,
@@ -34,6 +35,28 @@ from db.models import (
     Officer,
     OfficerRole,
 )
+from db.repositories import workflow as workflow_repo
+
+
+class InvalidWorkflowStateError(Exception):
+    """Raised when a workflow action is attempted from the wrong
+    generated_drafts.status — mapped to HTTP 400 by the route."""
+
+
+class DraftImmutableError(Exception):
+    """Raised when content edits are attempted against an approved
+    (immutable) draft — mapped to HTTP 409 by the route."""
+
+
+# POST .../approve's request body uses present tense ('accept_reviewer_version'
+# | 'keep_original'); draft_workflow_events.decision (workflow_decision enum)
+# records the past-tense audit form ('accepted_reviewer_version' |
+# 'kept_original') — see approve_draft below.
+_EVENT_DECISION = {
+    "accept_reviewer_version": "accepted_reviewer_version",
+    "keep_original": "kept_original",
+}
+
 
 DRAFT_SORT_FIELDS = {
     "created_at": GeneratedDraft.created_at,
@@ -225,16 +248,26 @@ async def patch_draft_content(
     edited_by: uuid.UUID,
     change_note: Optional[str] = None,
 ) -> Optional[GeneratedDraft]:
-    """Snapshots the CURRENT content into draft_versions, then overwrites."""
+    """Snapshots the CURRENT content into draft_versions, then overwrites.
+
+    Raises DraftImmutableError if the draft is already approved — from
+    that point on, a real government resolution is treated as final;
+    the only further action is Archive (see archive_draft)."""
     draft = await get_draft_by_id(session, draft_id)
     if draft is None:
         return None
+    if draft.status == DraftStatus.APPROVED:
+        raise DraftImmutableError(
+            "This draft has been approved and is final; content can no longer be edited."
+        )
 
     session.add(
         DraftVersion(
             generated_draft_id=draft.generated_draft_id,
             version_number=draft.version,
             content=draft.content,
+            content_plain=draft.content_plain,
+            content_sha256=hash_content(draft.content),
             edited_by=edited_by,
             change_note=change_note,
         )
@@ -382,4 +415,380 @@ async def admin_summary_counts(session: AsyncSession) -> dict:
         "total_unresolved_conflicts": total_unresolved,
         "active_officers": active_officers,
         "drafts_last_7_days": recent_count,
+    }
+
+
+# =====================================================================
+# Three-tier draft approval workflow — Drafting Officer -> Reviewing
+# Officer -> Approving Authority. Every transition below writes exactly
+# one append-only draft_workflow_events row (via workflow_repo) in the
+# same transaction as the status/content change, so the two can never
+# drift apart.
+# =====================================================================
+
+async def get_version_snapshot(
+    session: AsyncSession, draft: GeneratedDraft, version_number: int
+) -> tuple[str, str, str]:
+    """
+    Returns (content_html, content_plain, content_sha256) for a specific
+    version_number of a draft: the live row if it IS the draft's current
+    version, otherwise the frozen draft_versions snapshot.
+
+    Raises ValueError if version_number doesn't exist for this draft at
+    all — mapped to HTTP 404 by the route.
+    """
+    if version_number == draft.version:
+        return draft.content, (draft.content_plain or draft.content), hash_content(draft.content)
+    stmt = select(DraftVersion).where(
+        DraftVersion.generated_draft_id == draft.generated_draft_id,
+        DraftVersion.version_number == version_number,
+    )
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None:
+        raise ValueError(f"Version {version_number} does not exist for this draft.")
+    return row.content, (row.content_plain or row.content), row.content_sha256
+
+
+async def submit_for_review(
+    session: AsyncSession, draft_id: uuid.UUID, *, officer_id: uuid.UUID, officer_role: OfficerRole
+) -> Optional[GeneratedDraft]:
+    """Drafting Officer only, and only their own draft. Content is
+    untouched — this just moves the draft into the Reviewing Officer's
+    queue, so content_version_before == content_version_after."""
+    if officer_role != OfficerRole.OFFICER:
+        raise PermissionError("Only a drafting officer may submit a draft for review.")
+
+    draft = await get_draft_by_id(session, draft_id)
+    if draft is None:
+        return None
+    if draft.drafted_by != officer_id:
+        raise PermissionError("You may only submit your own drafts for review.")
+    if draft.status != DraftStatus.DRAFT:
+        raise InvalidWorkflowStateError(
+            f"Draft must be in 'draft' status to submit for review (currently '{draft.status.value}')."
+        )
+
+    draft.status = DraftStatus.SUBMITTED
+    draft.returned_reason = None
+    await session.flush()
+    await workflow_repo.create_event(
+        session,
+        draft_id=draft.generated_draft_id,
+        from_status=DraftStatus.DRAFT.value,
+        to_status=DraftStatus.SUBMITTED.value,
+        actor_id=officer_id,
+        actor_role=officer_role.value,
+        content_version_before=draft.version,
+        content_version_after=draft.version,
+        decision="submitted",
+        note=None,
+    )
+    return draft
+
+
+async def forward_to_approval(
+    session: AsyncSession,
+    draft_id: uuid.UUID,
+    *,
+    officer_id: uuid.UUID,
+    officer_role: OfficerRole,
+    new_content: Optional[str],
+    new_content_plain: Optional[str] = None,
+) -> Optional[GeneratedDraft]:
+    """Reviewing Officer (or admin) only. Draft must be 'submitted'.
+
+    If new_content is provided and differs from the current stored
+    content, snapshots a new draft_versions row for what's being
+    replaced (with its content_sha256) and records
+    decision='edited_and_forwarded'. Otherwise records
+    decision='forwarded_unchanged' — no pointless version row when
+    nothing changed."""
+    if officer_role not in (OfficerRole.REVIEWER, OfficerRole.ADMIN):
+        raise PermissionError("Only a reviewing officer or admin may forward a draft to approval.")
+
+    draft = await get_draft_by_id(session, draft_id)
+    if draft is None:
+        return None
+    if draft.status != DraftStatus.SUBMITTED:
+        raise InvalidWorkflowStateError(
+            f"Draft must be 'submitted' to forward to approval (currently '{draft.status.value}')."
+        )
+
+    version_before = draft.version
+    content_changed = new_content is not None and new_content != draft.content
+    if content_changed:
+        session.add(
+            DraftVersion(
+                generated_draft_id=draft.generated_draft_id,
+                version_number=draft.version,
+                content=draft.content,
+                content_plain=draft.content_plain,
+                content_sha256=hash_content(draft.content),
+                edited_by=officer_id,
+                change_note="Reviewing officer's edits before forwarding to approval",
+            )
+        )
+        draft.content = new_content
+        draft.content_plain = new_content_plain if new_content_plain is not None else new_content
+        draft.version += 1
+        decision = "edited_and_forwarded"
+    else:
+        decision = "forwarded_unchanged"
+
+    draft.status = DraftStatus.REVIEWED
+    await session.flush()
+    await workflow_repo.create_event(
+        session,
+        draft_id=draft.generated_draft_id,
+        from_status=DraftStatus.SUBMITTED.value,
+        to_status=DraftStatus.REVIEWED.value,
+        actor_id=officer_id,
+        actor_role=officer_role.value,
+        content_version_before=version_before,
+        content_version_after=draft.version,
+        decision=decision,
+        note=None,
+    )
+    return draft
+
+
+async def approve_draft(
+    session: AsyncSession,
+    draft_id: uuid.UUID,
+    *,
+    admin_id: uuid.UUID,
+    admin_role: OfficerRole,
+    decision: str,
+) -> Optional[GeneratedDraft]:
+    """Admin only. Draft must be 'reviewed'.
+
+    decision='accept_reviewer_version': content stays as the reviewer
+    left it. decision='keep_original': content is reverted to the
+    Drafting Officer's originally-submitted version for THIS review
+    cycle (found via the most recent 'submitted' workflow event, so a
+    prior returned-and-resubmitted cycle's submission is never used) —
+    a new draft_versions snapshot records the reversion itself, so it's
+    also auditable. Either way, this is where the draft becomes
+    immutable (see patch_draft_content).
+
+    `decision` here is the present-tense request value
+    ('accept_reviewer_version' | 'keep_original'); the
+    draft_workflow_events.decision column stores the past-tense audit
+    record ('accepted_reviewer_version' | 'kept_original') — see
+    _EVENT_DECISION below for the mapping."""
+    if admin_role != OfficerRole.ADMIN:
+        raise PermissionError("Only an approving authority (admin) may approve a draft.")
+    if decision not in ("accept_reviewer_version", "keep_original"):
+        raise ValueError(f"Unknown approval decision '{decision}'.")
+
+    draft = await get_draft_by_id(session, draft_id)
+    if draft is None:
+        return None
+    if draft.status != DraftStatus.REVIEWED:
+        raise InvalidWorkflowStateError(
+            f"Draft must be 'reviewed' to approve (currently '{draft.status.value}')."
+        )
+
+    version_before = draft.version
+
+    if decision == "keep_original":
+        events = await workflow_repo.get_workflow_history(session, draft.generated_draft_id)
+        submit_event = next((e for e in events if e.decision == "submitted"), None)
+        submitted_version_number = submit_event.content_version_after if submit_event else version_before
+        orig_content, _orig_plain, _orig_hash = await get_version_snapshot(
+            session, draft, submitted_version_number
+        )
+        session.add(
+            DraftVersion(
+                generated_draft_id=draft.generated_draft_id,
+                version_number=draft.version,
+                content=draft.content,
+                content_plain=draft.content_plain,
+                content_sha256=hash_content(draft.content),
+                edited_by=admin_id,
+                change_note="Reverted to the drafting officer's originally submitted version on approval",
+            )
+        )
+        draft.content = orig_content
+        # content_plain has no historical mirror before this migration's
+        # backfill was written for every row going forward; best-effort
+        # fallback keeps the field non-empty rather than blanking it.
+        draft.content_plain = _orig_plain
+        draft.version += 1
+
+    draft.status = DraftStatus.APPROVED
+    await session.flush()
+    await workflow_repo.create_event(
+        session,
+        draft_id=draft.generated_draft_id,
+        from_status=DraftStatus.REVIEWED.value,
+        to_status=DraftStatus.APPROVED.value,
+        actor_id=admin_id,
+        actor_role=admin_role.value,
+        content_version_before=version_before,
+        content_version_after=draft.version,
+        decision=_EVENT_DECISION[decision],
+        note=None,
+    )
+    return draft
+
+
+async def return_draft(
+    session: AsyncSession,
+    draft_id: uuid.UUID,
+    *,
+    officer_id: uuid.UUID,
+    officer_role: OfficerRole,
+    reason: str,
+) -> Optional[GeneratedDraft]:
+    """Reviewer or admin. Draft must be 'submitted' or 'reviewed'.
+
+    Goes straight back to 'draft' (rather than lingering in the
+    'returned' status) with returned_reason set, so the drafting
+    officer's own view can surface it immediately — see
+    db.models.DraftStatus for why this is the simpler, chosen path."""
+    if officer_role not in (OfficerRole.REVIEWER, OfficerRole.ADMIN):
+        raise PermissionError("Only a reviewing officer or admin may return a draft.")
+
+    draft = await get_draft_by_id(session, draft_id)
+    if draft is None:
+        return None
+    if draft.status not in (DraftStatus.SUBMITTED, DraftStatus.REVIEWED):
+        raise InvalidWorkflowStateError(
+            f"Draft must be 'submitted' or 'reviewed' to return (currently '{draft.status.value}')."
+        )
+
+    from_status = draft.status.value
+    draft.status = DraftStatus.DRAFT
+    draft.returned_reason = reason
+    await session.flush()
+    await workflow_repo.create_event(
+        session,
+        draft_id=draft.generated_draft_id,
+        from_status=from_status,
+        to_status=DraftStatus.DRAFT.value,
+        actor_id=officer_id,
+        actor_role=officer_role.value,
+        content_version_before=draft.version,
+        content_version_after=draft.version,
+        decision="returned",
+        note=reason,
+    )
+    return draft
+
+
+def _workflow_queue_conflict_counts_subquery():
+    return (
+        select(
+            DraftConflict.generated_draft_id.label("draft_id"),
+            func.count().label("cnt"),
+        )
+        .where(DraftConflict.is_dismissed == False)  # noqa: E712
+        .group_by(DraftConflict.generated_draft_id)
+        .subquery()
+    )
+
+
+async def list_review_queue(
+    session: AsyncSession, *, page: int, page_size: int, department: Optional[str] = None
+) -> tuple[list[tuple[GeneratedDraft, int]], int]:
+    """Drafts with status='submitted' — the Reviewing Officer's queue.
+    One aggregate query for unresolved-conflict counts — no N+1."""
+    conflict_counts = _workflow_queue_conflict_counts_subquery()
+    stmt = (
+        select(GeneratedDraft, func.coalesce(conflict_counts.c.cnt, 0))
+        .outerjoin(conflict_counts, GeneratedDraft.generated_draft_id == conflict_counts.c.draft_id)
+        .where(GeneratedDraft.status == DraftStatus.SUBMITTED)
+        .options(selectinload(GeneratedDraft.officer))
+    )
+    count_stmt = select(func.count()).select_from(GeneratedDraft).where(
+        GeneratedDraft.status == DraftStatus.SUBMITTED
+    )
+    if department:
+        stmt = stmt.where(GeneratedDraft.department == department)
+        count_stmt = count_stmt.where(GeneratedDraft.department == department)
+
+    stmt = stmt.order_by(GeneratedDraft.updated_at.desc()).offset((page - 1) * page_size).limit(page_size)
+
+    total = (await session.execute(count_stmt)).scalar_one()
+    rows = (await session.execute(stmt)).all()
+    return [(r[0], r[1]) for r in rows], total
+
+
+async def list_approval_queue(
+    session: AsyncSession, *, page: int, page_size: int, department: Optional[str] = None
+) -> tuple[list[tuple[GeneratedDraft, int, Optional[str]]], int]:
+    """Drafts with status='reviewed' — the Approving Authority's queue.
+    Reviewer names are resolved with one extra batched query for the
+    whole page (see workflow_repo.get_latest_reviewer_names), not one
+    per row, since there's no direct FK from a draft to "who reviewed
+    it" (only the workflow event trail)."""
+    conflict_counts = _workflow_queue_conflict_counts_subquery()
+    stmt = (
+        select(GeneratedDraft, func.coalesce(conflict_counts.c.cnt, 0))
+        .outerjoin(conflict_counts, GeneratedDraft.generated_draft_id == conflict_counts.c.draft_id)
+        .where(GeneratedDraft.status == DraftStatus.REVIEWED)
+        .options(selectinload(GeneratedDraft.officer))
+    )
+    count_stmt = select(func.count()).select_from(GeneratedDraft).where(
+        GeneratedDraft.status == DraftStatus.REVIEWED
+    )
+    if department:
+        stmt = stmt.where(GeneratedDraft.department == department)
+        count_stmt = count_stmt.where(GeneratedDraft.department == department)
+
+    stmt = stmt.order_by(GeneratedDraft.updated_at.desc()).offset((page - 1) * page_size).limit(page_size)
+
+    total = (await session.execute(count_stmt)).scalar_one()
+    rows = (await session.execute(stmt)).all()
+    draft_rows = [(r[0], r[1]) for r in rows]
+
+    reviewer_names = await workflow_repo.get_latest_reviewer_names(
+        session, [d.generated_draft_id for d, _ in draft_rows]
+    )
+    return [(d, count, reviewer_names.get(d.generated_draft_id)) for d, count in draft_rows], total
+
+
+async def get_approval_view(session: AsyncSession, draft_id: uuid.UUID) -> Optional[dict]:
+    """
+    Everything the Approving Authority's review screen needs in one
+    call: the version the Drafting Officer submitted, the version the
+    Reviewing Officer forwarded (may be identical), both content_sha256
+    values, and the full workflow event trail. The diff between the two
+    versions is computed by the caller (routes layer) via diffing.py —
+    that's presentation logic, not a data-access concern.
+    """
+    draft = await get_draft_by_id(session, draft_id)
+    if draft is None:
+        return None
+
+    events = await workflow_repo.get_workflow_history(session, draft_id)
+    submit_event = next((e for e in events if e.decision == "submitted"), None)
+    review_event = next(
+        (e for e in events if e.decision in ("edited_and_forwarded", "forwarded_unchanged")), None
+    )
+
+    submitted_version_number = submit_event.content_version_after if submit_event else draft.version
+    reviewed_version_number = review_event.content_version_after if review_event else draft.version
+
+    submitted_content, submitted_plain, submitted_hash = await get_version_snapshot(
+        session, draft, submitted_version_number
+    )
+    reviewed_content, reviewed_plain, reviewed_hash = await get_version_snapshot(
+        session, draft, reviewed_version_number
+    )
+
+    return {
+        "draft": draft,
+        "submitted_version_number": submitted_version_number,
+        "submitted_content": submitted_content,
+        "submitted_content_plain": submitted_plain,
+        "submitted_content_sha256": submitted_hash,
+        "reviewed_version_number": reviewed_version_number,
+        "reviewed_content": reviewed_content,
+        "reviewed_content_plain": reviewed_plain,
+        "reviewed_content_sha256": reviewed_hash,
+        "events": events,
+        "submitted_by_name": draft.officer.name if draft.officer else None,
+        "reviewed_by_name": review_event.actor.name if review_event and review_event.actor else None,
     }

@@ -283,12 +283,14 @@ function TiptapToolbar({ editor }) {
 export default function DraftViewer({
   draft,
   loading,
-  onSaveDraft
+  onSaveDraft,
+  onSubmitForReview
 }) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingForReview, setIsSubmittingForReview] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
   // Dirty/saved state (Task 5c): compares current editor HTML against
@@ -411,6 +413,25 @@ export default function DraftViewer({
       setToast({ message: 'Failed to save document.', type: 'error' });
     } finally {
       setIsSaving(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  // Submit for Review (Task 5c): visible only while status === 'draft'.
+  // Waits for the server response before reflecting anything — no
+  // optimistic UI, consistent with the rest of the approval workflow.
+  const handleSubmitForReview = async () => {
+    if (!onSubmitForReview || isSubmittingForReview) return;
+    setIsSubmittingForReview(true);
+    setToast(null);
+    try {
+      await onSubmitForReview();
+      setToast({ message: t('draft_submit_for_review_btn') + ' ✓', type: 'success' });
+    } catch (err) {
+      console.error('Submit for review error:', err);
+      setToast({ message: err.message || t('draft_submit_for_review_error'), type: 'error' });
+    } finally {
+      setIsSubmittingForReview(false);
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -591,6 +612,28 @@ export default function DraftViewer({
                 </>
               )}
             </button>
+
+            {/* Submit for Review — only while this draft hasn't entered
+                the approval workflow yet (status === 'draft'); once
+                submitted/reviewed/approved this button disappears. */}
+            {onSubmitForReview && draft?.status === 'draft' && draft?.draft_id && (
+              <button
+                type="button"
+                onClick={handleSubmitForReview}
+                disabled={isSubmittingForReview}
+                className="action-btn"
+                style={{ background: 'var(--blue)', color: '#fff', borderColor: 'var(--ink)' }}
+                title={t('draft_submit_for_review_btn')}
+              >
+                {isSubmittingForReview ? (
+                  <>
+                    <span className="spinner-small" /> {t('draft_submitting_for_review')}
+                  </>
+                ) : (
+                  t('draft_submit_for_review_btn')
+                )}
+              </button>
+            )}
 
             <button
               type="button"

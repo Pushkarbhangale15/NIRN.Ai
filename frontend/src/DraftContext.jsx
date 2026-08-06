@@ -93,6 +93,17 @@ export function DraftProvider({ children }) {
     }
   };
 
+  // Submit-for-review (Task 5c): the Drafting Officer's own view. Waits
+  // for the server response before reflecting the new status — a
+  // rejected submission (e.g. already submitted from another tab)
+  // should never show as submitted locally.
+  const handleSubmitForReview = async () => {
+    if (!draftResult || !draftResult.draft_id) return;
+    const res = await api.submitForReview(draftResult.draft_id);
+    setDraftResult(prev => prev ? { ...prev, status: res.status, returned_reason: null } : prev);
+    return res;
+  };
+
   const handleAnalyzeCustomGR = async (bodyText, customDepartment = null, customTitle = null, customLang = null) => {
     if (!bodyText || !bodyText.trim()) return;
     setLoading(true);
@@ -124,7 +135,9 @@ export function DraftProvider({ children }) {
         department: draft.department,
         body_text: draft.body_text,
         language: draft.language,
-        created_at: draft.created_at
+        created_at: draft.created_at,
+        status: draft.status,
+        returned_reason: draft.returned_reason,
       };
 
       setDraftResult(fullDraftObj);
@@ -161,6 +174,7 @@ export function DraftProvider({ children }) {
     handleGenerate,
     handleReset,
     handleSaveDraft,
+    handleSubmitForReview,
     handleAnalyzeCustomGR
   };
 

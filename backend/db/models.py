@@ -12,6 +12,8 @@ Five tables:
   draft_conflicts    — many rows per draft, one per detected conflict
   draft_references    — many rows per draft, one per extracted citation
   draft_versions     — audit trail: a snapshot before every overwrite
+  draft_workflow_events — append-only audit trail for the three-tier
+                       draft approval chain (submit/forward/approve/return)
 
 Plus number_counters, a small support table backing the provisional
 GR-number / conflict-ref generator (see db/repositories/drafts.py:
@@ -55,10 +57,32 @@ class DraftLanguage(str, enum.Enum):
 
 
 class DraftStatus(str, enum.Enum):
+    """
+    Three-tier approval chain: draft (Drafting Officer writing it) ->
+    submitted (Reviewing Officer's queue) -> reviewed (Approving
+    Authority's queue) -> approved (final, immutable — see
+    db.repositories.drafts.patch_draft_content). 'returned' exists in
+    the DB enum for completeness but is not currently persisted as a
+    status by the app — a returned draft goes straight back to 'draft'
+    with returned_reason set (see db.repositories.drafts.return_draft),
+    which is simpler for the officer's own view to react to than a
+    transient extra state.
+    """
     DRAFT = "draft"
-    UNDER_REVIEW = "under_review"
-    FINALISED = "finalised"
+    SUBMITTED = "submitted"
+    REVIEWED = "reviewed"
+    APPROVED = "approved"
+    RETURNED = "returned"
     ARCHIVED = "archived"
+
+
+class WorkflowDecision(str, enum.Enum):
+    SUBMITTED = "submitted"
+    EDITED_AND_FORWARDED = "edited_and_forwarded"
+    FORWARDED_UNCHANGED = "forwarded_unchanged"
+    ACCEPTED_REVIEWER_VERSION = "accepted_reviewer_version"
+    KEPT_ORIGINAL = "kept_original"
+    RETURNED = "returned"
 
 
 class ConflictSeverity(str, enum.Enum):
@@ -166,6 +190,10 @@ class GeneratedDraft(Base):
     # "candidates were filtered out before reaching the LLM" without re-running
     # detection. Overwritten (not appended) each time analysis re-runs.
     retrieval_trace: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Set when a Reviewing Officer or Approving Authority sends this draft
+    # back to the Drafting Officer (POST .../return); surfaced as an amber
+    # banner on their Draft/History views. Cleared on the next submit.
+    returned_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[object] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
@@ -182,6 +210,10 @@ class GeneratedDraft(Base):
     )
     versions: Mapped[list["DraftVersion"]] = relationship(
         back_populates="draft", cascade="all, delete-orphan"
+    )
+    workflow_events: Mapped[list["DraftWorkflowEvent"]] = relationship(
+        back_populates="draft", cascade="all, delete-orphan",
+        foreign_keys="DraftWorkflowEvent.generated_draft_id",
     )
 
     __table_args__ = (
@@ -282,6 +314,15 @@ class DraftVersion(Base):
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Plain-text mirror of `content`, snapshotted alongside it so the diff
+    # engine (diffing.py) can operate on plain text even for historical
+    # versions instead of raw HTML tags.
+    content_plain: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # SHA-256 of `content`, computed server-side at write time
+    # (db.integrity.hash_content) — tamper-evidence for the audit trail,
+    # never accepted from the client. See GET
+    # /api/drafts/{id}/versions/{version_number}/verify.
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     edited_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("officers.officer_id", ondelete="RESTRICT"), nullable=False
     )
@@ -295,6 +336,54 @@ class DraftVersion(Base):
     __table_args__ = (
         UniqueConstraint("generated_draft_id", "version_number", name="uq_draft_versions_draft_number"),
     )
+
+
+class DraftWorkflowEvent(Base):
+    """
+    Audit trail for the three-tier approval chain — one row per handoff
+    (submit / forward / approve / return). APPEND-ONLY: no code path in
+    this codebase ever updates or deletes a row here.
+
+    actor_role is the role the acting officer held AT THE TIME of the
+    action — deliberately a plain string snapshot, not a live join to
+    officers.role, because a role can change later (e.g. promoted from
+    officer to reviewer) and the audit trail must reflect what was true
+    when the action happened, not what's true now.
+    """
+
+    __tablename__ = "draft_workflow_events"
+
+    event_id: Mapped[uuid.UUID] = _uuid_pk()
+    generated_draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("generated_drafts.generated_draft_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    actor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("officers.officer_id", ondelete="RESTRICT"), nullable=False
+    )
+    actor_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content_version_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_version_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    decision: Mapped[str | None] = mapped_column(
+        _pg_enum(WorkflowDecision, "workflow_decision"), nullable=True
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[object] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    draft: Mapped["GeneratedDraft"] = relationship(
+        back_populates="workflow_events", foreign_keys=[generated_draft_id]
+    )
+    actor: Mapped["Officer"] = relationship(foreign_keys=[actor_id])
+
+    @property
+    def actor_name(self) -> str | None:
+        return self.actor.name if self.actor is not None else None
 
 
 class GrUpload(Base):

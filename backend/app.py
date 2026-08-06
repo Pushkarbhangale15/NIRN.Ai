@@ -30,6 +30,7 @@ from knowledge import get_knowledge_service
 from rate_limit import limiter
 from routes import router
 from schemas import HealthResponse
+from workflow_routes import router as workflow_router
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
@@ -77,6 +78,7 @@ app.include_router(router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(export_router)
+app.include_router(workflow_router)
 
 @app.get("/", tags=["health"])
 def root():

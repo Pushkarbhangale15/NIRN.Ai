@@ -9,7 +9,7 @@ const IconAlert = () => (
   </svg>
 );
 
-export default function UploadGR() {
+export default function CheckConflicts() {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
 
@@ -125,8 +125,8 @@ export default function UploadGR() {
     const handleBeforeUnload = (e) => {
       if (isDirty) {
         e.preventDefault();
-        e.returnValue = t('upload_unsaved_warning');
-        return t('upload_unsaved_warning');
+        e.returnValue = t('conflictcheck_unsaved_warning');
+        return t('conflictcheck_unsaved_warning');
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -196,14 +196,14 @@ export default function UploadGR() {
       const text = result.text || "";
       const wordCount = result.word_count ?? (text.trim() ? text.trim().split(/\s+/).length : 0);
       if (!text.trim() || wordCount < 20) {
-        setUploadWarning(t('upload_pdf_scanned_warning'));
+        setUploadWarning(t('conflictcheck_pdf_scanned_warning'));
       } else {
         setBodyText(text);
       }
     } catch (err) {
       const msg = err.message || "";
       if (/no readable text/i.test(msg)) {
-        setUploadWarning(t('upload_pdf_scanned_warning'));
+        setUploadWarning(t('conflictcheck_pdf_scanned_warning'));
       } else {
         setError(msg || "Failed to process the uploaded PDF.");
       }
@@ -250,8 +250,8 @@ export default function UploadGR() {
   return (
     <main className="container" style={{ paddingBottom: '60px' }}>
       <header className="page-head">
-        <div className="eyebrow">{t('upload_eyebrow')}</div>
-        <h1 className="page-title">{t('upload_title')}</h1>
+        <div className="eyebrow">{t('conflictcheck_eyebrow')}</div>
+        <h1 className="page-title">{t('conflictcheck_title')}</h1>
       </header>
 
       {error && (
@@ -309,7 +309,7 @@ export default function UploadGR() {
                   cursor: 'pointer'
                 }}
               >
-                {t('upload_clear_btn')}
+                {t('conflictcheck_clear_btn')}
               </button>
             )}
           </div>
@@ -346,7 +346,7 @@ export default function UploadGR() {
               }}
             >
               {uploadingPdf ? <span className="spinner-small" /> : null}
-              {uploadingPdf ? t('upload_pdf_uploading') : t('upload_pdf_label')}
+              {uploadingPdf ? t('conflictcheck_pdf_uploading') : t('conflictcheck_pdf_label')}
             </label>
             <input
               id="upload-pdf-input"
@@ -394,7 +394,7 @@ export default function UploadGR() {
               }}
             >
               {ocrUploading ? <span className="spinner-small" /> : null}
-              {ocrUploading ? t('upload_ocr_uploading') : t('upload_ocr_label')}
+              {ocrUploading ? t('conflictcheck_ocr_uploading') : t('conflictcheck_ocr_label')}
             </label>
             <input
               id="upload-scanned-input"
@@ -424,7 +424,7 @@ export default function UploadGR() {
               marginBottom: '16px'
             }}>
               <span className="spinner-small" />
-              {ocrStatus === "pending" ? t('upload_ocr_status_pending') : t('upload_ocr_status_processing')}
+              {ocrStatus === "pending" ? t('conflictcheck_ocr_status_pending') : t('conflictcheck_ocr_status_processing')}
             </div>
           )}
 
@@ -454,7 +454,7 @@ export default function UploadGR() {
               marginBottom: '16px'
             }}>
               <div style={{ fontWeight: 700, marginBottom: '6px' }}>
-                ⚠️ {t('upload_ocr_low_confidence_title')} ({ocrBlockConfidences.filter(b => b.needs_review).length})
+                ⚠️ {t('conflictcheck_ocr_low_confidence_title')} ({ocrBlockConfidences.filter(b => b.needs_review).length})
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', lineHeight: '1.6' }}>
                 {ocrBlockConfidences.filter(b => b.needs_review).slice(0, 8).map((b, i) => (
@@ -483,7 +483,7 @@ export default function UploadGR() {
 
           <div className="field" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label htmlFor="upload-body" style={{ fontWeight: 'bold', fontSize: '13.5px' }}>{t('upload_text_label')}</label>
+              <label htmlFor="upload-body" style={{ fontWeight: 'bold', fontSize: '13.5px' }}>{t('conflictcheck_text_label')}</label>
               <span style={{ fontSize: '12.5px', color: '#6b7280', fontWeight: 'bold' }}>
                 {wordCount.toLocaleString()} words | {charCount.toLocaleString()} characters
               </span>
@@ -536,10 +536,10 @@ export default function UploadGR() {
             >
               {analysisLoading ? (
                 <>
-                  <span className="spinner" /> {t('upload_btn_analyzing')}
+                  <span className="spinner" /> {t('conflictcheck_btn_analyzing')}
                 </>
               ) : (
-                t('upload_btn_analyze')
+                t('conflictcheck_btn_analyze')
               )}
             </button>
           </div>

@@ -252,6 +252,7 @@ async def get_officer_drafts(
             created_at=d.created_at,
             updated_at=d.updated_at,
             unresolved_conflict_count=count,
+            returned_reason=d.returned_reason,
         )
         for d, count in rows
     ]
@@ -298,6 +299,7 @@ async def admin_list_all_drafts(
             created_at=d.created_at,
             updated_at=d.updated_at,
             unresolved_conflict_count=count,
+            returned_reason=d.returned_reason,
         )
         for d, count in rows
     ]

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 import { useAuth } from "../AuthContext.jsx";
+import { ROLES, roleLabel } from "../constants/roles.js";
+import { DRAFT_STATUSES, statusBadgeClass, statusLabel } from "../constants/workflowStatus.js";
 
 // Same department list used on the Draft page — reused here for consistency
 // across the app rather than inventing a second copy of the taxonomy.
@@ -42,8 +44,6 @@ const DEPARTMENTS = [
   { value: "Women_and_Child_Development_Department", label: "Women & Child Development" },
 ];
 
-const ROLES = ["officer", "reviewer", "admin"];
-const DRAFT_STATUSES = ["draft", "under_review", "finalised", "archived"];
 const PAGE_SIZE = 20;
 
 function formatIST(iso) {
@@ -60,11 +60,6 @@ function formatIST(iso) {
   } catch {
     return iso;
   }
-}
-
-function capitalize(s) {
-  if (!s) return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function generatePassword(length = 14) {
@@ -89,9 +84,9 @@ function generatePassword(length = 14) {
   return chars.join("");
 }
 
-function RoleBadge({ role }) {
+function RoleBadge({ role, t }) {
   const cls = role === "admin" ? "badge-admin" : role === "reviewer" ? "badge-reviewer" : "badge-officer";
-  return <span className={`badge ${cls}`}>{capitalize(role)}</span>;
+  return <span className={`badge ${cls}`}>{roleLabel(role, t)}</span>;
 }
 
 function ActiveBadge({ isActive, t }) {
@@ -103,11 +98,7 @@ function ActiveBadge({ isActive, t }) {
 }
 
 function DraftStatusBadge({ status, t }) {
-  return (
-    <span className={`badge badge-status-${status}`}>
-      {t(`status_${status}`)}
-    </span>
-  );
+  return <span className={statusBadgeClass(status)}>{statusLabel(status, t)}</span>;
 }
 
 function ConflictBadge({ count }) {
@@ -530,7 +521,7 @@ export default function Admin() {
             <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label={t("admin_filter_role")}>
               <option value="">{t("admin_filter_role")}: {t("admin_filter_all")}</option>
               {ROLES.map((r) => (
-                <option key={r} value={r}>{capitalize(r)}</option>
+                <option key={r} value={r}>{roleLabel(r, t)}</option>
               ))}
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label={t("admin_filter_status")}>
@@ -572,7 +563,7 @@ export default function Admin() {
                         <td>{row.login_id}</td>
                         <td>{row.department || "—"}</td>
                         <td>{row.designation || "—"}</td>
-                        <td><RoleBadge role={row.role} /></td>
+                        <td><RoleBadge role={row.role} t={t} /></td>
                         <td><ActiveBadge isActive={row.is_active} t={t} /></td>
                         <td>{row.last_login_at ? formatIST(row.last_login_at) : t("admin_never_logged_in")}</td>
                         <td onClick={(e) => e.stopPropagation()}>
@@ -792,7 +783,7 @@ export default function Admin() {
                   onChange={(e) => setFormState((f) => ({ ...f, role: e.target.value }))}
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{capitalize(r)}</option>
+                    <option key={r} value={r}>{roleLabel(r, t)}</option>
                   ))}
                 </select>
               </div>

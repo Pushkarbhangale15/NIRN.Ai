@@ -5,6 +5,8 @@ import { useLanguage } from "../LanguageContext.jsx";
 import { useAuth } from "../AuthContext.jsx";
 import { useDraft } from "../DraftContext.jsx";
 import { generateGRDocumentPDF } from "../utils/pdfExport.js";
+import { DRAFT_STATUSES, statusBadgeClass, statusLabel } from "../constants/workflowStatus.js";
+import HashBadge from "../components/HashBadge.jsx";
 
 // Same department list used by DraftInputCard.jsx (not exported there, so
 // mirrored locally to avoid touching a file another agent may be editing).
@@ -44,7 +46,7 @@ const DEPARTMENTS = [
   { value: "Women_and_Child_Development_Department", label: "Women & Child Development" },
 ];
 
-const STATUS_OPTIONS = ["draft", "under_review", "finalised", "archived"];
+const STATUS_OPTIONS = DRAFT_STATUSES;
 
 function departmentLabel(value) {
   if (!value) return "—";
@@ -251,6 +253,57 @@ function ConflictPanel({ draftId, conflicts, loading, t, onDismiss, copiedRef, o
   );
 }
 
+// The "History version list" (Task 1): the append-only workflow_events
+// trail for a draft, each row showing a truncated content_sha256 with
+// copy + Verify affordances (see HashBadge) — reuses the same
+// GET .../workflow-history and GET .../versions/{n}/verify endpoints
+// the Approval tab uses, rather than a separate versions-listing route.
+function VersionsPanel({ draftId, events, loading, t }) {
+  if (loading) {
+    return (
+      <div style={{ padding: "16px 4px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {[0, 1].map((i) => (
+          <div key={i} style={{ height: "14px", width: `${70 - i * 14}%`, background: "#e5e3dc", borderRadius: "4px" }} />
+        ))}
+      </div>
+    );
+  }
+
+  const all = events || [];
+  if (all.length === 0) {
+    return <div style={{ padding: "16px 4px", fontSize: "13.5px", color: "var(--ink-soft)" }}>{t("history_versions_empty")}</div>;
+  }
+
+  return (
+    <div style={{ padding: "16px 4px" }}>
+      {all.map((e) => (
+        <div
+          key={e.event_id}
+          style={{
+            border: "1.5px solid var(--ink)",
+            borderRadius: "8px",
+            background: "#fff",
+            padding: "12px 16px",
+            marginBottom: "10px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+              {t(`workflow_event_${e.decision}`) || e.decision}
+              <span style={{ fontWeight: 500, color: "var(--ink-soft)" }}>
+                {" "}
+                — {e.actor_name || "—"} ({e.actor_role})
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{formatIST(e.created_at)}</div>
+          </div>
+          {e.content_version_after != null && <HashBadge draftId={draftId} versionNumber={e.content_version_after} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function History() {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -284,6 +337,14 @@ export default function History() {
   const [conflictsLoadingId, setConflictsLoadingId] = useState(null);
   const [showDismissedByDraft, setShowDismissedByDraft] = useState({});
   const [copiedRef, setCopiedRef] = useState(null);
+
+  // Version/workflow-history expansion (Task 1: "the History version
+  // list") — independent of the conflicts expansion above, cached the
+  // same way. Each row shows the append-only workflow_events trail with
+  // a hash + Verify affordance per content version.
+  const [expandedVersionsId, setExpandedVersionsId] = useState(null);
+  const [versionsByDraft, setVersionsByDraft] = useState({});
+  const [versionsLoadingId, setVersionsLoadingId] = useState(null);
 
   const [exportingKey, setExportingKey] = useState(null); // `${draftId}:pdf` | `${draftId}:docx`
   const [archivingId, setArchivingId] = useState(null);
@@ -334,6 +395,27 @@ export default function History() {
       cancelled = true;
     };
   }, [debouncedSearch, department, status, page, viewingOfficerId]);
+
+  const toggleVersions = useCallback(
+    async (draftId) => {
+      if (expandedVersionsId === draftId) {
+        setExpandedVersionsId(null);
+        return;
+      }
+      setExpandedVersionsId(draftId);
+      if (versionsByDraft[draftId]) return; // already cached
+      setVersionsLoadingId(draftId);
+      try {
+        const events = await api.getWorkflowHistory(draftId);
+        setVersionsByDraft((prev) => ({ ...prev, [draftId]: events || [] }));
+      } catch {
+        setVersionsByDraft((prev) => ({ ...prev, [draftId]: [] }));
+      } finally {
+        setVersionsLoadingId(null);
+      }
+    },
+    [expandedVersionsId, versionsByDraft]
+  );
 
   const toggleConflicts = useCallback(
     async (draftId) => {
@@ -393,6 +475,8 @@ export default function History() {
         created_at: detail.created_at,
         gr_number: detail.gr_number,
         references: detail.references || [],
+        status: detail.status,
+        returned_reason: detail.returned_reason,
       };
       setDraftResult(fullDraftObj);
       setAnalysisReport({
@@ -608,6 +692,7 @@ export default function History() {
                 {items.map((item) => {
                   const draftId = item.generated_draft_id;
                   const isExpanded = expandedDraftId === draftId;
+                  const isVersionsExpanded = expandedVersionsId === draftId;
                   return (
                     <React.Fragment key={draftId}>
                       <tr>
@@ -616,11 +701,29 @@ export default function History() {
                             {item.gr_number || "—"}
                           </span>
                         </td>
-                        <td data-label={t("history_col_title")}>{item.title}</td>
+                        <td data-label={t("history_col_title")}>
+                          {item.title}
+                          {item.status === "draft" && item.returned_reason && (
+                            <div
+                              title={item.returned_reason}
+                              style={{
+                                marginTop: 4,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                color: "#92400e",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              ⚠ {t("draft_returned_banner_title")}
+                            </div>
+                          )}
+                        </td>
                         <td data-label={t("history_col_department")}>{departmentLabel(item.department)}</td>
                         <td data-label={t("history_col_language")}>{item.language === "mr" ? "मराठी" : "English"}</td>
                         <td data-label={t("history_col_status")}>
-                          <span className={`badge badge-status-${item.status}`}>{t(`status_${item.status}`)}</span>
+                          <span className={statusBadgeClass(item.status)}>{statusLabel(item.status, t)}</span>
                         </td>
                         <td data-label={t("history_col_conflicts")}>
                           <button
@@ -655,6 +758,13 @@ export default function History() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => toggleVersions(draftId)}
+                              title={isVersionsExpanded ? "Hide versions" : "Show version history"}
+                            >
+                              {t("history_versions_action")}
+                            </button>
+                            <button
+                              type="button"
                               className="danger"
                               onClick={() => handleArchive(draftId)}
                               disabled={archivingId === draftId || item.status === "archived"}
@@ -679,6 +789,18 @@ export default function History() {
                               onToggleDismissed={() =>
                                 setShowDismissedByDraft((prev) => ({ ...prev, [draftId]: !prev[draftId] }))
                               }
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      {isVersionsExpanded && (
+                        <tr>
+                          <td colSpan={8} className="conflict-panel-cell" style={{ background: "#faf9f6" }}>
+                            <VersionsPanel
+                              draftId={draftId}
+                              events={versionsByDraft[draftId]}
+                              loading={versionsLoadingId === draftId}
+                              t={t}
                             />
                           </td>
                         </tr>
