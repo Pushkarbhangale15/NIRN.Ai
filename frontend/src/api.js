@@ -195,6 +195,12 @@ export const api = {
       body: JSON.stringify({ revised_clause: revisedClause }),
     }),
 
+  markConflictResolved: (conflictId, revisedClause) =>
+    request(`/api/conflicts/${conflictId}/resolve/mark-resolved`, {
+      method: "POST",
+      body: JSON.stringify({ revised_clause: revisedClause }),
+    }),
+
   archiveDraft: (draftId) => request(`/api/drafts/${draftId}`, { method: "DELETE" }),
 
   saveDraftContent: (draftId, bodyHtml, contentPlain, changeNote) =>

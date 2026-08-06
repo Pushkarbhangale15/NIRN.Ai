@@ -6,12 +6,14 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
 
 import { useLanguage } from '../../LanguageContext.jsx';
 import { api } from '../../api.js';
 import { convertGRToHTML } from '../../utils/grFormat.js';
 import { FontSize } from '../../utils/fontSizeExtension.js';
 import { generateGRDocumentPDF } from '../../utils/pdfExport.js';
+import { findClauseRange } from '../../utils/findClauseInDoc.js';
 
 const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
 const DEFAULT_ESTIMATE_MS = 45000;
@@ -283,12 +285,16 @@ function TiptapToolbar({ editor }) {
 export default function DraftViewer({
   draft,
   loading,
-  onSaveDraft
+  onSaveDraft,
+  highlightTarget,
+  onMarkResolved,
+  onCancelManualEdit
 }) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isMarkingResolved, setIsMarkingResolved] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
   // Dirty/saved state (Task 5c): compares current editor HTML against
@@ -349,6 +355,7 @@ export default function DraftViewer({
       FontFamily,
       Color,
       FontSize,
+      Highlight.configure({ HTMLAttributes: { class: 'conflict-highlight' } }),
     ],
     content: '',
     onUpdate: ({ editor: ed }) => {
@@ -373,6 +380,24 @@ export default function DraftViewer({
       setLastSavedAt(null);
     }
   }, [draft, editor]);
+
+  // "Manually Edit Selected" flow: locate the flagged clause in the doc,
+  // select + highlight it, and scroll it into view so the officer can start
+  // rewriting immediately. No-op (leaves the doc untouched) if the clause
+  // text can't be found — e.g. it was already edited by an earlier action.
+  useEffect(() => {
+    if (!editor || !highlightTarget) return;
+    const range = findClauseRange(editor.state.doc, highlightTarget);
+    if (!range) return;
+
+    editor.chain().setTextSelection(range).run();
+    editor.commands.setHighlight();
+
+    const domNode = editor.view.domAtPos(range.from).node;
+    const el = domNode.nodeType === 1 ? domNode : domNode.parentElement;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    editor.commands.focus();
+  }, [editor, highlightTarget]);
 
   // Warn on navigating away with unsaved changes — covers tab close,
   // refresh, and typing a new URL. In-app SPA navigation isn't
@@ -412,6 +437,39 @@ export default function DraftViewer({
     } finally {
       setIsSaving(false);
       setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  // "Mark as Resolved" (manual-edit flow): reads whatever text currently
+  // carries the highlight mark applied when the clause was located — not
+  // the original flagged text, which the officer may have already
+  // rewritten — so this reflects their edit even after typing has moved
+  // the underlying ProseMirror positions.
+  const handleMarkResolved = async () => {
+    if (!editor || !onMarkResolved || isMarkingResolved) return;
+    const pieces = [];
+    editor.state.doc.descendants((node) => {
+      if (node.isText && node.marks.some((m) => m.type.name === 'highlight')) {
+        pieces.push(node.text);
+      }
+      return true;
+    });
+    const revisedText = pieces.join('').trim();
+    if (!revisedText) {
+      setToast({ message: 'Could not find the highlighted clause — it may have been removed.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setIsMarkingResolved(true);
+    try {
+      await onMarkResolved(revisedText);
+    } catch (err) {
+      console.error('Mark-resolved error:', err);
+      setToast({ message: 'Failed to mark this conflict resolved.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setIsMarkingResolved(false);
     }
   };
 
@@ -634,6 +692,47 @@ export default function DraftViewer({
 
       {/* Custom Tiptap Editor Toolbar */}
       <TiptapToolbar editor={editor} />
+
+      {highlightTarget && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
+          padding: '10px 16px', margin: '0 0 12px', background: '#fffbeb',
+          border: '1.5px solid #f59e0b', borderRadius: '8px'
+        }}>
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#92400e' }}>
+            ⚠ Editing flagged clause — rewrite the highlighted text, save, then confirm below.
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {onCancelManualEdit && (
+              <button
+                type="button"
+                onClick={onCancelManualEdit}
+                style={{
+                  padding: '7px 12px', fontSize: '12.5px', fontWeight: 600,
+                  background: 'transparent', color: '#92400e', border: '1.5px solid #92400e',
+                  borderRadius: '6px', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleMarkResolved}
+              disabled={isMarkingResolved}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', fontSize: '12.5px', fontWeight: 700,
+                background: '#16a34a', color: '#fff', border: '1.5px solid var(--ink)',
+                borderRadius: '6px', cursor: isMarkingResolved ? 'wait' : 'pointer',
+                opacity: isMarkingResolved ? 0.7 : 1
+              }}
+            >
+              <IconCheck /> {isMarkingResolved ? 'Marking...' : 'Mark as Resolved'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editor Printable Paper Sheet Area */}
       <div className={`a4-paper-wrapper ${isMarathi ? 'lang-marathi' : 'lang-english'}`}>

@@ -129,6 +129,8 @@ class ConflictHit(BaseModel):
     resolution_status: str = "not_attempted"
     resolved_clause_text: Optional[str] = None
     source_ocr_low_confidence: bool = False
+    is_dismissed: bool = False
+    dismissed_reason: Optional[str] = None
 
 
 class TermMapping(BaseModel):
@@ -431,6 +433,7 @@ class ResolutionStrategy(str, Enum):
     REWORD = "reword"                    # rephrase the clause to remove the overlap
     ADD_CITATION = "add_citation"        # cite the existing GR explicitly
     ADD_CARVE_OUT = "add_carve_out"      # exclude the overlapping scope explicitly
+    DEFER_TO_EXISTING = "defer_to_existing"  # subordinate this clause to the existing GR
 
 
 class ResolveConflictRequest(BaseModel):
@@ -454,6 +457,7 @@ class ResolveConflictResponse(BaseModel):
     diff: str
     reverification: ReverificationResult
     cleared: bool
+    still_conflicting_reason: Optional[str] = None
 
 
 class AcceptConflictResolutionRequest(BaseModel):
@@ -464,6 +468,14 @@ class AcceptConflictResolutionResponse(BaseModel):
     conflict: ConflictOut
     draft_id: uuid.UUID
     draft_version: int
+
+
+class MarkResolvedRequest(BaseModel):
+    revised_clause: str = Field(..., min_length=1, max_length=20_000)
+
+
+class MarkResolvedResponse(BaseModel):
+    conflict: ConflictOut
 
 
 class ExportDocxRequest(BaseModel):

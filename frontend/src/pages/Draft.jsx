@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api.js";
 import { useLanguage } from "../LanguageContext.jsx";
 import { useDraft } from "../DraftContext.jsx";
+import { conflictOutToHit } from "../utils/conflictMapping.js";
 
 import WorkflowStepper from "../components/drafting/WorkflowStepper.jsx";
 import DraftInputCard from "../components/drafting/DraftInputCard.jsx";
@@ -70,8 +71,16 @@ export default function Draft() {
     handleSaveDraft
   } = useDraft();
 
-  const [resolvingAll, setResolvingAll] = useState(false);
-  const [resolveProgress, setResolveProgress] = useState(null);
+  // Shared across "Resolve All" and "Resolve Selected" — both run the same
+  // sequential batch, and a single in-flight flag naturally prevents the two
+  // entry points from ever running two batches concurrently.
+  const [resolvingBatch, setResolvingBatch] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(null);
+  const [ignoringSelected, setIgnoringSelected] = useState(false);
+  // The single conflict currently being fixed by hand in the editor (see
+  // handleManualEditSelected) — drives DraftViewer's highlightTarget prop.
+  // null means "not in manual-edit mode".
+  const [editingConflict, setEditingConflict] = useState(null);
   // conflict_id -> { revisedClause, originalClause, grLabel }. Derived from
   // the server's persisted resolution_status/resolved_clause_text on every
   // analysisReport change below — NOT recomputed locally-only — so a page
@@ -111,23 +120,27 @@ export default function Draft() {
     return normDraft && normExist && normDraft !== normExist;
   });
 
-  const handleResolveAllConflicts = async () => {
+  const resolveConflictBatch = async (conflictsToResolve) => {
     const draftId = draftResult?.draft_id;
-    // Skip conflicts the server already durably marked resolved — retrying
-    // these would regenerate against stale original-clause text (already
-    // replaced in the draft by the earlier accept) and fail every time.
-    const resolvable = allConflicts.filter(c => c.conflict_id && c.resolution_status !== "resolved");
-    if (!draftId || resolvingAll || resolvable.length === 0) return;
+    // Skip conflicts the server already durably marked resolved (retrying
+    // these would regenerate against stale original-clause text and fail
+    // every time) and any that were ignored — dismissed conflicts are never
+    // auto-resolved.
+    const resolvable = conflictsToResolve.filter(
+      c => c.conflict_id && c.resolution_status !== "resolved" && !c.is_dismissed
+    );
+    if (!draftId || resolvingBatch || resolvable.length === 0) return;
 
-    setResolvingAll(true);
-    setResolveProgress({ done: 0, total: resolvable.length });
+    setResolvingBatch(true);
+    setBatchProgress({ done: 0, total: resolvable.length });
     let failedCount = 0;
 
     // "reword" alone often can't fix a substantive funding/scope conflict —
     // it only rephrases wording. Fall back to "add_carve_out" (explicitly
-    // excludes the overlapping scope) before giving up on a conflict, since
-    // that's far more likely to genuinely clear it.
-    const STRATEGIES = ["reword", "add_carve_out"];
+    // excludes the overlapping scope), then "defer_to_existing" (explicitly
+    // subordinates this clause to the existing GR) before giving up on a
+    // conflict, since each is progressively more likely to genuinely clear it.
+    const STRATEGIES = ["reword", "add_carve_out", "defer_to_existing"];
 
     // _rev is a server-driven-overwrite marker: DraftViewer only reloads
     // Tiptap's content when this changes, so an accepted resolution shows up
@@ -173,28 +186,83 @@ export default function Draft() {
         console.warn("Resolve conflict failed:", conflict.conflict_id, err);
       }
       if (!clearedThisConflict) failedCount += 1;
-      setResolveProgress(prev => ({ done: (prev?.done || 0) + 1, total: resolvable.length }));
+      setBatchProgress(prev => ({ done: (prev?.done || 0) + 1, total: resolvable.length }));
     }
 
-    // Final re-run of full analysis. Safe now that resolved conflicts are
-    // read from their persisted resolution_status/resolved_clause_text and
-    // merged back into the response server-side, so they no longer vanish
-    // from the list just because their (now-fixed) clause stops matching live.
+    // Refresh from what's already persisted rather than re-running detection:
+    // detection is a fresh, non-deterministic LLM pass, so calling it here
+    // (just to refresh the displayed list after a resolve) could surface a
+    // different set of conflicts each time and inflate the shown count on
+    // repeated resolve batches. A plain read reflects exactly what resolving
+    // just changed, nothing more.
     try {
-      const report = await api.runFullAnalysis(draftId);
-      setAnalysisReport(report);
+      const conflicts = await api.getDraftConflicts(draftId, true);
+      setAnalysisReport(prev => prev ? { ...prev, conflicts: conflicts.map(conflictOutToHit) } : prev);
     } catch (err) {
-      console.warn("Post-resolve analysis refresh warning:", err);
+      console.warn("Post-resolve conflict refresh warning:", err);
     }
 
-    setResolvingAll(false);
-    setResolveProgress(null);
+    setResolvingBatch(false);
+    setBatchProgress(null);
 
     if (failedCount > 0) {
       window.alert(
         `${resolvable.length - failedCount} of ${resolvable.length} conflicts resolved automatically. ` +
         `${failedCount} could not be cleared and still need manual review.`
       );
+    }
+  };
+
+  const handleResolveAllConflicts = () => resolveConflictBatch(allConflicts);
+  const handleResolveSelected = (selected) => resolveConflictBatch(selected);
+
+  const handleIgnoreSelected = async (selected) => {
+    const draftId = draftResult?.draft_id;
+    const toIgnore = selected.filter(c => c.conflict_id && !c.is_dismissed);
+    if (!draftId || ignoringSelected || toIgnore.length === 0) return;
+
+    // One shared reason for the whole batch — prompting per-item would mean
+    // N popups for an N-conflict selection.
+    const reason = window.prompt(
+      `Why are you ignoring ${toIgnore.length === 1 ? "this conflict" : `these ${toIgnore.length} conflicts`}?`,
+      ""
+    );
+    if (reason === null) return; // user cancelled
+
+    setIgnoringSelected(true);
+    for (const conflict of toIgnore) {
+      try {
+        await api.dismissConflict(conflict.conflict_id, reason || null);
+      } catch (err) {
+        console.warn("Dismiss failed:", conflict.conflict_id, err);
+      }
+    }
+
+    try {
+      const conflicts = await api.getDraftConflicts(draftId, true);
+      setAnalysisReport(prev => prev ? { ...prev, conflicts: conflicts.map(conflictOutToHit) } : prev);
+    } catch (err) {
+      console.warn("Post-ignore conflict refresh warning:", err);
+    }
+
+    setIgnoringSelected(false);
+  };
+
+  const handleManualEditSelected = (conflict) => setEditingConflict(conflict);
+  const handleCancelManualEdit = () => setEditingConflict(null);
+
+  const handleMarkResolved = async (revisedText) => {
+    const draftId = draftResult?.draft_id;
+    if (!editingConflict || !draftId) return;
+
+    await api.markConflictResolved(editingConflict.conflict_id, revisedText);
+    setEditingConflict(null);
+
+    try {
+      const conflicts = await api.getDraftConflicts(draftId, true);
+      setAnalysisReport(prev => prev ? { ...prev, conflicts: conflicts.map(conflictOutToHit) } : prev);
+    } catch (err) {
+      console.warn("Post-mark-resolved conflict refresh warning:", err);
     }
   };
 
@@ -250,6 +318,9 @@ export default function Draft() {
                 draft={draftResult}
                 loading={loading}
                 onSaveDraft={handleSaveDraft}
+                highlightTarget={editingConflict?.draft_clause}
+                onMarkResolved={handleMarkResolved}
+                onCancelManualEdit={editingConflict ? handleCancelManualEdit : undefined}
               />
             </div>
 
@@ -313,9 +384,15 @@ export default function Draft() {
                     references={analysisReport?.references}
                     summary={analysisReport?.summary}
                     onResolveAll={handleResolveAllConflicts}
-                    resolvingAll={resolvingAll}
-                    resolveProgress={resolveProgress}
+                    resolvingAll={resolvingBatch}
+                    resolveProgress={batchProgress}
                     resolvedInfo={resolvedInfo}
+                    onResolveSelected={handleResolveSelected}
+                    resolvingSelected={resolvingBatch}
+                    resolveSelectedProgress={batchProgress}
+                    onIgnoreSelected={handleIgnoreSelected}
+                    ignoringSelected={ignoringSelected}
+                    onManualEditSelected={handleManualEditSelected}
                   />
                 )}
                 {activeReviewTab === "references" && (

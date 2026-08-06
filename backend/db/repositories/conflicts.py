@@ -74,17 +74,24 @@ async def resolve_conflict(
 
 
 async def record_resolve_attempt(
-    session: AsyncSession, conflict_id: uuid.UUID, *, status: str
+    session: AsyncSession, conflict_id: uuid.UUID, *, status: str, reason: Optional[str] = None
 ) -> Optional[DraftConflict]:
     """Persist the outcome of a /resolve call that did NOT result in an
     accepted resolution — status is 'attempted_still_conflicting' (the
     revision didn't clear re-verification) or 'attempted_error' (the
     resolve pipeline itself failed). Never overwrites an already-'resolved'
     row — a stale retry response can't un-resolve a conflict.
+
+    reason, when given, is a one-sentence explanation of why the attempt
+    didn't clear (see prompts.STILL_CONFLICTING_REASON) — persisted into
+    resolved_reason so it survives a page reload, not just the one-shot
+    /resolve response.
     """
     conflict = await get_by_id(session, conflict_id)
     if conflict is None or conflict.resolution_status == "resolved":
         return conflict
     conflict.resolution_status = status
+    if reason is not None:
+        conflict.resolved_reason = reason
     await session.flush()
     return conflict

@@ -240,6 +240,12 @@ _RESOLUTION_STRATEGY_INSTRUCTIONS = {
         "scope covered by the conflicting GR (e.g. 'except in respect of ...'), so the "
         "two provisions can no longer be read as contradictory."
     ),
+    "defer_to_existing": (
+        "The existing GR's provision should take precedence. REWRITE the clause to "
+        "explicitly DEFER to the existing GR's authority on this point — state that this "
+        "matter shall continue to be governed by the cited GR, and narrow this clause so "
+        "it no longer makes its own conflicting provision on that same point."
+    ),
 }
 
 CONFLICT_RESOLUTION = (
@@ -247,15 +253,24 @@ CONFLICT_RESOLUTION = (
     "single clause of a draft Government Resolution to resolve a flagged conflict with "
     "an existing GR.\n\n"
     "You will be given: the flagged draft clause, the conflicting clause from the "
-    "existing GR, the original conflict justification, and a resolution strategy to "
-    "apply. Rewrite ONLY the flagged clause according to the strategy.\n\n"
+    "existing GR, the original conflict justification, the draft's own department and "
+    "brief/intent (when available), and a resolution strategy to apply. Rewrite ONLY the "
+    "flagged clause according to the strategy.\n\n"
+    "Before writing the revision, silently reason step by step about: (a) exactly which "
+    "words in the flagged clause create the conflict, (b) what the chosen strategy "
+    "requires you to change, and (c) whether your planned revision is consistent with "
+    "this draft's own department and stated purpose. Do NOT show this reasoning in your "
+    "output — output only the final revised clause.\n\n"
     "Rules:\n"
     "• Output ONLY the revised clause text — no explanation, no markdown, no preamble.\n"
     "• Preserve the clause's numbering/prefix and formal administrative register "
     "(same language as the input clause).\n"
     "• Do not touch any other part of the document — you are only given one clause.\n"
     "• The revision must be substantive enough to genuinely address the conflict, not "
-    "a cosmetic rewording that leaves the same contradiction intact."
+    "a cosmetic rewording that leaves the same contradiction intact.\n"
+    "• The revision must remain consistent with the draft's stated department and "
+    "purpose — do not narrow or contradict the draft's own brief while resolving the "
+    "conflict."
 )
 
 
@@ -265,17 +280,50 @@ def build_conflict_resolution_message(
     conflicting_clause: str,
     conflicting_gr_label: str,
     justification: str,
+    draft_department: str = None,
+    draft_brief: str = None,
 ) -> str:
     """Build the user message for a single-clause conflict resolution request."""
     strategy_instruction = _RESOLUTION_STRATEGY_INSTRUCTIONS.get(
         strategy, _RESOLUTION_STRATEGY_INSTRUCTIONS["reword"]
     )
+    context_block = ""
+    if draft_department or draft_brief:
+        context_block = (
+            f"DRAFT CONTEXT (department: {draft_department or 'Unknown'}):\n"
+            f"{draft_brief or 'No brief provided.'}\n\n"
+        )
     return (
         f"STRATEGY: {strategy_instruction}\n\n"
+        f"{context_block}"
         f"FLAGGED DRAFT CLAUSE:\n{draft_clause}\n\n"
         f"CONFLICTING GR ({conflicting_gr_label}):\n{conflicting_clause}\n\n"
         f"ORIGINAL CONFLICT JUSTIFICATION:\n{justification}\n\n"
         f"Return only the revised clause."
+    )
+
+
+STILL_CONFLICTING_REASON = (
+    "You are explaining to a government drafting officer, in ONE plain-language sentence, "
+    "why their attempted revision of a clause still conflicts with an existing GR after "
+    "applying a resolution strategy. Be specific and actionable, not generic. Output ONLY "
+    "the single sentence — no preamble, no markdown."
+)
+
+
+def build_still_conflicting_reason_message(
+    strategy: str,
+    revised_clause: str,
+    conflicting_clause: str,
+    reverify_reason: str,
+) -> str:
+    """Build the user message for the still-conflicting-reason follow-up call."""
+    return (
+        f"STRATEGY ATTEMPTED: {strategy}\n\n"
+        f"REVISED CLAUSE (still flagged):\n{revised_clause}\n\n"
+        f"CONFLICTING GR CLAUSE:\n{conflicting_clause}\n\n"
+        f"VERIFIER'S CONFLICT REASONING:\n{reverify_reason}\n\n"
+        f"In one sentence, explain specifically why this revision did not resolve the conflict."
     )
 
 

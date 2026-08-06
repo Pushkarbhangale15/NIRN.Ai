@@ -2057,6 +2057,14 @@ mark.highlight-mark {
   margin-bottom: 10px;
 }
 
+/* Flagged conflict clause, applied by the "Manually Edit Selected" flow
+   (see DraftViewer.jsx's highlightTarget prop / findClauseInDoc.js). */
+.conflict-highlight {
+  background: #fef08a;
+  box-shadow: 0 0 0 2px #f59e0b;
+  border-radius: 2px;
+}
+
 .ProseMirror p {
   margin-bottom: 8px;
 }

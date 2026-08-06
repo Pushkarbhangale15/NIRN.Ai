@@ -47,6 +47,7 @@ from lookup import get_adapter
 from config import settings
 from db.base import get_session
 from db.base import engine as db_engine
+from db.base import async_session_factory
 from db.models import Officer, OfficerRole
 from db.repositories import conflicts as conflicts_repo
 from db.repositories import drafts as drafts_repo
@@ -58,6 +59,8 @@ from schemas import (
     AnalysisSummary,
     AcceptConflictResolutionRequest,
     AcceptConflictResolutionResponse,
+    MarkResolvedRequest,
+    MarkResolvedResponse,
     ConflictHit,
     ConflictOut,
     DismissConflictRequest,
@@ -186,6 +189,58 @@ def _conflict_hit_to_dict(c: ConflictHit) -> dict:
         "justification": c.justification,
         "detected_by": "llm_verifier",
     }
+
+
+def _conflict_row_to_hit(row) -> "ConflictHit":
+    """Maps a persisted DraftConflict row to the ConflictHit shape the
+    frontend expects. Used for conflicts sourced from the DB rather than a
+    fresh detection pass (resolved, or still-open but not reproduced by the
+    current run) — confidence/category/source_url aren't columns on
+    DraftConflict, so those are fixed constants here, unlike the richer
+    per-item values a freshly detected ConflictReportItem carries."""
+    return ConflictHit(
+        conflict_id=row.conflict_id,
+        draft_clause=row.draft_excerpt or "",
+        existing_gr_id=row.conflicting_gr_id or "",
+        existing_gr_title=row.source_gr_title or "",
+        existing_department=row.source_of_conflict or "",
+        existing_clause=row.conflicting_text or "",
+        relation=Relation.OVERLAP,
+        confidence=1.0,
+        justification=row.justification,
+        source_url=None,
+        conflict_type="Policy Conflict",
+        severity=row.severity.value if hasattr(row.severity, "value") else row.severity,
+        resolution_status=row.resolution_status,
+        resolved_clause_text=row.resolved_clause_text,
+        source_ocr_low_confidence=row.source_ocr_low_confidence,
+        is_dismissed=row.is_dismissed,
+        dismissed_reason=row.dismissed_reason,
+    )
+
+
+async def _record_resolve_attempt_durable(
+    conflict_id: uuid.UUID, *, status: str, reason: Optional[str] = None
+) -> None:
+    """
+    Persists a failed resolve/accept attempt on its OWN session, committed
+    immediately -- for use ONLY in branches that go on to raise an
+    exception. get_session()'s dependency rolls back the entire
+    request-scoped transaction on any raised exception (including
+    HTTPException, raised deliberately here to return a 4xx), which would
+    otherwise silently discard this status write at exactly the moment
+    it's needed most: recording *why* the request failed. Confirmed via a
+    real repro -- accept_conflict_resolution's 409 branch called
+    record_resolve_attempt on the request session as normal, but the
+    resulting resolution_status update never reached the database once the
+    409 propagated through get_session's rollback.
+    """
+    try:
+        async with async_session_factory() as tmp_session:
+            await conflicts_repo.record_resolve_attempt(tmp_session, conflict_id, status=status, reason=reason)
+            await tmp_session.commit()
+    except SQLAlchemyError:
+        logger.exception("Database error durably recording resolve attempt for %s", conflict_id)
 
 
 def _reference_hit_to_dict(r: ReferenceHit) -> dict:
@@ -412,16 +467,15 @@ async def resolve_conflict(
         conflicting_clause=conflict.conflicting_text,
         conflicting_gr_label=conflicting_gr_label,
         justification=conflict.justification,
+        draft_department=draft_row.department,
+        draft_brief=draft_row.brief,
     )
     try:
         revised_clause = llm.call_model(prompts.CONFLICT_RESOLUTION, user_msg).strip()
         logger.info("Conflict %s: revision generated (%d chars)", conflict_id, len(revised_clause))
     except Exception:
         logger.exception("Conflict %s: revision generation failed", conflict_id)
-        try:
-            await conflicts_repo.record_resolve_attempt(session, conflict_id, status="attempted_error")
-        except SQLAlchemyError:
-            logger.exception("Database error recording failed resolve attempt for %s", conflict_id)
+        await _record_resolve_attempt_durable(conflict_id, status="attempted_error")
         raise
 
     diff = "\n".join(
@@ -457,10 +511,27 @@ async def resolve_conflict(
 
     logger.info("Conflict %s: reverification cleared=%s", conflict_id, cleared)
 
+    still_conflicting_reason = None
     if not cleared:
+        # Explanation generation is best-effort and independent of persisting
+        # the resolve-attempt status below — an LLM failure here must never
+        # block that more important side effect.
+        try:
+            reason_msg = prompts.build_still_conflicting_reason_message(
+                strategy=payload.strategy.value,
+                revised_clause=revised_clause,
+                conflicting_clause=conflict.conflicting_text,
+                reverify_reason=reverify_item.reason if reverify_item else "",
+            )
+            still_conflicting_reason = llm.call_model(
+                prompts.STILL_CONFLICTING_REASON, reason_msg
+            ).strip()
+        except Exception:
+            logger.exception("Conflict %s: still-conflicting-reason generation failed", conflict_id)
+
         try:
             await conflicts_repo.record_resolve_attempt(
-                session, conflict_id, status="attempted_still_conflicting"
+                session, conflict_id, status="attempted_still_conflicting", reason=still_conflicting_reason
             )
         except SQLAlchemyError:
             logger.exception("Database error recording still-conflicting attempt for %s", conflict_id)
@@ -473,6 +544,7 @@ async def resolve_conflict(
         diff=diff,
         reverification=reverification,
         cleared=cleared,
+        still_conflicting_reason=still_conflicting_reason,
     )
 
 
@@ -521,10 +593,7 @@ async def accept_conflict_resolution(
 
     original_clause = conflict.draft_excerpt or ""
     if not original_clause or original_clause not in draft_row.content:
-        try:
-            await conflicts_repo.record_resolve_attempt(session, conflict_id, status="attempted_error")
-        except SQLAlchemyError:
-            logger.exception("Database error recording accept failure for %s", conflict_id)
+        await _record_resolve_attempt_durable(conflict_id, status="attempted_error")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="The flagged clause no longer matches the current draft content; it may have "
@@ -564,6 +633,57 @@ async def accept_conflict_resolution(
         draft_id=updated_draft.generated_draft_id,
         draft_version=updated_draft.version,
     )
+
+
+@router.post(
+    "/api/conflicts/{conflict_id}/resolve/mark-resolved",
+    response_model=MarkResolvedResponse,
+    tags=["drafts"],
+)
+async def mark_conflict_resolved(
+    conflict_id: uuid.UUID,
+    payload: MarkResolvedRequest,
+    officer: Officer = Depends(get_current_officer),
+    session: AsyncSession = Depends(get_session),
+) -> MarkResolvedResponse:
+    """
+    Marks a conflict resolved WITHOUT patching draft content — for the
+    manual-edit-in-TipTap flow, where the officer has already rewritten the
+    flagged clause and saved it through the normal draft-save path before
+    clicking "Mark as Resolved". /resolve/accept can't be reused here: it
+    requires conflict.draft_excerpt (the ORIGINAL flagged text) to still be
+    present verbatim in the draft's current content so it can replace it —
+    but that text is already gone, replaced by the officer's own edit, by
+    the time this is called. This endpoint only updates the conflict row.
+    """
+    logger.info("Mark-resolved requested for conflict %s", conflict_id)
+    try:
+        conflict = await conflicts_repo.get_by_id(session, conflict_id)
+    except SQLAlchemyError:
+        logger.exception("Database error loading conflict %s", conflict_id)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
+    if conflict is None:
+        raise HTTPException(status_code=404, detail="Conflict not found")
+
+    draft_row = await _load_row(conflict.generated_draft_id, session)
+    _ensure_can_access_draft(draft_row, officer)
+
+    if conflict.resolution_status == "resolved":
+        logger.info("Conflict %s already resolved; mark-resolved is a no-op", conflict_id)
+        return MarkResolvedResponse(conflict=ConflictOut.model_validate(conflict))
+
+    try:
+        updated_conflict = await conflicts_repo.resolve_conflict(
+            session, conflict_id,
+            reason=f"Manually resolved by editing the clause directly ({conflict.conflict_ref})",
+            resolved_clause_text=payload.revised_clause,
+        )
+    except SQLAlchemyError:
+        logger.exception("Database error marking conflict resolved %s", conflict_id)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
+
+    logger.info("Conflict %s: resolution persisted (resolution_status=resolved, manual edit)", conflict_id)
+    return MarkResolvedResponse(conflict=ConflictOut.model_validate(updated_conflict))
 
 
 @router.patch("/api/drafts/{draft_id}", response_model=Draft, tags=["drafts"])
@@ -752,67 +872,28 @@ async def run_conflict_detection(
             resolution_status=(row_by_id[conflict_id].resolution_status if conflict_id in row_by_id else "not_attempted"),
             resolved_clause_text=(row_by_id[conflict_id].resolved_clause_text if conflict_id in row_by_id else None),
             source_ocr_low_confidence=(row_by_id[conflict_id].source_ocr_low_confidence if conflict_id in row_by_id else False),
+            is_dismissed=False,
+            dismissed_reason=None,
         )
         for item, conflict_id in zip(report_items, conflict_ids)
     ]
 
-    # Resolved conflicts stay visible even though a fresh detection pass
-    # naturally won't re-surface a clause that no longer conflicts — read
-    # from the persisted record rather than recomputing "resolved" from
-    # scratch each report load. Anything already covered by live_hits
-    # above is skipped so a resolved conflict never appears twice.
+    # Everything else this draft already has on record — resolved conflicts
+    # (a fresh pass naturally won't re-surface a clause that no longer
+    # conflicts) and still-open conflicts an earlier pass or the OCR upload
+    # pipeline found that this particular non-deterministic LLM pass didn't
+    # happen to re-surface — stays visible rather than silently vanishing.
+    # Dismissed rows are excluded (surfaced separately via
+    # GET /api/drafts/{id}/conflicts?include_dismissed=true). Anything
+    # already covered by live_hits above is skipped so nothing appears twice.
     covered_ids = {cid for cid in conflict_ids if cid is not None}
-    resolved_hits = [
-        ConflictHit(
-            conflict_id=row.conflict_id,
-            draft_clause=row.draft_excerpt or "",
-            existing_gr_id=row.conflicting_gr_id or "",
-            existing_gr_title=row.source_gr_title or "",
-            existing_department=row.source_of_conflict or "",
-            existing_clause=row.conflicting_text or "",
-            relation=Relation.OVERLAP,
-            confidence=1.0,
-            justification=row.justification,
-            source_url=None,
-            conflict_type="Policy Conflict",
-            severity=row.severity.value if hasattr(row.severity, "value") else row.severity,
-            resolution_status=row.resolution_status,
-            resolved_clause_text=row.resolved_clause_text,
-            source_ocr_low_confidence=row.source_ocr_low_confidence,
-        )
+    persisted_hits = [
+        _conflict_row_to_hit(row)
         for row in existing_rows
-        if row.is_resolved and row.conflict_id not in covered_ids
+        if row.conflict_id not in covered_ids and not row.is_dismissed
     ]
 
-    # Detection is LLM-based and not perfectly deterministic run-to-run — a
-    # clause the OCR upload pipeline (or an earlier analysis pass) already
-    # flagged as an open conflict shouldn't vanish just because this
-    # particular fresh pass didn't happen to re-surface it. Anything still
-    # open (not resolved, not dismissed) and not already covered by
-    # live_hits above is carried forward rather than silently dropped.
-    stale_open_hits = [
-        ConflictHit(
-            conflict_id=row.conflict_id,
-            draft_clause=row.draft_excerpt or "",
-            existing_gr_id=row.conflicting_gr_id or "",
-            existing_gr_title=row.source_gr_title or "",
-            existing_department=row.source_of_conflict or "",
-            existing_clause=row.conflicting_text or "",
-            relation=Relation.OVERLAP,
-            confidence=1.0,
-            justification=row.justification,
-            source_url=None,
-            conflict_type="Policy Conflict",
-            severity=row.severity.value if hasattr(row.severity, "value") else row.severity,
-            resolution_status=row.resolution_status,
-            resolved_clause_text=row.resolved_clause_text,
-            source_ocr_low_confidence=row.source_ocr_low_confidence,
-        )
-        for row in existing_rows
-        if not row.is_resolved and not row.is_dismissed and row.conflict_id not in covered_ids
-    ]
-
-    return live_hits + resolved_hits + stale_open_hits
+    return live_hits + persisted_hits
 
 
 @router.post("/api/analysis/{draft_id}/terminology",
