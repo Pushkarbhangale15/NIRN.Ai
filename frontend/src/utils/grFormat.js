@@ -8,13 +8,24 @@ export function convertGRToHTML(plainText, language = 'marathi') {
     return '<p></p>';
   }
 
+  let cleanText = plainText;
   const trimmed = plainText.trim();
-  // If already formatted HTML, return as-is
+  
   if (trimmed.startsWith('<p') || trimmed.startsWith('<div') || trimmed.startsWith('<h') || trimmed.startsWith('<table')) {
-    return plainText;
+    // If it has styling, alignment or structural elements like tables, preserve it
+    if (trimmed.includes('text-align:') || trimmed.includes('align=') || trimmed.includes('<table') || trimmed.includes('class=')) {
+      return plainText;
+    }
+    // Otherwise, it is just basic unaligned HTML. Convert paragraph tags to newlines and strip HTML tags to recover raw text
+    cleanText = plainText
+      .replace(/<\/p>/g, '\n')
+      .replace(/<\/div>/g, '\n')
+      .replace(/<\/h[1-6]>/g, '\n')
+      .replace(/<br\s*\/?>/g, '\n')
+      .replace(/<\/?[^>]+(>|$)/g, '');
   }
 
-  const lines = trimmed.split('\n');
+  const lines = cleanText.trim().split('\n');
   const htmlParts = [];
   let inHeaderSection = true;
 

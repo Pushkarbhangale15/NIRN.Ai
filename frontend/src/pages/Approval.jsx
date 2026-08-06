@@ -8,7 +8,17 @@ import { useLanguage } from "../LanguageContext.jsx";
 import { useAuth } from "../AuthContext.jsx";
 import { statusBadgeClass, statusLabel } from "../constants/workflowStatus.js";
 import DraftDiffView from "../components/drafting/DraftDiffView.jsx";
+import { TiptapToolbar } from "../components/drafting/DraftViewer.jsx";
+import { IconSave, IconPrint, IconCopy, IconCheck, IconDownload } from "../components/drafting/DraftViewer.jsx";
+import { generateGRDocumentPDF } from "../utils/pdfExport.js";
+import { convertGRToHTML } from "../utils/grFormat.js";
 import HashBadge from "../components/HashBadge.jsx";
+
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { Color } from '@tiptap/extension-color';
+import { FontSize } from '../utils/fontSizeExtension.js';
 
 // Mirrored locally rather than shared, matching this codebase's existing
 // convention (see History.jsx / Admin.jsx) of duplicating this one small
@@ -37,6 +47,15 @@ function ErrorBanner({ message }) {
     </div>
   );
 }
+
+const formatDepartmentName = (value) => {
+  if (!value) return 'Government of Maharashtra';
+  return value
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : word))
+    .join(' ');
+};
 
 function QueueCard({ item, onOpen, isOpen, columns, t }) {
   return (
@@ -77,7 +96,8 @@ function QueueCard({ item, onOpen, isOpen, columns, t }) {
 // =====================================================================
 
 function ReviewingOfficerView() {
-  const { t } = useLanguage();
+  const { t, siteLanguage } = useLanguage();
+  const isMr = siteLanguage === 'mr';
 
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
@@ -91,11 +111,28 @@ function ReviewingOfficerView() {
   const [forwardError, setForwardError] = useState("");
   const [confirmMode, setConfirmMode] = useState(null); // null | 'unchanged' | 'edited'
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [exporting, setExporting] = useState(null);
+  const [exportError, setExportError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+
   const originalHtmlRef = useRef("");
   const [isDirty, setIsDirty] = useState(false);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [
+      StarterKit, 
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      FontFamily,
+      Color,
+      FontSize,
+    ],
     content: "",
     onUpdate: ({ editor: ed }) => {
       setIsDirty(originalHtmlRef.current !== "" && ed.getHTML() !== originalHtmlRef.current);
@@ -126,9 +163,11 @@ function ReviewingOfficerView() {
     try {
       const detail = await api.getDraftDetail(draftId);
       setOpenDraft(detail);
-      originalHtmlRef.current = detail.content;
+      const formattedHtml = convertGRToHTML(detail.content, detail.language);
+      originalHtmlRef.current = formattedHtml;
       setIsDirty(false);
-      editor?.commands.setContent(detail.content);
+      setLastSavedAt(null);
+      editor?.commands.setContent(formattedHtml);
     } catch (err) {
       setOpenError(err.message || "Failed to open this draft.");
     } finally {
@@ -156,6 +195,67 @@ function ReviewingOfficerView() {
       setForwardError(err.message || t("approval_forward_error"));
     } finally {
       setForwarding(false);
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!editor || isSaving) return;
+    setIsSaving(true);
+    setToast(null);
+    try {
+      const htmlContent = editor.getHTML();
+      await api.saveDraftContent(openDraft.generated_draft_id, htmlContent, editor.getText());
+      originalHtmlRef.current = htmlContent;
+      setIsDirty(false);
+      setLastSavedAt(new Date());
+      setToast({ message: 'Document saved successfully! ✓', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to save document.', type: 'error' });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!editor) return;
+    navigator.clipboard.writeText(editor.getText()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handlePrint = () => window.print();
+
+  const handleExportPdf = async () => {
+    if (!editor || exporting) return;
+    setExportError('');
+    setExporting('pdf');
+    try {
+      await generateGRDocumentPDF(openDraft, editor.getHTML());
+    } catch (err) {
+      setExportError(t('export_error') || 'Export failed');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!openDraft?.generated_draft_id || exporting) return;
+    setExportError('');
+    setExporting('docx');
+    try {
+      const { blob, filename } = await api.exportDocx(openDraft.generated_draft_id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err.message || 'Export failed');
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -216,7 +316,86 @@ function ReviewingOfficerView() {
             <ErrorBanner message={forwardError} />
 
             <div className="gr-editor-card" style={{ marginBottom: 18 }}>
-              <div className="a4-paper-wrapper" style={{ maxHeight: 480 }}>
+              {/* Top Header & Actions Bar */}
+              <div className="gr-editor-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="official-badge">{t('draft_official')}</span>
+                  <span className="gr-editor-dept-name">
+                    {formatDepartmentName(openDraft.department)}
+                  </span>
+                </div>
+
+                <div className="gr-editor-header-actions">
+                  {toast && (
+                    <span className={toast.type === 'success' ? 'saved-badge' : 'error-badge'}>
+                      {toast.message}
+                    </span>
+                  )}
+                  {!toast && isDirty && (
+                    <span className="error-badge" style={{ background: '#fff3d6', color: '#9a6b00', borderColor: 'var(--yellow)' }}>
+                      {t('save_unsaved_indicator')}
+                    </span>
+                  )}
+                  {!toast && !isDirty && lastSavedAt && (
+                    <span className="saved-badge">
+                      {t('save_saved_at')} {lastSavedAt.toLocaleTimeString(isMr ? 'mr-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  {exportError && <span className="error-badge">{exportError}</span>}
+
+                  <div className="gr-editor-btn-group">
+                    <button
+                      type="button"
+                      onClick={handleManualSave}
+                      disabled={isSaving}
+                      className="action-btn save-btn"
+                      title="Save Document"
+                    >
+                      {isSaving ? <><span className="spinner-small" /> Saving...</> : <><IconSave /> Save</>}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="action-btn print-btn"
+                      title="Print Document"
+                    >
+                      <IconPrint /> Print
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="action-btn"
+                    >
+                      {copied ? <><IconCheck /> {t('draft_copied')}</> : <><IconCopy /> {t('draft_copy')}</>}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportPdf}
+                      disabled={Boolean(exporting)}
+                      className="action-btn"
+                      title={t('export_download_pdf')}
+                    >
+                      {exporting === 'pdf' ? <><span className="spinner-small" /> {t('export_exporting')}</> : <><IconDownload /> {t('export_download_pdf')}</>}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportDocx}
+                      disabled={Boolean(exporting)}
+                      className="action-btn"
+                      title={t('export_download_docx')}
+                    >
+                      {exporting === 'docx' ? <><span className="spinner-small" /> {t('export_exporting')}</> : <><IconDownload /> {t('export_download_docx')}</>}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <TiptapToolbar editor={editor} />
+              <div className={`a4-paper-wrapper ${isMr ? 'lang-marathi' : 'lang-english'}`} style={{ maxHeight: 480 }}>
                 <div className="ProseMirror-print-wrapper">
                   <EditorContent editor={editor} />
                 </div>

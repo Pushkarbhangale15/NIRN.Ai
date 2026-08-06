@@ -425,7 +425,11 @@ _PLACEHOLDER_PATTERNS = [
     r"\bTODO\b",
     r"\bFIXME\b",
     r"```",  # any surviving code fence — same class of "strip before final" artifact
-    r"\[[^\]\n]{1,80}\]",  # any leftover bracketed placeholder, e.g. "[official name]"
+    # Only flag bracketed text that looks like an actual unfilled placeholder,
+    # i.e. contains words like "name", "required", "insert", "specify", etc.
+    # This avoids false-positives on legitimate GR text like
+    # "[Under Secretary to Government]" or "[Office/Officer 1]".
+    r"\[[^\]\n]{0,80}(?:required|insert|specify|enter|fill in|placeholder|TBD|your |here\b)[^\]\n]{0,40}\]",
 ]
 
 # Bare "Month"/"Year" only count as leaks when they appear where a real date
