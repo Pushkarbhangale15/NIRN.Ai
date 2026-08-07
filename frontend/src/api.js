@@ -282,6 +282,54 @@ export const api = {
   },
 
   getGrUploadStatus: (uploadId) => request(`/api/gr/upload/${uploadId}`),
+
+  // ── Three-tier draft approval workflow ─────────────────────────
+  submitForReview: (draftId) =>
+    request(`/api/drafts/${draftId}/submit-for-review`, { method: "POST" }),
+
+  getReviewQueue: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+    });
+    return request(`/api/review-queue?${qs.toString()}`);
+  },
+
+  forwardToApproval: (draftId, content, contentPlain) =>
+    request(`/api/drafts/${draftId}/forward-to-approval`, {
+      method: "POST",
+      body: JSON.stringify({ content: content ?? null, content_plain: contentPlain ?? null }),
+    }),
+
+  getApprovalQueue: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+    });
+    return request(`/api/approval-queue?${qs.toString()}`);
+  },
+
+  getApprovalView: (draftId) => request(`/api/drafts/${draftId}/approval-view`),
+
+  approveDraft: (draftId, decision) =>
+    request(`/api/drafts/${draftId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ decision }),
+    }),
+
+  returnDraft: (draftId, reason) =>
+    request(`/api/drafts/${draftId}/return`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  getWorkflowHistory: (draftId) => request(`/api/drafts/${draftId}/workflow-history`),
+
+  verifyVersion: (draftId, versionNumber) =>
+    request(`/api/drafts/${draftId}/versions/${versionNumber}/verify`),
+
+  getDraftDiff: (draftId, fromVersion, toVersion) =>
+    request(`/api/drafts/${draftId}/diff?from_version=${fromVersion}&to_version=${toVersion}`),
 };
 
 

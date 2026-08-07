@@ -2444,8 +2444,10 @@ mark.highlight-mark {
 .badge-severity-high { background: #fee2e2; color: var(--red); border-color: var(--red); }
 
 .badge-status-draft { background: #efece5; color: var(--ink); }
-.badge-status-under_review { background: #fff3d6; color: #9a6b00; border-color: var(--yellow); }
-.badge-status-finalised { background: #e3f5e8; color: var(--ok); border-color: var(--ok); }
+.badge-status-submitted { background: #fff3d6; color: #9a6b00; border-color: var(--yellow); }
+.badge-status-reviewed { background: #dbeafe; color: var(--blue); border-color: var(--blue); }
+.badge-status-approved { background: #e3f5e8; color: var(--ok); border-color: var(--ok); }
+.badge-status-returned { background: #fee2e2; color: var(--red); border-color: var(--red); }
 .badge-status-archived { background: #efece5; color: var(--ink-soft); }
 
 .conflict-count-badge {
@@ -2753,4 +2755,177 @@ mark.highlight-mark {
     background: var(--blue);
     transition: width 0.3s ease;
   }
+}
+
+/* ================================================================
+   Draft Diff View — VS Code-style side-by-side merge view (the
+   Approving Authority's screen). Deletions on the left in a subtle
+   red/pink strikethrough, insertions on the right in subtle green.
+   ================================================================ */
+
+.diff-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.diff-summary-add {
+  color: var(--ok);
+}
+
+.diff-summary-del {
+  color: var(--red);
+}
+
+.diff-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.diff-pane {
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-pane-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.diff-pane-header-before {
+  background: #fdeae6;
+  color: #8c2110;
+}
+
+.diff-pane-header-after {
+  background: #e3f5e8;
+  color: var(--ok);
+}
+
+.diff-pane-body {
+  padding: 16px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.diff-mark-delete {
+  background: #fee2e2;
+  color: #8c2110;
+  text-decoration: line-through;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.diff-mark-insert {
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.diff-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-soft);
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .diff-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================================================================
+   Hash badge (Task 1) — truncated content_sha256 + copy + verify.
+   Used on the Approval tab and History's version list.
+   ================================================================ */
+
+.hash-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  background: #faf9f6;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.hash-badge-label {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.hash-badge-value {
+  font-family: ui-monospace, Menlo, monospace;
+  background: #efece5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.hash-badge-btn {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hash-badge-btn:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.hash-badge-result {
+  font-weight: 700;
+}
+
+.hash-badge-result.ok {
+  color: var(--ok);
+}
+
+.hash-badge-result.fail {
+  color: var(--red);
+}
+
+/* ================================================================
+   Returned-for-rework banner (Drafting Officer's own view).
+   ================================================================ */
+
+.returned-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff7ed;
+  border: 2px solid var(--yellow);
+  color: #92400e;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13.5px;
+}
+
+.returned-banner strong {
+  font-size: 14px;
 }

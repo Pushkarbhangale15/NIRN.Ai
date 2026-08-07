@@ -68,7 +68,8 @@ export default function Draft() {
     activeReviewTab, setActiveReviewTab,
     handleGenerate,
     handleReset,
-    handleSaveDraft
+    handleSaveDraft,
+    handleSubmitForReview
   } = useDraft();
 
   // Shared across "Resolve All" and "Resolve Selected" — both run the same
@@ -314,10 +315,17 @@ export default function Draft() {
                   <IconAlert /> {error}
                 </div>
               )}
+              {draftResult?.status === 'draft' && draftResult?.returned_reason && (
+                <div className="returned-banner">
+                  <strong>⚠ {t('draft_returned_banner_title')}</strong>
+                  <span>{draftResult.returned_reason}</span>
+                </div>
+              )}
               <DraftViewer
                 draft={draftResult}
                 loading={loading}
                 onSaveDraft={handleSaveDraft}
+                onSubmitForReview={handleSubmitForReview}
                 highlightTarget={editingConflict?.draft_clause}
                 onMarkResolved={handleMarkResolved}
                 onCancelManualEdit={editingConflict ? handleCancelManualEdit : undefined}

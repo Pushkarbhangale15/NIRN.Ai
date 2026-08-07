@@ -122,6 +122,8 @@ def _to_draft_schema(row) -> Draft:
         language=row.language.value if hasattr(row.language, "value") else row.language,
         created_at=row.created_at,
         gr_number=row.gr_number,
+        status=row.status.value if hasattr(row.status, "value") else row.status,
+        returned_reason=row.returned_reason,
     )
 
 
@@ -141,6 +143,7 @@ def _to_detail_schema(row) -> GeneratedDraftDetail:
         drafted_by_name=row.officer.name if row.officer is not None else None,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        returned_reason=row.returned_reason,
         conflicts=[ConflictOut.model_validate(c) for c in row.conflicts],
         references=[DraftReferenceOut.model_validate(r) for r in row.references],
     )
@@ -324,6 +327,7 @@ async def list_drafts(
             created_at=d.created_at,
             updated_at=d.updated_at,
             unresolved_conflict_count=count,
+            returned_reason=d.returned_reason,
         )
         for d, count in rows
     ]
@@ -622,6 +626,8 @@ async def accept_conflict_resolution(
             reason=f"Resolved via clause revision ({conflict.conflict_ref})",
             resolved_clause_text=payload.revised_clause,
         )
+    except drafts_repo.DraftImmutableError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     except SQLAlchemyError:
         logger.exception("Database error accepting conflict resolution %s", conflict_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
@@ -710,6 +716,8 @@ async def patch_draft(
             edited_by=officer.officer_id,
             change_note=payload.change_note,
         )
+    except drafts_repo.DraftImmutableError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     except SQLAlchemyError:
         logger.exception("Database error saving draft %s", draft_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unavailable.")
@@ -1214,6 +1222,7 @@ async def copilot_draft(
         references=hits,
         gr_number=draft.gr_number,
         language=draft.language.value if hasattr(draft.language, "value") else draft.language,
+        status=draft.status.value if hasattr(draft.status, "value") else draft.status,
     )
 
 

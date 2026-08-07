@@ -15,7 +15,7 @@ the team.
 import uuid
 from datetime import date, datetime
 from enum import Enum
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -72,6 +72,8 @@ class Draft(DraftCreate):
     gr_number: Optional[str] = None
     """Provisional/internal number (NIRN/<DEPT>/<YYYY>/<seq>) — NOT a
     real government-issued GR number. Label it as such in the UI."""
+    status: str = "draft"
+    returned_reason: Optional[str] = None
 
 
 class DraftUpdate(BaseModel):
@@ -214,6 +216,7 @@ class DraftGenerateResponse(BaseModel):
     references: List[CorpusHit] = []
     gr_number: Optional[str] = None
     language: Optional[str] = None
+    status: str = "draft"
 
 class ComparisonRequest(BaseModel):
     gr_id_1: str
@@ -338,8 +341,10 @@ class PaginatedOfficers(BaseModel):
 
 class DraftStatusEnum(str, Enum):
     DRAFT = "draft"
-    UNDER_REVIEW = "under_review"
-    FINALISED = "finalised"
+    SUBMITTED = "submitted"
+    REVIEWED = "reviewed"
+    APPROVED = "approved"
+    RETURNED = "returned"
     ARCHIVED = "archived"
 
 
@@ -397,6 +402,7 @@ class DraftHistoryItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     unresolved_conflict_count: int
+    returned_reason: Optional[str] = None
 
 
 class PaginatedDraftHistory(BaseModel):
@@ -421,6 +427,7 @@ class GeneratedDraftDetail(BaseModel):
     drafted_by_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    returned_reason: Optional[str] = None
     conflicts: List[ConflictOut] = []
     references: List[DraftReferenceOut] = []
 
@@ -505,3 +512,107 @@ class GrUploadResponse(BaseModel):
     generated_draft_id: Optional[uuid.UUID] = None
     error_message: Optional[str] = None
     created_at: datetime
+
+
+# ---------------------------------------------------------------------
+# Three-tier draft approval workflow — Drafting Officer -> Reviewing
+# Officer -> Approving Authority. Reuses the existing officer_role enum
+# (officer/reviewer/admin) — see backend/role_labels.py for the
+# display-label mapping. content_sha256 hashes are always
+# server-computed (db/integrity.py); never accepted from the client.
+# ---------------------------------------------------------------------
+
+class ForwardToApprovalRequest(BaseModel):
+    content: Optional[str] = Field(None, max_length=200_000)
+    content_plain: Optional[str] = Field(None, max_length=200_000)
+
+
+class ApproveDraftRequest(BaseModel):
+    decision: Literal["accept_reviewer_version", "keep_original"]
+
+
+class ReturnDraftRequest(BaseModel):
+    reason: str = Field(..., min_length=20, max_length=2000)
+
+
+class WorkflowActionResponse(BaseModel):
+    generated_draft_id: uuid.UUID
+    status: str
+    version: int
+
+
+class WorkflowEventOut(BaseModel):
+    event_id: uuid.UUID
+    from_status: str
+    to_status: str
+    actor_id: uuid.UUID
+    actor_name: Optional[str] = None
+    actor_role: str
+    content_version_before: Optional[int] = None
+    content_version_after: Optional[int] = None
+    decision: Optional[str] = None
+    note: Optional[str] = None
+    created_at: datetime
+
+
+class VerifyVersionResponse(BaseModel):
+    verified: bool
+    hash: str
+
+
+class DiffSegmentOut(BaseModel):
+    type: str
+    text: str
+
+
+class DraftDiffResponse(BaseModel):
+    draft_id: uuid.UUID
+    from_version: int
+    to_version: int
+    unchanged: bool
+    segments: List[DiffSegmentOut]
+    additions: int
+    deletions: int
+    from_content_sha256: str
+    to_content_sha256: str
+
+
+class WorkflowQueueItem(BaseModel):
+    generated_draft_id: uuid.UUID
+    gr_number: Optional[str] = None
+    title: str
+    department: str
+    status: str
+    drafted_by_name: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    unresolved_conflict_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaginatedWorkflowQueue(BaseModel):
+    items: List[WorkflowQueueItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ApprovalViewResponse(BaseModel):
+    generated_draft_id: uuid.UUID
+    gr_number: Optional[str] = None
+    title: str
+    department: str
+    status: str
+    submitted_by_name: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    submitted_version_number: int
+    submitted_content: str
+    submitted_content_plain: str
+    submitted_content_sha256: str
+    reviewed_version_number: int
+    reviewed_content: str
+    reviewed_content_plain: str
+    reviewed_content_sha256: str
+    diff: DraftDiffResponse
+    workflow_history: List[WorkflowEventOut]
+    returned_reason: Optional[str] = None
