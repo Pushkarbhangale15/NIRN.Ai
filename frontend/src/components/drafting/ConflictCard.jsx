@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
 import { generateConflictPDF } from '../../utils/pdfExport.js';
 
@@ -35,14 +35,56 @@ export default function ConflictCard({
   resolvedInfo = {},
   onResolveOne,
   resolvingConflictId = null,
+  onResolveSelected,
+  onManualEditSelected,
+  onIgnoreSelected,
+  resolvingSelected = false,
+  resolveSelectedProgress = null,
+  ignoringSelected = false,
 }) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
+  const [ignoredOpen, setIgnoredOpen] = useState(false);
   const [generatingFull, setGeneratingFull] = useState(false);
   const [generatingIdx, setGeneratingIdx] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
 
-  const resolvableConflicts = conflicts.filter(c => c.conflict_id);
+  const toggleSelected = (conflictId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(conflictId)) next.delete(conflictId);
+      else next.add(conflictId);
+      return next;
+    });
+  };
+
+  // Selection stays visible (with progress) for the whole batch — cleared
+  // only once the parent reports the batch actually finished, not the
+  // instant the button is clicked, so the toolbar's progress readout
+  // doesn't disappear before the LLM/API calls it represents are done.
+  const wasResolvingSelected = useRef(false);
+  const wasIgnoringSelected = useRef(false);
+  useEffect(() => {
+    if (wasResolvingSelected.current && !resolvingSelected) {
+      setSelectedIds(new Set());
+    }
+    wasResolvingSelected.current = resolvingSelected;
+  }, [resolvingSelected]);
+  useEffect(() => {
+    if (wasIgnoringSelected.current && !ignoringSelected) {
+      setSelectedIds(new Set());
+    }
+    wasIgnoringSelected.current = ignoringSelected;
+  }, [ignoringSelected]);
+
+  // Ignored (dismissed) conflicts are excluded from the active list, all
+  // counts, and every resolve/select operation — they're shown separately
+  // below, read-only, with the reason they were ignored.
+  const activeConflicts = conflicts.filter(c => !c.is_dismissed);
+  const dismissedConflicts = conflicts.filter(c => c.is_dismissed);
+
+  const resolvableConflicts = activeConflicts.filter(c => c.conflict_id);
   const allResolved = resolvableConflicts.length > 0 &&
     resolvableConflicts.every(c => resolvedInfo[c.conflict_id]);
 
@@ -50,7 +92,7 @@ export default function ConflictCard({
     if (generatingFull) return;
     setGeneratingFull(true);
     try {
-      await generateConflictPDF(draftText, conflicts, {
+      await generateConflictPDF(draftText, activeConflicts, {
         ...metadata,
         reportType: 'full',
         templateIssues,
@@ -115,7 +157,7 @@ export default function ConflictCard({
         onClick={() => setIsOpen(!isOpen)}
         style={{
           padding: '16px 20px',
-          background: conflicts.length > 0 ? '#fff1f0' : '#f0fdf4',
+          background: activeConflicts.length > 0 ? '#fff1f0' : '#f0fdf4',
           borderBottom: isOpen ? '2px solid var(--ink)' : 'none',
           display: 'flex',
           justifyContent: 'space-between',
@@ -130,14 +172,27 @@ export default function ConflictCard({
           <span style={{
             fontSize: '11px',
             fontWeight: 'bold',
-            background: conflicts.length > 0 ? 'var(--red)' : 'var(--blue)',
+            background: activeConflicts.length > 0 ? 'var(--red)' : 'var(--blue)',
             color: '#fff',
             padding: '2px 8px',
             borderRadius: '12px',
             border: '1px solid var(--ink)'
           }}>
-            {conflicts.length} Conflict{conflicts.length === 1 ? '' : 's'} Detected
+            {activeConflicts.length} Conflict{activeConflicts.length === 1 ? '' : 's'} Detected
           </span>
+          {dismissedConflicts.length > 0 && (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 'bold',
+              background: '#9ca3af',
+              color: '#fff',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              border: '1px solid var(--ink)'
+            }}>
+              {dismissedConflicts.length} Ignored
+            </span>
+          )}
         </div>
         <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{isOpen ? '▲' : '▼'}</span>
       </div>
@@ -149,7 +204,7 @@ export default function ConflictCard({
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <span className="spinner" /> <span style={{ fontSize: '14px' }}>Cross-referencing 98,950+ GRs across departments...</span>
             </div>
-          ) : conflicts.length === 0 ? (
+          ) : activeConflicts.length === 0 ? (
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
@@ -232,7 +287,88 @@ export default function ConflictCard({
                 )}
               </div>
 
-              {conflicts.map((item, idx) => {
+              {selectedIds.size > 0 && (
+                <div style={{
+                  display: 'flex',
+                  gap: '10px',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  background: '#eff6ff',
+                  border: '2px solid var(--ink)',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--ink)', marginRight: '4px' }}>
+                    {selectedIds.size} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onResolveSelected && onResolveSelected(activeConflicts.filter(c => selectedIds.has(c.conflict_id)))}
+                    disabled={resolvingSelected}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '9px 14px', fontSize: '13px', fontWeight: 700,
+                      background: '#16a34a', color: '#fff', border: '1.5px solid var(--ink)',
+                      borderRadius: '6px', cursor: resolvingSelected ? 'wait' : 'pointer',
+                      opacity: resolvingSelected ? 0.7 : 1
+                    }}
+                  >
+                    <IconCheckCircle />
+                    {resolvingSelected
+                      ? `Resolving...${resolveSelectedProgress ? ` (${resolveSelectedProgress.done}/${resolveSelectedProgress.total})` : ''}`
+                      : 'Resolve Selected'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const only = activeConflicts.find(c => selectedIds.has(c.conflict_id));
+                      if (only && onManualEditSelected) {
+                        onManualEditSelected(only);
+                        setSelectedIds(new Set());
+                      }
+                    }}
+                    disabled={selectedIds.size !== 1}
+                    title={selectedIds.size !== 1 ? 'Select exactly one conflict to manually edit' : undefined}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '9px 14px', fontSize: '13px', fontWeight: 700,
+                      background: selectedIds.size === 1 ? '#f59e0b' : '#d1d5db',
+                      color: '#fff', border: '1.5px solid var(--ink)',
+                      borderRadius: '6px', cursor: selectedIds.size === 1 ? 'pointer' : 'not-allowed',
+                      opacity: selectedIds.size === 1 ? 1 : 0.7
+                    }}
+                  >
+                    ✎ Manually Edit Selected
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onIgnoreSelected && onIgnoreSelected(activeConflicts.filter(c => selectedIds.has(c.conflict_id)))}
+                    disabled={ignoringSelected}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '9px 14px', fontSize: '13px', fontWeight: 700,
+                      background: '#6b7280', color: '#fff', border: '1.5px solid var(--ink)',
+                      borderRadius: '6px', cursor: ignoringSelected ? 'wait' : 'pointer',
+                      opacity: ignoringSelected ? 0.7 : 1
+                    }}
+                  >
+                    ✕ {ignoringSelected ? 'Ignoring...' : 'Ignore Selected'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    style={{
+                      marginLeft: 'auto', padding: '9px 14px', fontSize: '13px', fontWeight: 600,
+                      background: 'transparent', color: 'var(--ink)', border: '1.5px solid var(--ink)',
+                      borderRadius: '6px', cursor: 'pointer'
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              )}
+
+              {activeConflicts.map((item, idx) => {
                 const resolution = item.conflict_id ? resolvedInfo[item.conflict_id] : null;
                 return (
                   <div key={idx} style={{
@@ -244,6 +380,16 @@ export default function ConflictCard({
                   }}>
                     {/* Header: Conflict Category Type and GR ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                      {item.conflict_id && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.conflict_id)}
+                          onChange={() => toggleSelected(item.conflict_id)}
+                          disabled={resolvingSelected || ignoringSelected}
+                          aria-label="Select this conflict"
+                          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--ink)' }}
+                        />
+                      )}
                       <span style={{
                         fontSize: '13px',
                         fontWeight: 'bold',
@@ -439,6 +585,67 @@ export default function ConflictCard({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {dismissedConflicts.length > 0 && (
+            <div style={{ marginTop: '16px', border: '1.5px solid #d1d5db', borderRadius: '8px', overflow: 'hidden' }}>
+              <div
+                onClick={() => setIgnoredOpen(!ignoredOpen)}
+                style={{
+                  padding: '10px 16px',
+                  background: '#f3f4f6',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <span style={{ fontSize: '13.5px', fontWeight: 'bold', color: '#4b5563' }}>
+                  Ignored Conflicts ({dismissedConflicts.length})
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#6b7280' }}>{ignoredOpen ? '▲' : '▼'}</span>
+              </div>
+              {ignoredOpen && (
+                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {dismissedConflicts.map((item, idx) => (
+                    <div key={item.conflict_id || idx} style={{
+                      border: '1.5px solid #e5e7eb',
+                      borderRadius: '6px',
+                      padding: '12px 14px',
+                      background: '#fafafa',
+                      opacity: 0.75
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '11.5px',
+                          fontWeight: 'bold',
+                          background: '#9ca3af',
+                          color: '#fff',
+                          padding: '2px 8px',
+                          borderRadius: '10px'
+                        }}>
+                          Ignored
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', textDecoration: 'line-through' }}>
+                          {item.conflict_type || 'Policy Conflict'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '6px' }}>
+                        {item.existing_department?.replace(/_/g, ' ')} ({item.existing_gr_id})
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic', marginBottom: item.dismissed_reason ? '6px' : 0 }}>
+                        "{item.draft_clause}"
+                      </div>
+                      {item.dismissed_reason && (
+                        <div style={{ fontSize: '12.5px', color: '#78716c' }}>
+                          <strong>Reason:</strong> {item.dismissed_reason}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

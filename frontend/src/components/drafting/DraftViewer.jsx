@@ -6,12 +6,14 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
 
 import { useLanguage } from '../../LanguageContext.jsx';
 import { api } from '../../api.js';
 import { convertGRToHTML } from '../../utils/grFormat.js';
 import { FontSize } from '../../utils/fontSizeExtension.js';
 import { generateGRDocumentPDF } from '../../utils/pdfExport.js';
+import { findClauseRange } from '../../utils/findClauseInDoc.js';
 
 const ESTIMATE_STORAGE_KEY = 'nirn_draft_gen_estimate_ms';
 const DEFAULT_ESTIMATE_MS = 45000;
@@ -32,42 +34,42 @@ const formatDepartmentName = (value) => {
 
 export const IconSave = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
   </svg>
 );
 export const IconCopy = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
   </svg>
 );
 export const IconCheck = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
   </svg>
 );
 export const IconAlert = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+    <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" />
   </svg>
 );
 export const IconPrint = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', top: '2px' }}>
-    <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+    <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
   </svg>
 );
 export const IconDocument = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
   </svg>
 );
 export const IconDownload = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', top: '2px' }}>
-    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
   </svg>
 );
 export const IconArchive = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM6.24 5h11.52l.83 1H5.42l.82-1zM5 19V8h14v11H5zm6-5.5l4-4h-2.5V6h-3v3.5H7l4 4z"/>
+    <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM6.24 5h11.52l.83 1H5.42l.82-1zM5 19V8h14v11H5zm6-5.5l4-4h-2.5V6h-3v3.5H7l4 4z" />
   </svg>
 );
 
@@ -163,46 +165,46 @@ export function TiptapToolbar({ editor }) {
 
       <div className="toolbar-divider" />
 
-        {/* Headings / Text Sizing */}
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            if (currentFontSize === '28px') {
-              editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
-            } else {
-              editor.chain().focus(null, { scrollIntoView: false }).setFontSize('28px').run();
-            }
-          }}
-          className={currentFontSize === '28px' ? 'active' : ''}
-          title="Heading 1 (28px - Selected text only)"
-        >
-          H1
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            if (currentFontSize === '22px') {
-              editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
-            } else {
-              editor.chain().focus(null, { scrollIntoView: false }).setFontSize('22px').run();
-            }
-          }}
-          className={currentFontSize === '22px' ? 'active' : ''}
-          title="Heading 2 (22px - Selected text only)"
-        >
-          H2
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().setParagraph().run()}
-          className={(!currentFontSize || currentFontSize === '16px') && !editor.isActive('heading') ? 'active' : ''}
-          title="Normal Text Paragraph (16px)"
-        >
-          Normal
-        </button>
+      {/* Headings / Text Sizing */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          if (currentFontSize === '28px') {
+            editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
+          } else {
+            editor.chain().focus(null, { scrollIntoView: false }).setFontSize('28px').run();
+          }
+        }}
+        className={currentFontSize === '28px' ? 'active' : ''}
+        title="Heading 1 (28px - Selected text only)"
+      >
+        H1
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          if (currentFontSize === '22px') {
+            editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().run();
+          } else {
+            editor.chain().focus(null, { scrollIntoView: false }).setFontSize('22px').run();
+          }
+        }}
+        className={currentFontSize === '22px' ? 'active' : ''}
+        title="Heading 2 (22px - Selected text only)"
+      >
+        H2
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.chain().focus(null, { scrollIntoView: false }).unsetFontSize().setParagraph().run()}
+        className={(!currentFontSize || currentFontSize === '16px') && !editor.isActive('heading') ? 'active' : ''}
+        title="Normal Text Paragraph (16px)"
+      >
+        Normal
+      </button>
 
       <div className="toolbar-divider" />
 
@@ -294,12 +296,16 @@ export default function DraftViewer({
   draft,
   loading,
   onSaveDraft,
-  onSubmitForReview
+  onSubmitForReview,
+  highlightTarget,
+  onMarkResolved,
+  onCancelManualEdit
 }) {
   const { t, siteLanguage } = useLanguage();
   const isMr = siteLanguage === 'mr';
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isMarkingResolved, setIsMarkingResolved] = useState(false);
   const [isSubmittingForReview, setIsSubmittingForReview] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
@@ -361,6 +367,7 @@ export default function DraftViewer({
       FontFamily,
       Color,
       FontSize,
+      Highlight.configure({ HTMLAttributes: { class: 'conflict-highlight' } }),
     ],
     content: '',
     onUpdate: ({ editor: ed }) => {
@@ -385,6 +392,24 @@ export default function DraftViewer({
       setLastSavedAt(null);
     }
   }, [draft, editor]);
+
+  // "Manually Edit Selected" flow: locate the flagged clause in the doc,
+  // select + highlight it, and scroll it into view so the officer can start
+  // rewriting immediately. No-op (leaves the doc untouched) if the clause
+  // text can't be found — e.g. it was already edited by an earlier action.
+  useEffect(() => {
+    if (!editor || !highlightTarget) return;
+    const range = findClauseRange(editor.state.doc, highlightTarget);
+    if (!range) return;
+
+    editor.chain().setTextSelection(range).run();
+    editor.commands.setHighlight();
+
+    const domNode = editor.view.domAtPos(range.from).node;
+    const el = domNode.nodeType === 1 ? domNode : domNode.parentElement;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    editor.commands.focus();
+  }, [editor, highlightTarget]);
 
   // Warn on navigating away with unsaved changes — covers tab close,
   // refresh, and typing a new URL. In-app SPA navigation isn't
@@ -424,6 +449,39 @@ export default function DraftViewer({
     } finally {
       setIsSaving(false);
       setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  // "Mark as Resolved" (manual-edit flow): reads whatever text currently
+  // carries the highlight mark applied when the clause was located — not
+  // the original flagged text, which the officer may have already
+  // rewritten — so this reflects their edit even after typing has moved
+  // the underlying ProseMirror positions.
+  const handleMarkResolved = async () => {
+    if (!editor || !onMarkResolved || isMarkingResolved) return;
+    const pieces = [];
+    editor.state.doc.descendants((node) => {
+      if (node.isText && node.marks.some((m) => m.type.name === 'highlight')) {
+        pieces.push(node.text);
+      }
+      return true;
+    });
+    const revisedText = pieces.join('').trim();
+    if (!revisedText) {
+      setToast({ message: 'Could not find the highlighted clause — it may have been removed.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setIsMarkingResolved(true);
+    try {
+      await onMarkResolved(revisedText);
+    } catch (err) {
+      console.error('Mark-resolved error:', err);
+      setToast({ message: 'Failed to mark this conflict resolved.', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setIsMarkingResolved(false);
     }
   };
 
@@ -687,6 +745,47 @@ export default function DraftViewer({
 
       {/* Custom Tiptap Editor Toolbar */}
       <TiptapToolbar editor={editor} />
+
+      {highlightTarget && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
+          padding: '10px 16px', margin: '0 0 12px', background: '#fffbeb',
+          border: '1.5px solid #f59e0b', borderRadius: '8px'
+        }}>
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#92400e' }}>
+            ⚠ Editing flagged clause — rewrite the highlighted text, save, then confirm below.
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {onCancelManualEdit && (
+              <button
+                type="button"
+                onClick={onCancelManualEdit}
+                style={{
+                  padding: '7px 12px', fontSize: '12.5px', fontWeight: 600,
+                  background: 'transparent', color: '#92400e', border: '1.5px solid #92400e',
+                  borderRadius: '6px', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleMarkResolved}
+              disabled={isMarkingResolved}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', fontSize: '12.5px', fontWeight: 700,
+                background: '#16a34a', color: '#fff', border: '1.5px solid var(--ink)',
+                borderRadius: '6px', cursor: isMarkingResolved ? 'wait' : 'pointer',
+                opacity: isMarkingResolved ? 0.7 : 1
+              }}
+            >
+              <IconCheck /> {isMarkingResolved ? 'Marking...' : 'Mark as Resolved'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editor Printable Paper Sheet Area */}
       <div className={`a4-paper-wrapper ${isMarathi ? 'lang-marathi' : 'lang-english'}`}>
