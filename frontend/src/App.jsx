@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
-//import { NavLink, Route, Routes } from "react-router-dom";
 import shasan from "./assets/shasan.svg";
 import Home from "./pages/Home.jsx";
 import Draft from "./pages/Draft.jsx";

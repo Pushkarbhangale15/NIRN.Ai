@@ -9,6 +9,7 @@
  */
 
 import html2pdf from "html2pdf.js";
+import { api } from "../api.js";
 
 const RELATION_LABELS = {
   conflict: "Conflict",
@@ -483,8 +484,12 @@ function buildGrDocumentHtml({ isMarathi, bodyHtml }) {
  *
  * @param {object} draft - { title, gr_number, draft_id, language }
  * @param {string} bodyHtml - editor.getHTML() — the user's current edits.
+ * @param {object} [options]
+ * @param {string} [options.password] - when set, the rendered PDF is sent to
+ *   the backend to be locked with this password (real encryption-to-open,
+ *   via pikepdf) before download, instead of downloading unlocked.
  */
-export async function generateGRDocumentPDF(draft, bodyHtml) {
+export async function generateGRDocumentPDF(draft, bodyHtml, { password } = {}) {
   const isMarathi = (draft.language || "").toLowerCase().startsWith("mr") || (draft.language || "").toLowerCase() === "marathi";
 
   const html = buildGrDocumentHtml({ isMarathi, bodyHtml });
@@ -496,7 +501,7 @@ export async function generateGRDocumentPDF(draft, bodyHtml) {
   const safeTitle = (draft.title || "GR_Draft").replace(/[^\w\- ]+/g, "").slice(0, 60).trim() || "GR_Draft";
   const filename = `${safeTitle}_${draft.gr_number || draft.draft_id || "NIRN"}.pdf`;
 
-  await html2pdf()
+  const pdfChain = html2pdf()
     .set({
       margin: [25.4, 31.75, 25.4, 25.4], // [top, left, bottom, right] mm — matches export_docx.py
       filename,
@@ -505,8 +510,21 @@ export async function generateGRDocumentPDF(draft, bodyHtml) {
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] },
     })
-    .from(container)
-    .save();
+    .from(container);
+
+  if (!password) {
+    await pdfChain.save();
+    return filename;
+  }
+
+  const unlockedBlob = await pdfChain.outputPdf("blob");
+  const lockedBlob = await api.encryptPdf(unlockedBlob, password);
+  const url = URL.createObjectURL(lockedBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 
   return filename;
 }

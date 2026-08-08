@@ -532,10 +532,15 @@ export default function DraftViewer({
   // original AI output, so the officer's edits are always included.
   const handleExportPdf = async () => {
     if (!editor || exporting) return;
+    const password = window.prompt(
+      "Set a password to lock this PDF. You'll need this exact password to open the file later — it cannot be recovered if lost.",
+      ""
+    );
+    if (password === null) return; // user cancelled — abort, no request fires
     setExportError('');
     setExporting('pdf');
     try {
-      await generateGRDocumentPDF(draft, editor.getHTML());
+      await generateGRDocumentPDF(draft, editor.getHTML(), password ? { password } : undefined);
     } catch (err) {
       console.error('PDF export error:', err);
       setExportError(t('export_error'));

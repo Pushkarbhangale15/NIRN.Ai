@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../LanguageContext.jsx';
+import { api } from '../../api.js';
 
 const IconLink = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
@@ -12,6 +13,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
   const isMr = siteLanguage === 'mr';
   const [isOpen, setIsOpen] = useState(true);
   const [expandedIndex, setExpandedIndex] = useState(0);
+  const [downloadingIndex, setDownloadingIndex] = useState(null);
 
   if (!hasGenerated) {
     return (
@@ -35,27 +37,28 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
     );
   }
 
-  // Demonstration references if live backend returned empty list
-  const displayRefs = references.length > 0 ? references : [
-    {
-      gr_id: "202305151230456101",
-      department: "Higher & Technical Education",
-      issued_on: "15 May 2023",
-      score: 0.92,
-      title: "Guidelines for State University Research & Development Grant Allocation",
-      snippet: "Clause 4.2: Equipment procurement grants for university laboratories shall be sanctioned directly by the directorate...",
-      reason: "Provided template structure for research lab grant sanctioning clause."
-    },
-    {
-      gr_id: "202211041015332098",
-      department: "Finance Department",
-      issued_on: "04 Nov 2022",
-      score: 0.86,
-      title: "Standard Financial Powers & Delegation Rules for Academic Bodies",
-      snippet: "Section 12: Expenditure exceeding ₹10,000 requires prior administrative approval from finance officer...",
-      reason: "Referenced for financial delegation compliance."
+  // Downloads the corpus OCR text for a resolved reference. Only works for the
+  // freshly-generated draft still held in this session — corpus_gr_id/corpus_title
+  // are not yet persisted to the database, so this breaks after reopening from History.
+  const handleDownload = async (ref, idx) => {
+    if (!ref.corpus_gr_id || downloadingIndex !== null) return;
+    setDownloadingIndex(idx);
+    try {
+      const res = await api.getCorpusOcr(ref.corpus_gr_id);
+      const text = res?.text || '';
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ref.corpus_gr_id}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Reference download error:', err);
+    } finally {
+      setDownloadingIndex(null);
     }
-  ];
+  };
 
   return (
     <div style={{
@@ -92,7 +95,7 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
             borderRadius: '12px',
             border: '1px solid var(--ink)'
           }}>
-            {displayRefs.length} Influential GRs
+            {references.length} Citation{references.length === 1 ? '' : 's'}
           </span>
         </div>
         <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{isOpen ? '▲' : '▼'}</span>
@@ -105,11 +108,14 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <span className="spinner" /> <span style={{ fontSize: '14px' }}>Resolving GR citations...</span>
             </div>
+          ) : references.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280', fontSize: '14px' }}>
+              No citations detected in this draft.
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {displayRefs.map((ref, idx) => {
+              {references.map((ref, idx) => {
                 const isExpanded = expandedIndex === idx;
-                const scorePercent = ((ref.score || 0.88) * 100).toFixed(0);
 
                 return (
                   <div
@@ -130,27 +136,34 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        gap: '10px'
                       }}
                     >
                       <div>
                         <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
-                          GR <span className="mono">{ref.gr_id}</span>
+                          {ref.raw_text}
                         </div>
-                        <div style={{ fontSize: '13.5px', color: '#6b7280' }}>
-                          {ref.department} {ref.issued_on ? `· ${ref.issued_on}` : ''}
-                        </div>
+                        {ref.found_in_corpus ? (
+                          <div style={{ fontSize: '13.5px', color: '#6b7280' }}>
+                            {ref.corpus_title || 'Matched GR'} {ref.corpus_gr_id ? `· ${ref.corpus_gr_id}` : ''}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '13.5px', color: '#b91c1c' }}>
+                            Not found in corpus
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         <span style={{
                           fontSize: '13px',
                           fontWeight: 'bold',
-                          color: 'var(--blue)',
-                          background: '#dbeafe',
+                          color: ref.found_in_corpus ? 'var(--blue)' : '#b91c1c',
+                          background: ref.found_in_corpus ? '#dbeafe' : '#fee2e2',
                           padding: '3px 8px',
                           borderRadius: '4px'
                         }}>
-                          {scorePercent}% Similarity
+                          {ref.found_in_corpus ? 'Resolved' : 'Unresolved'}
                         </span>
                         <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{isExpanded ? '−' : '+'}</span>
                       </div>
@@ -158,17 +171,38 @@ export default function ReferencesCard({ references = [], loading, hasGenerated 
 
                     {isExpanded && (
                       <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', background: '#fafafa', fontSize: '15px', lineHeight: '1.5' }}>
-                        {ref.title && (
-                          <div style={{ fontWeight: 'bold', marginBottom: '6px', color: 'var(--ink)' }}>
-                            {ref.title}
+                        <div style={{ marginBottom: '8px', color: '#374151' }}>
+                          <strong>Cited text:</strong> "{ref.raw_text}"
+                        </div>
+                        {ref.gr_number && (
+                          <div style={{ marginBottom: '8px', color: '#374151', fontSize: '13.5px' }}>
+                            <strong>GR number:</strong> {ref.gr_number}{ref.year ? ` (${ref.year})` : ''}
                           </div>
                         )}
-                        <div style={{ marginBottom: '8px', color: '#374151' }}>
-                          <strong>Relevant Clause:</strong> "{ref.snippet || ref.text_snippet || 'Clause details retrieved from corpus.'}"
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#1f2937', background: '#f3f4f6', padding: '8px 10px', borderRadius: '4px' }}>
-                          <strong>Reason Referenced:</strong> {ref.reason || 'Utilized for standard preamble and statutory authority alignment.'}
-                        </div>
+                        {ref.found_in_corpus ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(ref, idx)}
+                            disabled={downloadingIndex === idx}
+                            style={{
+                              fontSize: '13px',
+                              fontWeight: 'bold',
+                              color: '#fff',
+                              background: 'var(--blue)',
+                              border: '1px solid var(--ink)',
+                              borderRadius: '4px',
+                              padding: '6px 12px',
+                              cursor: downloadingIndex === idx ? 'default' : 'pointer',
+                              opacity: downloadingIndex === idx ? 0.6 : 1
+                            }}
+                          >
+                            {downloadingIndex === idx ? 'Downloading…' : 'Download source text'}
+                          </button>
+                        ) : (
+                          <div style={{ fontSize: '14px', color: '#1f2937', background: '#f3f4f6', padding: '8px 10px', borderRadius: '4px' }}>
+                            This citation could not be matched to a GR in the corpus.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

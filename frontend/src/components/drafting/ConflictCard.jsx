@@ -202,7 +202,7 @@ export default function ConflictCard({
         <div style={{ padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
-              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Cross-referencing 98,950+ GRs across departments...</span>
+              <span className="spinner" /> <span style={{ fontSize: '14px' }}>Cross-referencing 99,000+ GRs across departments...</span>
             </div>
           ) : activeConflicts.length === 0 ? (
             <div style={{

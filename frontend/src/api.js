@@ -233,6 +233,28 @@ export const api = {
     return { blob, filename };
   },
 
+  encryptPdf: async (pdfBlob, password) => {
+    const formData = new FormData();
+    formData.append("file", pdfBlob, "draft.pdf");
+    formData.append("password", password);
+    const headers = {};
+    if (_authToken) headers["Authorization"] = `Bearer ${_authToken}`;
+    const res = await fetch("/api/export/pdf/encrypt", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      let detail = `Export failed (${res.status})`;
+      try {
+        const body = await res.json();
+        if (body.detail) detail = typeof body.detail === "string" ? body.detail : "Could not lock the document.";
+      } catch { /* keep default detail */ }
+      throw new Error(detail);
+    }
+    return res.blob();
+  },
+
   uploadGrFile: async (file) => {
     const formData = new FormData();
     formData.append("file", file);

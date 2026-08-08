@@ -971,6 +971,18 @@ async def run_full_analysis(
     else:
         overall = "clean"
 
+    suggestions = []
+    if conflicts:
+        suggestions.append({"type": "warn", "text": f"{len(conflicts)} unresolved conflict(s) remain — resolve or dismiss before submission."})
+    if unresolved:
+        suggestions.append({"type": "warn", "text": f"{unresolved} citation(s) could not be matched to the corpus — verify manually."})
+    if errors == 0 and warnings == 0:
+        suggestions.append({"type": "pass", "text": "No template compliance issues found."})
+    if reference_hits and not unresolved:
+        suggestions.append({"type": "pass", "text": f"All {len(reference_hits)} citation(s) verified against the corpus."})
+    if not suggestions:
+        suggestions.append({"type": "pass", "text": "No issues flagged for this draft."})
+
     return AnalysisReport(
         draft_id=draft.id,
         generated_at=datetime.now(timezone.utc),
@@ -986,6 +998,7 @@ async def run_full_analysis(
         template_issues=template_issues,
         references=reference_hits,
         conflicts=conflicts,
+        suggestions=suggestions,
         terms=terms,
     )
 

@@ -21,13 +21,6 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
     return null;
   }
 
-  const defaultSuggestions = suggestions.length > 0 ? suggestions : [
-    { type: 'pass', text: 'Uses official legal language and statutory preamble formulation' },
-    { type: 'warn', text: 'Include explicit quarterly implementation timeline for grievance redressal' },
-    { type: 'warn', text: 'Specify the designated monitoring authority at district level' },
-    { type: 'pass', text: 'References existing higher education research grant guidelines' }
-  ];
-
   return (
     <div style={{
       background: 'var(--paper)',
@@ -41,7 +34,7 @@ export default function SuggestionsCard({ suggestions = [], hasGenerated }) {
         <IconLightbulb /> AI Review Suggestions
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {defaultSuggestions.map((item, idx) => {
+        {suggestions.map((item, idx) => {
           const isPass = item.type === 'pass' || (typeof item === 'string' && !item.toLowerCase().includes('add') && !item.toLowerCase().includes('mention'));
           const textStr = typeof item === 'string' ? item : item.text;
 

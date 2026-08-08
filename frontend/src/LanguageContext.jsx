@@ -194,7 +194,7 @@ const translations = {
     home_title_line2: "GOVERNANCE",
     home_gr_lookup_label: "Look up by GR ID",
     home_gr_lookup_tooltip: "Enter a GR ID to look up a specific resolution directly.",
-    home_stat_num: "98,950+",
+    home_stat_num: "99,000+",
     home_stat_label: "Government Resolutions",
     home_stat_sub: "Across departments. At your fingertips.",
     feat_search_title: "Semantic Search",

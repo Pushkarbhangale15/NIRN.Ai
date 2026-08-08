@@ -26,6 +26,7 @@ from admin_routes import router as admin_router
 from auth_routes import router as auth_router
 from config import settings
 from export_docx import router as export_router
+from export_pdf_lock import router as export_pdf_lock_router
 from knowledge import get_knowledge_service
 from rate_limit import limiter
 from routes import router
@@ -78,6 +79,7 @@ app.include_router(router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(export_router)
+app.include_router(export_pdf_lock_router)
 app.include_router(workflow_router)
 
 @app.get("/", tags=["health"])

@@ -234,10 +234,33 @@ def _plain_text_to_paragraph_html(text: str) -> str:
     return "".join(f"<p>{html.escape(p)}</p>" for p in paragraphs)
 
 
+_GOVERNOR_PHRASE = "महाराष्ट्राचे राज्यपाल यांच्या आदेशानुसार व नावाने"
+
+
+def _strip_llm_closing(content_html: str) -> str:
+    """
+    The generation prompt reliably gets the LLM to write its own closing
+    (governor-order phrase + signature + प्रत list) as the tail of the
+    draft body — this phrase is the fixed, never-varies idiom real GRs
+    always close with, so its first occurrence is always the start of
+    that closing block, never mid-document body text. _add_signature_block
+    and _add_distribution_list below add a second, correct one (real
+    officer name instead of the LLM's placeholder, full distribution
+    list instead of a short guessed one) — without this, both end up in
+    the exported document, back to back.
+    """
+    idx = content_html.find(_GOVERNOR_PHRASE)
+    if idx == -1:
+        return content_html
+    tag_start = content_html.rfind("<", 0, idx)
+    return content_html[:tag_start] if tag_start != -1 else content_html[:idx]
+
+
 def _render_html_body(document: Document, html_content: str) -> None:
     content = html_content or ""
     if not _looks_like_html(content):
         content = _plain_text_to_paragraph_html(content)
+    content = _strip_llm_closing(content)
     builder = _DocxHtmlBuilder(document)
     builder.feed(content)
     builder.close()
@@ -258,23 +281,24 @@ def _add_header_block(document: Document, *, department: str, gr_number: Optiona
     p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _add_centered_run(p1, "महाराष्ट्र शासन", size_pt=16, bold=True)
 
-    p2 = document.add_paragraph()
-    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _add_centered_run(p2, "Government of Maharashtra", size_pt=13, bold=True)
-
     p3 = document.add_paragraph()
     p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _add_centered_run(p3, department.replace("_", " "), size_pt=12, bold=True)
 
-    p4 = document.add_paragraph()
-    p4.alignment = WD_ALIGN_PARAGRAPH.CENTER
     gr_label = "शासन निर्णय क्रमांक" if is_marathi else "Government Resolution No."
     date_label = "दिनांक" if is_marathi else "Date"
-    _add_centered_run(
-        p4,
-        f"{gr_label}: {gr_number or 'PROVISIONAL — NOT YET ISSUED'}    {date_label}: {issue_date}",
-        size_pt=11,
-    )
+
+    p4 = document.add_paragraph()
+    p4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_centered_run(p4, f"{gr_label}: {gr_number or 'PROVISIONAL — NOT YET ISSUED'}", size_pt=11)
+
+    p5 = document.add_paragraph()
+    p5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_centered_run(p5, "मंत्रालय, मुंबई- 400 032", size_pt=11)
+
+    p6 = document.add_paragraph()
+    p6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _add_centered_run(p6, f"{date_label}: {issue_date}", size_pt=11)
 
     # Horizontal rule beneath the header, via a bottom paragraph border.
     hr_p = document.add_paragraph()
@@ -302,8 +326,7 @@ def _add_references_section(document: Document, references, is_marathi: bool) ->
     if not references:
         return
     heading = document.add_paragraph()
-    label = "संदर्भ" if is_marathi else "Reference"
-    run = heading.add_run(f"{label}:")
+    run = heading.add_run("वाचा:-")
     _set_run_font(run, size_pt=12, bold=True)
 
     for ref in references:
@@ -315,6 +338,10 @@ def _add_references_section(document: Document, references, is_marathi: bool) ->
 
 def _add_signature_block(document: Document, *, name: str, designation: str, is_marathi: bool) -> None:
     document.add_paragraph()  # spacer
+    p0 = document.add_paragraph()
+    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _add_centered_run(p0, "महाराष्ट्राचे राज्यपाल यांच्या आदेशानुसार व नावाने.", size_pt=12)
+
     p1 = document.add_paragraph()
     p1.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     _add_centered_run(p1, f"({name})", size_pt=12, bold=True)
@@ -323,9 +350,37 @@ def _add_signature_block(document: Document, *, name: str, designation: str, is_
     p2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     _add_centered_run(p2, designation or ("शासकीय अधिकारी" if is_marathi else "Government Officer"), size_pt=12)
 
-    p3 = document.add_paragraph()
-    p3.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    _add_centered_run(p3, "महाराष्ट्र शासन", size_pt=12, bold=True)
+
+_DISTRIBUTION_LIST = [
+    "मा. राज्यपाल यांचे सचिव.",
+    "मा.मुख्यमंत्री यांचे सचिव.",
+    "मा. मंत्री (सर्व) यांचे खाजगी सचिव.",
+    "मुख्य सचिव, महाराष्ट्र राज्य.",
+    "सर्व अपर मुख्य सचिव/प्रधान सचिव, मंत्रालय, मुंबई.",
+    "सर्व विभागीय आयुक्त.",
+    "सर्व जिल्हाधिकारी.",
+    "महालेखापाल एक व दोन, महाराष्ट्र राज्य, मुंबई/नागपूर.",
+    "सर्व मंत्रालयीन विभाग.",
+    "निवड नस्ती.",
+]
+
+
+def _add_distribution_list(document: Document, is_marathi: bool) -> None:
+    """
+    A fixed, static प्रत (distribution list) — every real GR ends with one,
+    and this system has no per-draft distribution data to compute one from.
+    Always rendered in Marathi regardless of the draft's own language,
+    matching what real GRs actually do.
+    """
+    document.add_paragraph()  # spacer
+    heading = document.add_paragraph()
+    run = heading.add_run("प्रत,")
+    _set_run_font(run, size_pt=12, bold=True)
+
+    for item in _DISTRIBUTION_LIST:
+        p = document.add_paragraph(style="List Number")
+        run = p.add_run(item)
+        _set_run_font(run, size_pt=12)
 
 
 def _add_page_numbers(document: Document) -> None:
@@ -388,6 +443,7 @@ def generate_gr_docx(
     _add_references_section(document, references, is_marathi)
     _render_html_body(document, content_html)
     _add_signature_block(document, name=officer_name, designation=officer_designation, is_marathi=is_marathi)
+    _add_distribution_list(document, is_marathi)
     _add_page_numbers(document)
 
     buffer = io.BytesIO()

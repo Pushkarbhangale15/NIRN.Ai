@@ -6,6 +6,8 @@
 #   langchain-text-splitters                                        (corpus chunking)
 #   python-jose, passlib, python-multipart, slowapi                 (auth + rate limiting)
 #   pypdf, python-docx                                               (file upload / DOCX export)
+#   pikepdf                                                          (password-locked PDF export —
+#                                                                     needs the `qpdf` system library)
 #   pytesseract, pdf2image, opencv-python-headless                  (scanned GR OCR ingestion —
 #                                                                     also needs the `tesseract`
 #                                                                     and `poppler` system binaries,
@@ -77,6 +79,7 @@ ormsgpack==1.12.2
 packaging==26.2
 passlib==1.7.4
 pdf2image==1.17.0
+pikepdf==10.11.0
 pillow==12.3.0
 portalocker==3.2.0
 propcache==0.5.2

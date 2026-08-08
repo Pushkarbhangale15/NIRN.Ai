@@ -167,6 +167,7 @@ class AnalysisReport(BaseModel):
     template_issues: List[TemplateIssue] = []
     references: List[ReferenceHit] = []
     conflicts: List[ConflictHit] = []
+    suggestions: List[dict] = []
     terms: List[TermMapping] = []
 
 

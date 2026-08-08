@@ -266,8 +266,8 @@ export default function Home() {
               <div className="stat-icon"><IconResolutions /></div>
               <div className="stat-number">
                 <CountUp
-                  start={95000}
-                  end={98950}
+                  start={96000}
+                  end={99000}
                   duration={2.5}
                   separator=","
                   suffix="+"
@@ -277,9 +277,6 @@ export default function Home() {
               </div>
               <div className="stat-label">Government Resolutions</div>
               <div className="stat-sub">Across departments. At your fingertips.</div>
-              {/* <div className="stat-number">{t('home_stat_num')}</div>
-              <div className="stat-label">{t('home_stat_label')}</div>
-              <div className="stat-sub">{t('home_stat_sub')}</div> */}
             </div>
           </div>
 

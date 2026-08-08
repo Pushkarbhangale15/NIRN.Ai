@@ -43,14 +43,6 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
   // Calculate score (out of 100)
   const score = Math.max(70, 100 - (errorCount * 15 + warningCount * 5));
 
-  const defaultChecklist = [
-    { label: "Department & Preamble Present", status: "pass" },
-    { label: "Subject Line Formatted", status: "pass" },
-    { label: "Legal Authority Clause Cited", status: "pass" },
-    { label: "Financial Implications Clause", status: errorCount > 0 ? "warn" : "pass" },
-    { label: "Annexure / Schedule Attached", status: warningCount > 0 ? "warn" : "pass" },
-  ];
-
   return (
     <div style={{
       background: 'var(--paper)',
@@ -104,31 +96,6 @@ export default function ComplianceCard({ report, loading, hasGenerated }) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                {defaultChecklist.map((item, idx) => (
-                  <div key={idx} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    background: item.status === 'pass' ? '#f0fdf4' : '#fffbe6',
-                    border: item.status === 'pass' ? '1px solid #bbf7d0' : '1px solid #ffe58f'
-                  }}>
-                    <span style={{ fontSize: '15px', fontWeight: '500' }}>
-                      {item.status === 'pass' ? '✓' : '⚠'} {item.label}
-                    </span>
-                    <span style={{
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      color: item.status === 'pass' ? '#166534' : '#854d0e'
-                    }}>
-                      {item.status === 'pass' ? 'PASSED' : 'CHECK NEEDED'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
               {issues.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#444', marginBottom: '6px' }}>
